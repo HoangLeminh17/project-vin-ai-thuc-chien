@@ -6,6 +6,40 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ---
 
+## Tuần 1 — 05/04/2026
+
+**Thành viên:** Nguyễn Bình Thành
+
+#### Đã làm
+- Setup Next.js 15 + Tailwind + TypeScript từ đầu
+- Kết nối MinerU Precision API để parse PDF ra markdown (upload qua Firebase Storage → gọi extract → poll kết quả → trả markdown)
+- Tạo Firebase Admin SDK init (`lib/firebase-admin.ts`) làm trung gian upload file cho MinerU
+- Xây POST `/api/parse-pdf` — nhận file PDF, trả markdown
+- Xây Planner Agent với Gemini 2.0 Flash — đọc markdown, chia thành chapters/lessons, trả Course JSON (`lib/ai.ts`, `lib/prompts.ts`, `lib/types.ts`)
+- Tạo POST `/api/generate-course` — endpoint cho Planner Agent
+- Xây UI: drag-drop upload PDF → accordion chapters → click lesson xem source_text trong modal
+- Chia 9 commits nhỏ theo logic, viết WORKLOG + ADR-1 + ADR-2
+
+#### Khó nhất tuần này
+- Adapt theo nhịp học của trường 
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Build toàn bộ pipeline: parser layer, Firebase upload, Planner Agent, API routes, UI | Hoàn thành MVP trong 1 ngày, 9 commits clean |
+| Claude (claude.ai) | Thought partner, viết prompt cho Claude Code, thiết kế flow | Giúp ra quyết định nhanh hơn (MinerU flow, Gemini JSON mode) |
+
+#### Học được
+- Kinh nghiệm quý giá và góc nhìn độc đáo từ các anh chị trong chương trình
+
+#### Nếu làm lại, sẽ làm khác
+- Không gì cả
+
+#### Kế hoạch tuần tới
+- MVP: Slide Agent + Quiz Agent
+
+---
+
 ## Template
 
 ```markdown

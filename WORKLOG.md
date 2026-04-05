@@ -6,6 +6,39 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+## Sprint 1 — 05/04 → ???. MVP
+
+| Task | Người làm | Deadline | Trạng thái |
+|---|---|---|---|
+| Next.js 15 setup (Tailwind, TypeScript, shadcn/ui) | Nguyễn Bình Thành | 05/04 | ✅ |
+| Kết nối MinerU API — parse PDF ra markdown | Nguyễn Bình Thành | 05/04 | ✅ |
+| Firebase Storage — trung gian upload file cho MinerU | Nguyễn Bình Thành | 05/04 | ✅ |
+| POST /api/parse-pdf — nhận PDF, trả markdown | Nguyễn Bình Thành | 05/04 | ✅ |
+| POST /api/generate-course — Gemini đọc markdown, trả Course JSON | Nguyễn Bình Thành | 05/04 | 🔄 chờ quota |
+| UI upload + xem chapters/lessons | Nguyễn Bình Thành | 05/04 | ✅ |
+
+---
+
+### [ADR-1] Dùng MinerU Official API làm PDF parser — 05/04/2026
+
+**Bối cảnh:** Cần parse PDF ra markdown có structure để Planner Agent xử lý.
+
+**Quyết định:** MinerU Official API (free beta, 2000 trang/ngày). Gọi qua REST: upload file → trigger extract → poll kết quả → trả markdown.
+
+**Hệ quả:** Cần `PDF_MINERU_BASE_URL` + `PDF_MINERU_API_KEY` trong env. Interface `lib/parsers/index.ts` (`ParsePDF`) cho phép swap parser sau mà không đổi pipeline.
+
+---
+
+### [ADR-2] Dùng Firebase Storage làm trung gian upload cho MinerU — 05/04/2026
+
+**Bối cảnh:** MinerU Precision API chỉ nhận URL public, không nhận file upload trực tiếp.
+
+**Quyết định:** Upload file lên Firebase Storage (firebase-admin), `makePublic()` để lấy public URL, gửi URL đó cho MinerU extract API.
+
+**Hệ quả:** Cần `firebase-admin` package + 4 env vars (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_STORAGE_BUCKET`). File được cleanup (xóa khỏi Storage) sau khi parse xong.
+
+---
+
 ## Template
 
 ### Quyết định kỹ thuật
@@ -50,7 +83,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
-## Ví dụ
+## Ví dụ (KHÔNG phải progress thật — chỉ để tham khảo format)
 
 ### [ADR-1] Dùng TypeScript thay vì Python — 30/03/2026
 
