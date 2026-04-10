@@ -53,6 +53,8 @@ docs: short description       # Documentation
 
 Branch naming: `<type>/<short-description>` (e.g. `docs/weekly-report-week1`)
 
+**One commit per logical change** — never bundle multiple features/fixes into a single commit.
+
 ## PR requirements
 
 - **Title**: Short description of the change
