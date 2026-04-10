@@ -8,11 +8,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing markdown' }, { status: 400 })
     }
 
-    const course = await generateCourse(markdown)
-    return NextResponse.json({ success: true, course })
+    const { course, tokens } = await generateCourse(markdown)
+    return NextResponse.json({ success: true, course, tokens })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'
-    console.error('generate-course error:', message)
+    console.error('[generate-course]', message)
     return NextResponse.json({ success: false, error: message }, { status: 500 })
   }
 }
