@@ -23,6 +23,10 @@ export default function Home() {
   const [openChapter, setOpenChapter] = useState<number | null>(null)
   const [openLesson, setOpenLesson] = useState<{ ci: number; li: number } | null>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [rawMarkdown, setRawMarkdown] = useState('')
+  const [rawCourseJson, setRawCourseJson] = useState('')
+  const [tokens, setTokens] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(null)
+  const [debugOpen, setDebugOpen] = useState<'md' | 'json' | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   const reset = useCallback(() => {
@@ -32,6 +36,10 @@ export default function Home() {
     setError('')
     setOpenChapter(null)
     setOpenLesson(null)
+    setRawMarkdown('')
+    setRawCourseJson('')
+    setTokens(null)
+    setDebugOpen(null)
     if (inputRef.current) inputRef.current.value = ''
   }, [])
 
@@ -68,6 +76,7 @@ export default function Home() {
         return
       }
       markdown = data.markdown
+      setRawMarkdown(markdown)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error')
       setStatus('idle')
@@ -89,6 +98,8 @@ export default function Home() {
         return
       }
       setCourse(data.course)
+      setRawCourseJson(JSON.stringify(data.course, null, 2))
+      if (data.tokens) setTokens(data.tokens)
       setStatus('done')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error')
@@ -96,11 +107,73 @@ export default function Home() {
     }
   }
 
-  // ── idle ──
+  const hasDebugData = rawMarkdown.length > 0 || rawCourseJson.length > 0
+
+  // ── Debug panel (reusable) ──
+  const debugPanel = hasDebugData && (
+    <div className="max-w-4xl mx-auto mt-10">
+      <h2 className="text-lg font-bold text-gray-500 mb-3">Debug Pipeline</h2>
+      <div className="space-y-2">
+        {/* Step 1: Parsed Markdown */}
+        <div className="border border-yellow-300 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setDebugOpen(debugOpen === 'md' ? null : 'md')}
+            className="w-full flex items-center justify-between px-4 py-3 bg-yellow-50 hover:bg-yellow-100 transition-colors text-left"
+          >
+            <span className="font-mono text-sm font-semibold text-yellow-800">
+              Step 1: PDF &rarr; Markdown (MinerU)
+            </span>
+            <span className="text-yellow-600 text-xs">
+              {rawMarkdown ? `${rawMarkdown.length.toLocaleString()} chars` : 'pending...'}
+            </span>
+          </button>
+          {debugOpen === 'md' && (
+            <pre className="px-4 py-3 bg-yellow-50/50 text-xs text-gray-700 overflow-auto max-h-96 whitespace-pre-wrap border-t border-yellow-200">
+              {rawMarkdown || '(empty)'}
+            </pre>
+          )}
+        </div>
+
+        {/* Step 2: Gemini Output */}
+        <div className="border border-purple-300 rounded-lg overflow-hidden">
+          <button
+            onClick={() => setDebugOpen(debugOpen === 'json' ? null : 'json')}
+            className="w-full flex items-center justify-between px-4 py-3 bg-purple-50 hover:bg-purple-100 transition-colors text-left"
+          >
+            <span className="font-mono text-sm font-semibold text-purple-800">
+              Step 2: Markdown &rarr; Course JSON (Gemini)
+            </span>
+            <span className="text-purple-600 text-xs">
+              {rawCourseJson ? `${rawCourseJson.length.toLocaleString()} chars` : 'pending...'}
+            </span>
+          </button>
+          {debugOpen === 'json' && (
+            <pre className="px-4 py-3 bg-purple-50/50 text-xs text-gray-700 overflow-auto max-h-96 whitespace-pre-wrap border-t border-purple-200">
+              {rawCourseJson || '(empty)'}
+            </pre>
+          )}
+        </div>
+
+          {/* Token usage */}
+          {tokens && (
+            <div className="border border-green-300 rounded-lg px-4 py-3 bg-green-50">
+              <span className="font-mono text-sm font-semibold text-green-800">Gemini Token Usage</span>
+              <div className="flex gap-6 mt-1 text-xs text-green-700 font-mono">
+                <span>Prompt: {tokens.promptTokens.toLocaleString()}</span>
+                <span>Completion: {tokens.completionTokens.toLocaleString()}</span>
+                <span>Total: {tokens.totalTokens.toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+      </div>
+    </div>
+  )
+
+  // ── idle (with optional debug from previous run) ──
   if (status === 'idle') {
     return (
-      <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
-        <div className="w-full max-w-lg space-y-6">
+      <main className="min-h-screen bg-gray-50 p-6">
+        <div className="w-full max-w-lg mx-auto space-y-6 pt-20">
           <h1 className="text-2xl font-bold text-gray-900 text-center">PDF Course Builder</h1>
 
           <div
@@ -141,6 +214,8 @@ export default function Home() {
             Tạo course
           </button>
         </div>
+
+        {debugPanel}
       </main>
     )
   }
@@ -148,11 +223,15 @@ export default function Home() {
   // ── loading (parsing / generating) ──
   if (status === 'parsing' || status === 'generating') {
     return (
-      <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4">
-        <Spinner />
-        <p className="text-gray-600">
-          {status === 'parsing' ? 'Đang phân tích tài liệu PDF...' : 'Đang tạo cấu trúc course...'}
-        </p>
+      <main className="min-h-screen bg-gray-50 p-6">
+        <div className="flex flex-col items-center justify-center gap-4 pt-20">
+          <Spinner />
+          <p className="text-gray-600">
+            {status === 'parsing' ? 'Đang phân tích tài liệu PDF...' : 'Đang tạo cấu trúc course...'}
+          </p>
+        </div>
+
+        {debugPanel}
       </main>
     )
   }
@@ -219,6 +298,8 @@ export default function Home() {
           </div>
         )}
       </div>
+
+      {debugPanel}
 
       {/* Lesson modal */}
       {selectedLesson && (
