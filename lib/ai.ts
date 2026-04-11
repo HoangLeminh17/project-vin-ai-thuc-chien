@@ -6,7 +6,7 @@ const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 
 export type TokenUsage = { promptTokens: number; completionTokens: number; totalTokens: number }
 
-export async function generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
+export async function generateCourse(parsedContent: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
   const res = await fetch(OPENAI_URL, {
     method: 'POST',
     headers: {
@@ -19,7 +19,7 @@ export async function generateCourse(markdown: string): Promise<{ course: Course
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: PLANNER_PROMPT },
-        { role: 'user', content: markdown },
+        { role: 'user', content: parsedContent },
       ],
     }),
   })
@@ -32,7 +32,6 @@ export async function generateCourse(markdown: string): Promise<{ course: Course
 
   const data = await res.json()
 
-  // Log token usage
   const usage = data.usage
   const tokens: TokenUsage | null = usage
     ? { promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens }
