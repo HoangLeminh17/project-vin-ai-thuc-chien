@@ -3,8 +3,9 @@
 import { useState, useRef, useCallback, type DragEvent } from 'react'
 
 type Lesson = { title: string; key_concept: string; source_text: string }
-type Chapter = { chapter: string; lessons: Lesson[] }
-type Course = { chapters: Chapter[] }
+type Quiz = { topic: string }
+type Chapter = { title: string; lessons: Lesson[]; quiz: Quiz }
+type Course = { title: string; chapters: Chapter[] }
 
 function Spinner() {
   return (
@@ -24,6 +25,7 @@ export default function Home() {
   const [openLesson, setOpenLesson] = useState<{ ci: number; li: number } | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [rawMarkdown, setRawMarkdown] = useState('')
+  const [contentList, setContentList] = useState<unknown[] | null>(null)
   const [rawCourseJson, setRawCourseJson] = useState('')
   const [tokens, setTokens] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(null)
   const [debugOpen, setDebugOpen] = useState<'md' | 'json' | null>(null)
@@ -37,6 +39,7 @@ export default function Home() {
     setOpenChapter(null)
     setOpenLesson(null)
     setRawMarkdown('')
+    setContentList(null)
     setRawCourseJson('')
     setTokens(null)
     setDebugOpen(null)
@@ -66,7 +69,8 @@ export default function Home() {
     const form = new FormData()
     form.append('file', file)
 
-    let markdown: string
+    let parsedContentList: unknown[] | null = null
+    let markdown: string = ''
     try {
       const res = await fetch('/api/parse-pdf', { method: 'POST', body: form })
       const data = await res.json()
@@ -75,8 +79,10 @@ export default function Home() {
         setStatus('idle')
         return
       }
-      markdown = data.markdown
+      markdown = data.markdown ?? ''
+      parsedContentList = data.contentList ?? null
       setRawMarkdown(markdown)
+      setContentList(parsedContentList)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error')
       setStatus('idle')
@@ -86,10 +92,11 @@ export default function Home() {
     // Step 2: Generate course
     setStatus('generating')
     try {
+      const body = parsedContentList ? { contentList: parsedContentList } : { contentList: [] }
       const res = await fetch('/api/generate-course', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       if (!data.success) {
@@ -98,6 +105,7 @@ export default function Home() {
         return
       }
       setCourse(data.course)
+      setOpenChapter(0)
       setRawCourseJson(JSON.stringify(data.course, null, 2))
       if (data.tokens) setTokens(data.tokens)
       setStatus('done')
@@ -107,41 +115,55 @@ export default function Home() {
     }
   }
 
-  const hasDebugData = rawMarkdown.length > 0 || rawCourseJson.length > 0
+  const hasDebugData = rawMarkdown.length > 0 || rawCourseJson.length > 0 || contentList !== null
 
-  // ── Debug panel (reusable) ──
+  function contentListStats(list: unknown[] | null): string {
+    if (!list) return 'Using markdown'
+    type Item = { type?: string }
+    const items = list as Item[]
+    const text = items.filter(i => i.type === 'text' || i.type === 'title').length
+    const tables = items.filter(i => i.type === 'table').length
+    const images = items.filter(i => i.type === 'image').length
+    const discarded = items.filter(i => i.type === 'discarded').length
+    return [
+      text > 0 && `${text} text blocks`,
+      tables > 0 && `${tables} tables`,
+      images > 0 && `${images} image${images > 1 ? 's' : ''}`,
+      discarded > 0 && `${discarded} discarded`,
+    ].filter(Boolean).join(' · ') || '0 items'
+  }
+
+  // ── Debug panel ──
   const debugPanel = hasDebugData && (
-    <div className="max-w-4xl mx-auto mt-10">
+    <div className="mt-10 px-8 pb-8">
       <h2 className="text-lg font-bold text-gray-500 mb-3">Debug Pipeline</h2>
       <div className="space-y-2">
-        {/* Step 1: Parsed Markdown */}
         <div className="border border-yellow-300 rounded-lg overflow-hidden">
           <button
             onClick={() => setDebugOpen(debugOpen === 'md' ? null : 'md')}
             className="w-full flex items-center justify-between px-4 py-3 bg-yellow-50 hover:bg-yellow-100 transition-colors text-left"
           >
             <span className="font-mono text-sm font-semibold text-yellow-800">
-              Step 1: PDF &rarr; Markdown (MinerU)
+              Step 1: PDF &rarr; Structured JSON (MinerU)
             </span>
             <span className="text-yellow-600 text-xs">
-              {rawMarkdown ? `${rawMarkdown.length.toLocaleString()} chars` : 'pending...'}
+              {contentList !== null ? contentListStats(contentList) : (rawMarkdown ? `${rawMarkdown.length.toLocaleString()} chars` : 'pending...')}
             </span>
           </button>
           {debugOpen === 'md' && (
             <pre className="px-4 py-3 bg-yellow-50/50 text-xs text-gray-700 overflow-auto max-h-96 whitespace-pre-wrap border-t border-yellow-200">
-              {rawMarkdown || '(empty)'}
+              {contentList !== null ? JSON.stringify(contentList, null, 2) : (rawMarkdown || '(empty)')}
             </pre>
           )}
         </div>
 
-        {/* Step 2: Gemini Output */}
         <div className="border border-purple-300 rounded-lg overflow-hidden">
           <button
             onClick={() => setDebugOpen(debugOpen === 'json' ? null : 'json')}
             className="w-full flex items-center justify-between px-4 py-3 bg-purple-50 hover:bg-purple-100 transition-colors text-left"
           >
             <span className="font-mono text-sm font-semibold text-purple-800">
-              Step 2: Markdown &rarr; Course JSON (Gemini)
+              Step 2: Structured JSON &rarr; Course Outline (AI Planner)
             </span>
             <span className="text-purple-600 text-xs">
               {rawCourseJson ? `${rawCourseJson.length.toLocaleString()} chars` : 'pending...'}
@@ -154,22 +176,21 @@ export default function Home() {
           )}
         </div>
 
-          {/* Token usage */}
-          {tokens && (
-            <div className="border border-green-300 rounded-lg px-4 py-3 bg-green-50">
-              <span className="font-mono text-sm font-semibold text-green-800">Gemini Token Usage</span>
-              <div className="flex gap-6 mt-1 text-xs text-green-700 font-mono">
-                <span>Prompt: {tokens.promptTokens.toLocaleString()}</span>
-                <span>Completion: {tokens.completionTokens.toLocaleString()}</span>
-                <span>Total: {tokens.totalTokens.toLocaleString()}</span>
-              </div>
+        {tokens && (
+          <div className="border border-green-300 rounded-lg px-4 py-3 bg-green-50">
+            <span className="font-mono text-sm font-semibold text-green-800">AI Token Usage</span>
+            <div className="flex gap-6 mt-1 text-xs text-green-700 font-mono">
+              <span>Prompt: {tokens.promptTokens.toLocaleString()}</span>
+              <span>Completion: {tokens.completionTokens.toLocaleString()}</span>
+              <span>Total: {tokens.totalTokens.toLocaleString()}</span>
             </div>
-          )}
+          </div>
+        )}
       </div>
     </div>
   )
 
-  // ── idle (with optional debug from previous run) ──
+  // ── idle ──
   if (status === 'idle') {
     return (
       <main className="min-h-screen bg-gray-50 p-6">
@@ -215,12 +236,12 @@ export default function Home() {
           </button>
         </div>
 
-        {debugPanel}
+        {hasDebugData && <div className="max-w-4xl mx-auto">{debugPanel}</div>}
       </main>
     )
   }
 
-  // ── loading (parsing / generating) ──
+  // ── loading: parsing / generating ──
   if (status === 'parsing' || status === 'generating') {
     return (
       <main className="min-h-screen bg-gray-50 p-6">
@@ -230,107 +251,101 @@ export default function Home() {
             {status === 'parsing' ? 'Đang phân tích tài liệu PDF...' : 'Đang tạo cấu trúc course...'}
           </p>
         </div>
-
-        {debugPanel}
       </main>
     )
   }
 
-  // ── done ──
+  // ── done: sidebar layout ──
   const selectedLesson = openLesson
     ? course?.chapters[openLesson.ci]?.lessons[openLesson.li]
     : null
 
   return (
-    <main className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Course Structure</h1>
-          <button
-            onClick={reset}
-            className="px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Upload file khác
-          </button>
-        </div>
+    <main className="h-screen flex flex-col overflow-hidden bg-gray-50">
+      {/* Top bar */}
+      <div className="shrink-0 bg-white border-b px-6 py-3 flex items-center justify-between">
+        <h1 className="font-semibold text-gray-900 truncate">
+          {course?.title || 'Course Structure'}
+        </h1>
+        <button
+          onClick={reset}
+          className="ml-4 shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+        >
+          Upload file khác
+        </button>
+      </div>
 
-        {!course || course.chapters.length === 0 ? (
-          <p className="text-gray-500">Không tạo được course từ tài liệu này.</p>
-        ) : (
-          <div className="space-y-3">
-            {course.chapters.map((ch, ci) => (
-              <div key={ci} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-                <button
-                  onClick={() => setOpenChapter(openChapter === ci ? null : ci)}
-                  className="w-full flex items-center justify-between px-5 py-4 text-left hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-semibold text-gray-900">
-                    <span className="text-blue-600 mr-2">Ch {ci + 1}.</span>
-                    {ch.chapter}
-                  </span>
-                  <span className="text-gray-400 text-sm flex items-center gap-2">
-                    {ch.lessons.length} lessons
+      {/* Body */}
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar */}
+        <aside className="w-72 shrink-0 bg-white border-r overflow-y-auto">
+          {!course || course.chapters.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-gray-400">Không tạo được course.</p>
+          ) : (
+            <nav className="py-2">
+              {course.chapters.map((ch, ci) => (
+                <div key={ci}>
+                  <button
+                    onClick={() => setOpenChapter(openChapter === ci ? null : ci)}
+                    className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50 transition-colors"
+                  >
+                    <span className="text-sm font-semibold text-gray-700 leading-snug pr-2">
+                      <span className="text-blue-500 mr-1">Ch {ci + 1}.</span>
+                      {ch.title}
+                    </span>
                     <svg
-                      className={`h-4 w-4 transition-transform ${openChapter === ci ? 'rotate-180' : ''}`}
+                      className={`h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform ${openChapter === ci ? 'rotate-180' : ''}`}
                       fill="none" stroke="currentColor" viewBox="0 0 24 24"
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                     </svg>
-                  </span>
-                </button>
+                  </button>
 
-                {openChapter === ci && (
-                  <div className="border-t border-gray-100">
-                    {ch.lessons.map((lesson, li) => (
-                      <button
-                        key={li}
-                        onClick={() => setOpenLesson({ ci, li })}
-                        className="w-full text-left px-5 py-3 hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-b-0"
-                      >
-                        <p className="text-sm font-medium text-gray-800">{lesson.title}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{lesson.key_concept}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+                  {openChapter === ci && (
+                    <div>
+                      {ch.lessons.map((lesson, li) => {
+                        const active = openLesson?.ci === ci && openLesson?.li === li
+                        return (
+                          <button
+                            key={li}
+                            onClick={() => setOpenLesson({ ci, li })}
+                            className={`w-full text-left px-5 py-2 text-sm transition-colors border-r-2 ${
+                              active
+                                ? 'bg-blue-50 text-blue-700 border-blue-500'
+                                : 'text-gray-600 hover:bg-gray-50 border-transparent'
+                            }`}
+                          >
+                            {lesson.title}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </nav>
+          )}
+        </aside>
 
-      {debugPanel}
-
-      {/* Lesson modal */}
-      {selectedLesson && (
-        <div
-          className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50"
-          onClick={() => setOpenLesson(null)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-2xl w-full max-h-[80vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="px-6 py-4 border-b">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-gray-900 line-clamp-1">{selectedLesson.title}</h2>
-                <button
-                  onClick={() => setOpenLesson(null)}
-                  className="text-gray-400 hover:text-gray-600 text-xl leading-none ml-4"
-                >
-                  &times;
-                </button>
-              </div>
-              <p className="text-sm text-gray-500 mt-1">{selectedLesson.key_concept}</p>
-            </div>
-            <div className="px-6 py-4 overflow-y-auto">
+        {/* Content panel */}
+        <div className="flex-1 overflow-y-auto">
+          {selectedLesson ? (
+            <div className="p-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-1">{selectedLesson.title}</h2>
+              <p className="text-sm text-gray-500 mb-6">{selectedLesson.key_concept}</p>
               <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
                 {selectedLesson.source_text}
               </pre>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400">
+              <p className="text-sm">Chọn một bài học để xem nội dung</p>
+            </div>
+          )}
+
+          {debugPanel}
         </div>
-      )}
+      </div>
     </main>
   )
 }
