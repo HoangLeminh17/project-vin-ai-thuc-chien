@@ -2,9 +2,11 @@ import { PLANNER_PROMPT } from './prompts'
 import type { Course } from './types'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!
-const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent'
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/:generateContent'
 
-export async function generateCourse(markdown: string): Promise<Course> {
+export type TokenUsage = { promptTokens: number; completionTokens: number; totalTokens: number }
+
+export async function generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
   const res = await fetch(`${GEMINI_URL}?key=${GEMINI_API_KEY}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -22,11 +24,22 @@ export async function generateCourse(markdown: string): Promise<Course> {
   })
 
   if (!res.ok) {
-    const body = await res.text().catch(() => '')
-    throw new Error(`Gemini API error (${res.status}): ${body}`)
+    const body = await res.json().catch(() => null)
+    const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
+    throw new Error(`Gemini API error (${res.status}): ${msg}`)
   }
 
   const data = await res.json()
+
+  // Log token usage
+  const usage = data.usageMetadata
+  const tokens: TokenUsage | null = usage
+    ? { promptTokens: usage.promptTokenCount, completionTokens: usage.candidatesTokenCount, totalTokens: usage.totalTokenCount }
+    : null
+  if (tokens) {
+    console.log(`[generate-course] Tokens — prompt: ${tokens.promptTokens}, completion: ${tokens.completionTokens}, total: ${tokens.totalTokens}`)
+  }
+
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) {
     throw new Error(`Gemini returned no content: ${JSON.stringify(data)}`)
@@ -43,5 +56,5 @@ export async function generateCourse(markdown: string): Promise<Course> {
     throw new Error(`Invalid course structure: missing chapters array`)
   }
 
-  return course
+  return { course, tokens }
 }

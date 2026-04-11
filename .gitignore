@@ -21,3 +21,7 @@ build/
 # Next.js
 node_modules/
 .next/
+
+# MinerU extracted output (debug)
+.mineru-output/
+me

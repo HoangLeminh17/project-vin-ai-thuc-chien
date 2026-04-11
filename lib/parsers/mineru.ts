@@ -1,6 +1,8 @@
 import JSZip from 'jszip'
 import { getBucket } from '@/lib/firebase-admin'
 import type { ParsePDF } from './index'
+import fs from 'fs/promises'
+import path from 'path'
 
 const BASE_URL = process.env.PDF_MINERU_BASE_URL!
 const API_KEY = process.env.PDF_MINERU_API_KEY!
@@ -24,8 +26,8 @@ async function mineruFetch(path: string, init?: RequestInit): Promise<Response> 
 
 // ── Step 1: Upload to Firebase Storage → public URL ──
 
-async function uploadToFirebase(file: Buffer, filename: string): Promise<{ publicUrl: string; filePath: string }> {
-  const filePath = `uploads/${Date.now()}_${filename}`
+async function uploadToFirebase(file: Buffer, safeName: string): Promise<{ publicUrl: string; filePath: string }> {
+  const filePath = `uploads/${Date.now()}_${safeName}`
   const bucket = getBucket()
   const fileRef = bucket.file(filePath)
 
@@ -58,9 +60,11 @@ async function submitExtractTask(fileUrl: string): Promise<string> {
   return taskId
 }
 
-// ── Step 3: Poll until done → download zip → extract full.md ──
+// ── Step 3: Poll until done → download zip → save to .mineru-output/ ──
 
-async function pollAndExtract(taskId: string, timeoutMs = 300_000, intervalMs = 3_000): Promise<string> {
+const OUTPUT_DIR = path.join(process.cwd(), '.mineru-output')
+
+async function pollAndExtract(taskId: string, safeName: string, timeoutMs = 300_000, intervalMs = 3_000): Promise<string> {
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
@@ -71,7 +75,7 @@ async function pollAndExtract(taskId: string, timeoutMs = 300_000, intervalMs = 
     if (state === 'done') {
       const zipUrl = data.data?.full_zip_url
       if (!zipUrl) throw new Error('MinerU: task done but no full_zip_url')
-      return downloadAndExtractMd(zipUrl)
+      return downloadAndSave(zipUrl, safeName)
     }
 
     if (state === 'failed') {
@@ -84,23 +88,35 @@ async function pollAndExtract(taskId: string, timeoutMs = 300_000, intervalMs = 
   throw new Error(`MinerU task ${taskId} timed out after ${timeoutMs / 1000}s`)
 }
 
-async function downloadAndExtractMd(zipUrl: string): Promise<string> {
+async function downloadAndSave(zipUrl: string, safeName: string): Promise<string> {
   const res = await fetch(zipUrl)
   if (!res.ok) throw new Error(`Failed to download zip (${res.status})`)
 
   const buf = await res.arrayBuffer()
   const zip = await JSZip.loadAsync(buf)
 
-  // find full.md in the zip (may be nested in a folder)
-  let mdFile: JSZip.JSZipObject | null = null
-  zip.forEach((path, entry) => {
-    if (path.endsWith('full.md') && !mdFile) {
-      mdFile = entry
-    }
-  })
+  const outDir = path.join(OUTPUT_DIR, safeName.replace(/\.pdf$/i, ''))
+  await fs.mkdir(outDir, { recursive: true })
 
-  if (!mdFile) throw new Error('full.md not found in zip archive')
-  return (mdFile as JSZip.JSZipObject).async('string')
+  let markdown = ''
+
+  for (const [zipPath, entry] of Object.entries(zip.files)) {
+    if (entry.dir) continue
+    const dest = path.join(outDir, zipPath)
+    await fs.mkdir(path.dirname(dest), { recursive: true })
+
+    if (zipPath.endsWith('full.md')) {
+      markdown = await entry.async('string')
+      await fs.writeFile(dest, markdown, 'utf-8')
+    } else {
+      const data = await entry.async('nodebuffer')
+      await fs.writeFile(dest, data)
+    }
+  }
+
+  if (!markdown) throw new Error('full.md not found in zip archive')
+  console.log(`[parse-pdf] Saved to ${outDir}`)
+  return markdown
 }
 
 // ── Step 4: Cleanup Firebase file ──
@@ -120,11 +136,13 @@ export const parsePDF: ParsePDF = async (file, filename) => {
     throw new Error('Missing PDF_MINERU_BASE_URL or PDF_MINERU_API_KEY in env')
   }
 
-  const { publicUrl, filePath } = await uploadToFirebase(file, filename)
+  const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const { publicUrl, filePath } = await uploadToFirebase(file, safeName)
+  console.log('[parse-pdf] Firebase URL:', publicUrl)
 
   try {
     const taskId = await submitExtractTask(publicUrl)
-    return await pollAndExtract(taskId)
+    return await pollAndExtract(taskId, safeName)
   } finally {
     await deleteFromFirebase(filePath)
   }
