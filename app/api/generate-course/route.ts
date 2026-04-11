@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateCourse } from '@/lib/ai'
+import { generateCourseUseCase } from '@/infrastructure/di'
 
 export async function POST(req: NextRequest) {
   try {
@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Missing markdown' }, { status: 400 })
     }
 
-    const { course, tokens } = await generateCourse(markdown)
+    const { course, tokens } = await generateCourseUseCase.execute(markdown)
     return NextResponse.json({ success: true, course, tokens })
   } catch (e) {
     const message = e instanceof Error ? e.message : 'Unknown error'
