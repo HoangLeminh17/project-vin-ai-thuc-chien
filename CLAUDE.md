@@ -2,11 +2,11 @@
 
 ## Project overview
 
-AI-powered course generator — upload a PDF, parse it to markdown (MinerU API), then use an AI Planner Agent (Gemini 2.0 Flash) to split it into structured chapters/lessons.
+AI-powered course generator — upload a PDF, parse it to markdown (MinerU API), then use an AI Planner Agent (OpenAI GPT-4o) to split it into structured chapters/lessons.
 
 - **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
 - **Backend**: Next.js API routes (`app/api/`)
-- **AI**: Gemini 2.0 Flash via Google AI SDK
+- **AI**: OpenAI GPT-4o via REST API
 - **Storage**: Firebase Storage (temporary upload for MinerU)
 - **PDF parsing**: MinerU Precision API
 
@@ -20,7 +20,7 @@ app/                  # Next.js App Router
   page.tsx            # Main UI (upload + course viewer)
   layout.tsx
 lib/                  # Shared library code
-  ai.ts               # Planner Agent (Gemini)
+  ai.ts               # Planner Agent (OpenAI GPT-4o)
   prompts.ts           # Prompt templates
   types.ts             # TypeScript types
   firebase-admin.ts    # Firebase Admin SDK init
@@ -83,7 +83,7 @@ Branch naming: `<type>/<short-description>` (e.g. `docs/weekly-report-week1`)
 ## Environment variables
 
 Required (defined in `.env`):
-- `GEMINI_API_KEY`
+- `OPENAI_API_KEY`
 - `PDF_MINERU_BASE_URL`, `PDF_MINERU_API_KEY`
 - `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_STORAGE_BUCKET`
 - `AI_LOG_SERVER`, `AI_LOG_API_KEY` (pre-filled for logging)

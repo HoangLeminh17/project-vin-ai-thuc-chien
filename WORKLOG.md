@@ -14,8 +14,44 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Kết nối MinerU API — parse PDF ra markdown | Nguyễn Bình Thành | 05/04 | ✅ |
 | Firebase Storage — trung gian upload file cho MinerU | Nguyễn Bình Thành | 05/04 | ✅ |
 | POST /api/parse-pdf — nhận PDF, trả markdown | Nguyễn Bình Thành | 05/04 | ✅ |
-| POST /api/generate-course — Gemini đọc markdown, trả Course JSON | Nguyễn Bình Thành | 05/04 | 🔄 chờ quota |
+| POST /api/generate-course — Gemini đọc markdown, trả Course JSON | Nguyễn Bình Thành | 05/04 | ✅ (chuyển sang OpenAI) |
 | UI upload + xem chapters/lessons | Nguyễn Bình Thành | 05/04 | ✅ |
+| Extract content_list_v2 từ MinerU zip | Nguyễn Bình Thành | 12/04 | ✅ |
+| Refactor schema: thêm Quiz, Course title; AI nhận contentList thay markdown | Nguyễn Bình Thành | 12/04 | ✅ |
+| SSE streaming: streamCourse() + progressive chapter rendering | Nguyễn Bình Thành | 12/04 | ✅ |
+
+---
+
+### [ADR-4] Tách pipeline thành Stage 1 (outline) + Stage 2 (content); dùng contentList thay markdown — 12/04/2026
+
+**Bối cảnh:** AI Planner Agent ban đầu nhận markdown thuần và trả về toàn bộ nội dung chapter/lesson trong một lần gọi. Cách này tốn nhiều token và khó kiểm soát chất lượng từng phần.
+
+**Các lựa chọn đã xem xét:**
+- **Một lần gọi duy nhất (markdown → full course)**: Đơn giản, nhưng prompt dài, token cao, và AI dễ hallucinate nội dung khi cố generate cả outline lẫn lesson content cùng lúc.
+- **Tách 2 stage (outline → content)**: Stage 1 chỉ tạo skeleton (chapters, lessons, quiz topic). Stage 2 (sau này) gen nội dung từng lesson riêng. Mỗi stage dễ kiểm tra và retry độc lập.
+
+**Quyết định:**
+- Stage 1 (`/api/generate-course`) chỉ tạo Course outline: `title`, `chapters[].title`, `chapters[].lessons[]{title, key_concept, source_text}`, `chapters[].quiz.topic`.
+- Stage 2 (chưa implement) sẽ gen nội dung quiz question/answer và lesson detail từ outline.
+- API nhận `contentList` (array từ MinerU `content_list.json`) thay vì `markdown`. Route tự parse: `text`/`title` → append text, `table` → append HTML, `image` → placeholder, `discarded` → bỏ qua. Substring(0, 50000) để giới hạn token.
+
+**Lý do dùng contentList thay markdown:** contentList giữ nguyên type metadata (heading vs paragraph vs table), cho phép filter chính xác hơn. Markdown flatten tất cả thành text, mất thông tin loại block.
+
+**Hệ quả:** `lib/types.ts` thêm `Quiz`, `Course.title`, đổi `Chapter.chapter → Chapter.title`. `lib/ai.ts` đổi param `markdown → parsedContent`. `app/page.tsx` gửi `contentList` lên generate-course thay vì `markdown`.
+
+---
+
+### [ADR-3] Dùng make_mode content_list_v2 cho MinerU extract — 12/04/2026
+
+**Bối cảnh:** MinerU trả về zip chứa `full.md` (markdown) nhưng thiếu structured content blocks (heading, paragraph, table, formula…). Planner Agent cần metadata chi tiết hơn markdown thuần để tách chapter/lesson chính xác hơn.
+
+**Các lựa chọn đã xem xét:**
+- **Chỉ dùng markdown**: Đơn giản, nhưng mất thông tin loại content block.
+- **content_list_v2**: MinerU trả thêm file JSON chứa danh sách content blocks có type, text, và metadata. Cho phép Planner Agent hiểu cấu trúc tài liệu tốt hơn.
+
+**Quyết định:** Thêm `make_mode: 'content_list_v2'` vào request body khi submit extract task. Parse file `content_list.json` hoặc `_content_list_v2.json` từ zip nếu có. Fallback về markdown-only nếu không tìm thấy file.
+
+**Hệ quả:** `ParsePDF` return type đổi từ `Promise<string>` thành `Promise<{ markdown: string; contentList?: any[] }>`. API route `/api/parse-pdf` trả thêm field `contentList` trong response. Nếu MinerU API không support param `make_mode`, nó sẽ bị ignore silently và fallback hoạt động bình thường.
 
 ---
 
