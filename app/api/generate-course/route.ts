@@ -3,9 +3,9 @@ import { generateCourseUseCase } from '@/infrastructure/di'
 
 export async function POST(req: NextRequest) {
   try {
-    const { markdown } = await req.json()
-    if (!markdown || typeof markdown !== 'string') {
-      return NextResponse.json({ success: false, error: 'Missing markdown' }, { status: 400 })
+    const { contentList } = await req.json()
+    if (!contentList || !Array.isArray(contentList)) {
+      return NextResponse.json({ success: false, error: 'Missing contentList' }, { status: 400 })
     }
 
     const { course, tokens } = await generateCourseUseCase.execute(markdown)

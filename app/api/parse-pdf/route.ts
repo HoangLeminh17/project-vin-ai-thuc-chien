@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer())
     const markdown = await parseDocumentUseCase.execute(buffer, file.name)
 
-    return NextResponse.json({ success: true, markdown })
+    return NextResponse.json({ success: true, markdown: result.markdown, contentList: result.contentList })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error'
     console.error('[parse-pdf]', message)
