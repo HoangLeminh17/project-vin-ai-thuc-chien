@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parsePDF } from '@/lib/parsers'
+import { parseDocumentUseCase } from '@/infrastructure/di'
 
 const MAX_SIZE = 20 * 1024 * 1024 // 20 MB
 
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer())
-    const result = await parsePDF(buffer, file.name)
+    const markdown = await parseDocumentUseCase.execute(buffer, file.name)
 
     return NextResponse.json({ success: true, markdown: result.markdown, contentList: result.contentList })
   } catch (err) {
