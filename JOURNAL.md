@@ -40,6 +40,34 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ---
 
+## Tuần 2 — 12/04/2026
+
+**Thành viên:** Lê Kim Dũng
+
+#### Đã làm
+- **Dự án chính (PDF-to-Lesson):**
+  - Tái cấu trúc (refactor) codebase từ dạng monolithic trong Next.js API sang chuẩn Clean Architecture (Ports & Adapters).
+
+#### Khó nhất tuần này
+- Thiết kế boilerplate cho Clean Architecture: phải đưa ra quyết định chuyển logic từ API Route sang Use Cases và tách Adapter (Firebase, MinerU, OpenAI) cho đúng chuẩn.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| AI Agent | Refactor dự án sang Clean Architecture, tư vấn thiết kế luồng Stage 2, prompt engineering, và log docs (WORKLOG/JOURNAL) | Tiết kiệm nhiều giờ setup boilerplate, tìm ra cách fix lỗi merge topic bằng cách inject `##` markers vào input. |
+
+#### Học được
+- Áp dụng sơ đồ Clean Architecture từ đầu sẽ vất vả phần setup nhưng khi cần swap provider hoặc thêm tính năng mới ở core sẽ rất khỏe và tránh technical debt rải rác.
+
+#### Nếu làm lại, sẽ làm khác
+- Thiết kế cấu trúc file theo hướng Interface/Use Case (Clean Architecture) ngay từ tuần đầu để khỏi mất một đợt refactoring lớn.
+
+#### Kế hoạch tuần tới
+- Làm tính năng authentication
+- 
+
+---
+
 ## Template
 
 ```markdown
