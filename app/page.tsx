@@ -1,28 +1,188 @@
 'use client'
 
-import { useState, useRef, useCallback, type DragEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
 
+// ── Stage 1 types ──────────────────────────────────────────────────────────────
 type Lesson = { title: string; key_concept: string; source_text: string }
 type Quiz = { topic: string }
 type Chapter = { title: string; lessons: Lesson[]; quiz: Quiz }
 type Course = { title: string; chapters: Chapter[] }
 
+// ── Stage 2 types ──────────────────────────────────────────────────────────────
+type Slide = { heading: string; bullets: string[]; speaker_notes: string }
+type QuizQuestion = { question: string; options: string[]; answer: number; explanation: string }
+type LessonContent = { lesson_title: string; slides: Slide[] }
+type ChapterContent = { chapter_title: string; lessons: LessonContent[]; quiz: { topic: string; questions: QuizQuestion[] } }
+type CourseContent = { chapters: ChapterContent[] }
+
+// ── Sub-components ─────────────────────────────────────────────────────────────
+
 function Spinner() {
   return (
-    <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
+    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
     </svg>
   )
 }
 
+// Reveal.js slide viewer. Use `key` prop on parent to force remount on lesson change.
+function RevealDeck({ slides }: { slides: Slide[] }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [currentIndex, setCurrentIndex] = useState(0)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+
+    type RevealInstance = {
+      initialize(): Promise<void>
+      destroy(): void
+      on(event: string, cb: (e: { indexh: number }) => void): void
+    }
+    type RevealCtor = new (el: HTMLElement, cfg: Record<string, unknown>) => RevealInstance
+
+    const R = (window as unknown as { Reveal?: RevealCtor }).Reveal
+    if (!R) return
+
+    let deck: RevealInstance | null = null
+    let mounted = true
+
+    ;(async () => {
+      try {
+        deck = new R(containerRef.current!, {
+          embedded: true,
+          controls: true,
+          progress: true,
+          center: false,
+          hash: false,
+          transition: 'fade',
+          slideNumber: 'c/t',
+        })
+        await deck.initialize()
+        if (!mounted) return
+        setCurrentIndex(0)
+        deck.on('slidechanged', (e) => {
+          if (mounted) setCurrentIndex(e.indexh)
+        })
+      } catch (err) {
+        console.error('[RevealDeck] init failed', err)
+      }
+    })()
+
+    return () => {
+      mounted = false
+      try { deck?.destroy() } catch {}
+    }
+  }, []) // runs once on mount; parent uses key prop to remount on lesson change
+
+  const currentNotes = slides[currentIndex]?.speaker_notes ?? ''
+
+  return (
+    <div className="flex h-full w-full">
+      {/* Slide viewer — 62% */}
+      <div ref={containerRef} className="reveal" style={{ width: '62%', height: '100%' }}>
+        <div className="slides">
+          {slides.map((s, i) => (
+            <section key={i}>
+              <h2>{s.heading}</h2>
+              <ul>
+                {s.bullets.map((b, j) => <li key={j}>{b}</li>)}
+              </ul>
+              <aside className="notes">{s.speaker_notes}</aside>
+            </section>
+          ))}
+        </div>
+      </div>
+
+      {/* Speaker notes panel — 38% */}
+      <div className="flex flex-col border-l bg-gray-50 overflow-hidden" style={{ width: '38%' }}>
+        <div className="px-4 py-2.5 border-b bg-white shrink-0">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Speaker Notes</p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5">
+          {currentNotes
+            ? <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{currentNotes}</p>
+            : <p className="text-sm text-gray-400 italic">(no notes for this slide)</p>
+          }
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function QuizView({ quiz }: { quiz: ChapterContent['quiz'] }) {
+  const [selected, setSelected] = useState<(number | null)[]>(() => quiz.questions.map(() => null))
+
+  if (quiz.questions.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-64 text-gray-400">
+        <p className="text-sm">Quiz không có câu hỏi (chapter generation failed)</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-8 space-y-6">
+      <h2 className="text-xl font-semibold text-gray-900">Quiz: {quiz.topic}</h2>
+      {quiz.questions.map((q, qi) => {
+        const answered = selected[qi] !== null
+        return (
+          <div key={qi} className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <p className="font-medium text-gray-800 text-sm leading-relaxed">
+              {qi + 1}. {q.question}
+            </p>
+            <div className="space-y-2">
+              {q.options.map((opt, oi) => {
+                const isSelected = selected[qi] === oi
+                const isCorrect = oi === q.answer
+                let cls = 'w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-colors '
+                if (!answered) {
+                  cls += 'border-gray-200 hover:bg-gray-50 cursor-pointer'
+                } else if (isCorrect) {
+                  cls += 'border-green-400 bg-green-50 text-green-800 font-medium'
+                } else if (isSelected) {
+                  cls += 'border-red-300 bg-red-50 text-red-700'
+                } else {
+                  cls += 'border-gray-100 text-gray-400'
+                }
+                return (
+                  <button
+                    key={oi}
+                    disabled={answered}
+                    onClick={() => setSelected(prev => prev.map((v, i) => i === qi ? oi : v))}
+                    className={cls}
+                  >
+                    {String.fromCharCode(65 + oi)}. {opt}
+                  </button>
+                )
+              })}
+            </div>
+            {answered && (
+              <p className={`text-xs p-3 rounded-lg leading-relaxed ${selected[qi] === q.answer ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                {selected[qi] === q.answer ? 'Correct. ' : `Incorrect — answer is ${String.fromCharCode(65 + q.answer)}. `}
+                {q.explanation}
+              </p>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Main component ─────────────────────────────────────────────────────────────
+
 export default function Home() {
   const [file, setFile] = useState<File | null>(null)
   const [status, setStatus] = useState<'idle' | 'parsing' | 'generating' | 'done'>('idle')
   const [course, setCourse] = useState<Course | null>(null)
+  const [courseContent, setCourseContent] = useState<CourseContent | null>(null)
+  const [stage2Loading, setStage2Loading] = useState(false)
+  const [stage2Error, setStage2Error] = useState('')
   const [error, setError] = useState('')
   const [openChapter, setOpenChapter] = useState<number | null>(null)
   const [openLesson, setOpenLesson] = useState<{ ci: number; li: number } | null>(null)
+  const [quizChapter, setQuizChapter] = useState<number | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const [rawMarkdown, setRawMarkdown] = useState('')
   const [contentList, setContentList] = useState<unknown[] | null>(null)
@@ -35,9 +195,13 @@ export default function Home() {
     setFile(null)
     setStatus('idle')
     setCourse(null)
+    setCourseContent(null)
+    setStage2Loading(false)
+    setStage2Error('')
     setError('')
     setOpenChapter(null)
     setOpenLesson(null)
+    setQuizChapter(null)
     setRawMarkdown('')
     setContentList(null)
     setRawCourseJson('')
@@ -63,6 +227,7 @@ export default function Home() {
     if (!file) return
     setError('')
     setCourse(null)
+    setCourseContent(null)
 
     // Step 1: Parse PDF
     setStatus('parsing')
@@ -70,7 +235,7 @@ export default function Home() {
     form.append('file', file)
 
     let parsedContentList: unknown[] | null = null
-    let markdown: string = ''
+    let markdown = ''
     try {
       const res = await fetch('/api/parse-pdf', { method: 'POST', body: form })
       const data = await res.json()
@@ -89,8 +254,9 @@ export default function Home() {
       return
     }
 
-    // Step 2: Generate course
+    // Step 2 (Stage 1): Generate course outline
     setStatus('generating')
+    let resolvedCourse: Course | null = null
     try {
       const body = parsedContentList ? { contentList: parsedContentList } : { contentList: [] }
       const res = await fetch('/api/generate-course', {
@@ -104,6 +270,7 @@ export default function Home() {
         setStatus('idle')
         return
       }
+      resolvedCourse = data.course
       setCourse(data.course)
       setOpenChapter(0)
       setRawCourseJson(JSON.stringify(data.course, null, 2))
@@ -112,7 +279,28 @@ export default function Home() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error')
       setStatus('idle')
+      return
     }
+
+    // Step 3 (Stage 2): Generate slides + quiz in background (fire-and-forget)
+    if (!resolvedCourse) return
+    setStage2Loading(true)
+    setStage2Error('')
+    fetch('/api/generate-content', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ course: resolvedCourse }),
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.success) {
+          setCourseContent(d.courseContent)
+        } else {
+          setStage2Error(d.error || 'Stage 2 failed')
+        }
+      })
+      .catch(e => setStage2Error(e instanceof Error ? e.message : 'Network error'))
+      .finally(() => setStage2Loading(false))
   }
 
   const hasDebugData = rawMarkdown.length > 0 || rawCourseJson.length > 0 || contentList !== null
@@ -133,7 +321,6 @@ export default function Home() {
     ].filter(Boolean).join(' · ') || '0 items'
   }
 
-  // ── Debug panel ──
   const debugPanel = hasDebugData && (
     <div className="mt-10 px-8 pb-8">
       <h2 className="text-lg font-bold text-gray-500 mb-3">Debug Pipeline</h2>
@@ -178,7 +365,7 @@ export default function Home() {
 
         {tokens && (
           <div className="border border-green-300 rounded-lg px-4 py-3 bg-green-50">
-            <span className="font-mono text-sm font-semibold text-green-800">AI Token Usage</span>
+            <span className="font-mono text-sm font-semibold text-green-800">AI Token Usage (Stage 1)</span>
             <div className="flex gap-6 mt-1 text-xs text-green-700 font-mono">
               <span>Prompt: {tokens.promptTokens.toLocaleString()}</span>
               <span>Completion: {tokens.completionTokens.toLocaleString()}</span>
@@ -190,7 +377,7 @@ export default function Home() {
     </div>
   )
 
-  // ── idle ──
+  // ── idle ──────────────────────────────────────────────────────────────────────
   if (status === 'idle') {
     return (
       <main className="min-h-screen bg-gray-50 p-6">
@@ -218,11 +405,10 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16V4m0 0L8 8m4-4l4 4M4 20h16" />
               </svg>
             </div>
-            {file ? (
-              <p className="text-gray-700 font-medium">{file.name}</p>
-            ) : (
-              <p className="text-gray-500">Kéo thả file PDF vào đây hoặc click để chọn</p>
-            )}
+            {file
+              ? <p className="text-gray-700 font-medium">{file.name}</p>
+              : <p className="text-gray-500">Kéo thả file PDF vào đây hoặc click để chọn</p>
+            }
           </div>
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
@@ -241,7 +427,7 @@ export default function Home() {
     )
   }
 
-  // ── loading: parsing / generating ──
+  // ── loading ───────────────────────────────────────────────────────────────────
   if (status === 'parsing' || status === 'generating') {
     return (
       <main className="min-h-screen bg-gray-50 p-6">
@@ -255,18 +441,32 @@ export default function Home() {
     )
   }
 
-  // ── done: sidebar layout ──
-  const selectedLesson = openLesson
-    ? course?.chapters[openLesson.ci]?.lessons[openLesson.li]
+  // ── done: sidebar + right panel ───────────────────────────────────────────────
+  const selectedLesson = openLesson ? course?.chapters[openLesson.ci]?.lessons[openLesson.li] : null
+  const lessonContent = openLesson && courseContent
+    ? courseContent.chapters[openLesson.ci]?.lessons[openLesson.li]
     : null
+  const quizContent = quizChapter !== null && courseContent
+    ? courseContent.chapters[quizChapter]?.quiz
+    : null
+  const isSlideView = openLesson !== null && quizChapter === null
 
   return (
     <main className="h-screen flex flex-col overflow-hidden bg-gray-50">
       {/* Top bar */}
       <div className="shrink-0 bg-white border-b px-6 py-3 flex items-center justify-between">
-        <h1 className="font-semibold text-gray-900 truncate">
-          {course?.title || 'Course Structure'}
-        </h1>
+        <div className="flex items-center gap-3 min-w-0">
+          <h1 className="font-semibold text-gray-900 truncate">{course?.title || 'Course Structure'}</h1>
+          {stage2Loading && (
+            <span className="flex items-center gap-1.5 text-xs text-blue-500 shrink-0">
+              <Spinner />
+              Generating slides...
+            </span>
+          )}
+          {!stage2Loading && stage2Error && (
+            <span className="text-xs text-red-500 shrink-0">Stage 2 failed: {stage2Error}</span>
+          )}
+        </div>
         <button
           onClick={reset}
           className="ml-4 shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -308,7 +508,7 @@ export default function Home() {
                         return (
                           <button
                             key={li}
-                            onClick={() => setOpenLesson({ ci, li })}
+                            onClick={() => { setOpenLesson({ ci, li }); setQuizChapter(null) }}
                             className={`w-full text-left px-5 py-2 text-sm transition-colors border-r-2 ${
                               active
                                 ? 'bg-blue-50 text-blue-700 border-blue-500'
@@ -319,6 +519,17 @@ export default function Home() {
                           </button>
                         )
                       })}
+                      {/* Quiz entry */}
+                      <button
+                        onClick={() => { setQuizChapter(ci); setOpenLesson(null) }}
+                        className={`w-full text-left px-5 py-2 text-sm font-medium transition-colors border-r-2 ${
+                          quizChapter === ci
+                            ? 'bg-orange-50 text-orange-700 border-orange-400'
+                            : 'text-gray-400 hover:bg-gray-50 border-transparent hover:text-gray-600'
+                        }`}
+                      >
+                        Quiz
+                      </button>
                     </div>
                   )}
                 </div>
@@ -328,22 +539,62 @@ export default function Home() {
         </aside>
 
         {/* Content panel */}
-        <div className="flex-1 overflow-y-auto">
-          {selectedLesson ? (
-            <div className="p-8">
-              <h2 className="text-xl font-semibold text-gray-900 mb-1">{selectedLesson.title}</h2>
-              <p className="text-sm text-gray-500 mb-6">{selectedLesson.key_concept}</p>
-              <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
-                {selectedLesson.source_text}
-              </pre>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-gray-400">
-              <p className="text-sm">Chọn một bài học để xem nội dung</p>
+        <div className="flex-1 flex flex-col overflow-hidden">
+
+          {/* Lesson slide view */}
+          {isSlideView && (
+            <>
+              <div className="shrink-0 px-8 py-4 border-b bg-white">
+                <p className="text-xs text-gray-400 mb-0.5">{course?.chapters[openLesson!.ci]?.title}</p>
+                <h2 className="text-lg font-semibold text-gray-900">{selectedLesson?.title}</h2>
+                <p className="text-sm text-gray-500 mt-0.5">{selectedLesson?.key_concept}</p>
+              </div>
+              <div className="flex-1 relative overflow-hidden">
+                {stage2Loading ? (
+                  <div className="absolute inset-0 flex items-center justify-center gap-3 text-gray-500">
+                    <Spinner />
+                    <span className="text-sm">Generating slides...</span>
+                  </div>
+                ) : lessonContent ? (
+                  <RevealDeck
+                    key={`${openLesson!.ci}-${openLesson!.li}`}
+                    slides={lessonContent.slides}
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-gray-400">
+                    <p className="text-sm">Slides không có sẵn</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Quiz / empty state — scrollable so debug panel is reachable */}
+          {!isSlideView && (
+            <div className="flex-1 overflow-y-auto">
+              {quizChapter !== null && (
+                stage2Loading ? (
+                  <div className="flex items-center justify-center min-h-64 gap-3 text-gray-500">
+                    <Spinner />
+                    <span className="text-sm">Generating quiz...</span>
+                  </div>
+                ) : quizContent ? (
+                  <QuizView key={quizChapter} quiz={quizContent} />
+                ) : (
+                  <div className="flex items-center justify-center min-h-64 text-gray-400">
+                    <p className="text-sm">Quiz không có sẵn</p>
+                  </div>
+                )
+              )}
+              {openLesson === null && quizChapter === null && (
+                <div className="flex items-center justify-center min-h-[60vh] text-gray-400">
+                  <p className="text-sm">Chọn một bài học để xem nội dung</p>
+                </div>
+              )}
+              {debugPanel}
             </div>
           )}
 
-          {debugPanel}
         </div>
       </div>
     </main>
