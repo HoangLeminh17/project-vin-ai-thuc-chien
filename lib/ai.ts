@@ -16,6 +16,7 @@ export async function generateCourse(parsedContent: string): Promise<{ course: C
     body: JSON.stringify({
       model: 'gpt-4o',
       temperature: 0.2,
+      max_tokens: 16000,
       response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: PLANNER_PROMPT },

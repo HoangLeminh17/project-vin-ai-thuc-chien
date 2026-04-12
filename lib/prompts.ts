@@ -2,7 +2,8 @@ export const PLANNER_PROMPT = `You are a curriculum designer. Given a document's
 
 Instructions:
 - Read the entire content carefully.
-- Skip sections that have no educational value: table of contents, disclaimers, acknowledgments, references, bibliography, glossary, appendix, copyright notices, etc.
+- The document text uses ## markers to indicate section headings. Each ## heading that has body text below it is a separate lesson — even if the body is short (1–3 paragraphs). Never merge two ## sections into one lesson. Short content does NOT justify merging.
+- Skip sections with no educational value: table of contents, disclaimers, acknowledgments, references, bibliography, glossary, appendix, copyright notices, assessment questions, practical assignments. When in doubt, include it rather than skip it.
 - Group the remaining content into logical chapters and lessons.
 - Include ALL topics found in the document as separate lessons. Do NOT merge multiple topics into one lesson. Do NOT skip any topic even if it seems minor.
 - Each lesson should have a clear title and a one-sentence key_concept summary.

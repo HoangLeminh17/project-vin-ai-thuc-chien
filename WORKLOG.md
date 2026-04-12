@@ -266,3 +266,37 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 **Code thay đổi:** `src/agent.ts` lines 45-67
 
 **Học được:** Luôn thiết kế stop condition trước khi implement retry logic.
+
+---
+
+### Bug: Stage 1 merge nhiều topics thành 1 lesson — 12/04/2026
+
+**Triệu chứng:** "AI in Healthcare", "AI in Agriculture", "AI in Retail" bị gộp thành 1 lesson "Areas of Application of AI". `source_text` là summary chứ không phải verbatim. Stage 2 thiếu ngữ liệu → slide sơ sài.
+
+**Root cause:** `contentListToString()` trong `app/api/generate-course/route.ts` flatten toàn bộ content_list thành plain string, không giữ lại structural markers từ MinerU. Field `text_level: 1` (section heading) bị bỏ qua hoàn toàn — GPT-4o nhận plain text, không có boundary signal, nên tự quyết định gộp các sub-topics gần nhau vào 1 lesson.
+
+**Hướng đã chọn: Direction A — Fix ở parser layer**
+
+Lý do chọn A thay vì B:
+- Prompt (Direction B) đã có instruction "do NOT merge" nhưng vẫn fail — LLM không có structural signal để act on.
+- Direction A deterministic: emit `## heading` cho mọi `text_level === 1` / `type === 'title'` item → LLM thấy ranh giới rõ ràng, không cần "đoán" boundary.
+- Ít phụ thuộc LLM hơn; dễ debug (inspect input string trước khi gửi).
+
+**Files thay đổi:**
+- `lib/parsers/index.ts` — thêm `ContentItem` type + `parseContentList()` function (emit `## marker` cho headings)
+- `app/api/generate-course/route.ts` — xóa local `contentListToString`, import `parseContentList` từ `@/lib/parsers`
+- `lib/prompts.ts` — thêm instruction: "Each ## heading MUST become its own separate lesson, never merge two ## sections"
+
+---
+
+### ADR-8: parseContentList() emit ## markers cho text_level: 1 headings — 12/04/2026
+
+**Context:** MinerU content_list trả về items với field `text_level: 1` đánh dấu section heading. Trước đây các item này được join phẳng vào string, mất hết cấu trúc.
+
+**Decision:** `parseContentList()` trong `lib/parsers/index.ts` là single source of truth cho việc chuyển đổi content_list → string input cho LLM. Items với `type === 'title'` hoặc `text_level === 1` được emit là `## text` thay vì plain text.
+
+**Consequences:**
+- (+) LLM thấy explicit `##` boundary → lesson splitting deterministic hơn.
+- (+) Parse logic tập trung trong `lib/parsers/`, không bị duplicate ở route.
+- (-) Nếu MinerU thay đổi cách dùng `text_level` thì cần update lại function này.
+- Prompt được cập nhật để reference `##` markers, giữ alignment giữa input format và instruction.
