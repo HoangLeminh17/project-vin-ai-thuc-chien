@@ -19,6 +19,64 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Extract content_list_v2 từ MinerU zip | Nguyễn Bình Thành | 12/04 | ✅ |
 | Refactor schema: thêm Quiz, Course title; AI nhận contentList thay markdown | Nguyễn Bình Thành | 12/04 | ✅ |
 | SSE streaming: streamCourse() + progressive chapter rendering | Nguyễn Bình Thành | 12/04 | ✅ |
+| Stage 2: generateChapterContent() + /api/generate-content | Nguyễn Bình Thành | 12/04 | ✅ |
+| Reveal.js slide viewer (CDN, embedded mode) | Nguyễn Bình Thành | 12/04 | ✅ |
+| Quiz UI: single-choice, show answer + explanation | Nguyễn Bình Thành | 12/04 | ✅ |
+| Fix Stage 2: bullet quality, source_text flow, speaker notes panel, Reveal theme | Nguyễn Bình Thành | 12/04 | ✅ |
+
+---
+
+### Bug: Stage 1 bỏ sót lessons + source_text quá ngắn — 12/04/2026
+
+**Triệu chứng:**
+- "AI in Retail" biến mất khỏi chapter "Applications of AI" dù tài liệu có nội dung đầy đủ.
+- `[Stage2 Input]` log cho thấy `source_text` của mỗi lesson chỉ 1–3 câu, trong khi tài liệu gốc có ~500 words cho cùng topic.
+
+**Root cause:** `PLANNER_PROMPT` không enforce đủ 2 điều:
+1. Không yêu cầu include ALL topics — LLM tự ý merge hoặc drop topics nhỏ.
+2. Instruction về `source_text` ("copied VERBATIM") không đủ rõ về độ dài, dẫn đến LLM chỉ lấy 1–2 câu đại diện thay vì toàn bộ đoạn liên quan.
+
+**Fix:** Cập nhật `PLANNER_PROMPT` trong `lib/prompts.ts`:
+- Thêm: *"Include ALL topics as separate lessons. Do NOT merge. Do NOT skip."*
+- Thay instruction source_text thành: *"Copy ALL relevant paragraphs verbatim. Include every sentence. Typically 200–600 words."*
+
+---
+
+### [ADR-7] Sync Reveal.js slide index với React state qua event listener — 12/04/2026
+
+**Bối cảnh:** Cần hiển thị speaker notes của slide đang active trong panel riêng bên cạnh Reveal.js viewer. React không có access trực tiếp vào Reveal.js internal slide state.
+
+**Quyết định:** Dùng `deck.on('slidechanged', (e) => setCurrentIndex(e.indexh))` sau khi `deck.initialize()` resolve. `currentIndex` là React state, khi đổi sẽ re-render notes panel với nội dung đúng. Dùng `mounted` flag để tránh `setCurrentIndex` sau khi component đã unmount (React warning). `deck.initialize()` trả về `Promise<void>` nên cần `async` IIFE trong `useEffect`.
+
+**Hệ quả:** Notes panel update khi user navigate slides (arrow keys hoặc click controls). Không cần polling hay timeout — event-driven. `key` prop ở parent (`${ci}-${li}`) force remount khi đổi lesson → cleanup effect gọi `deck.destroy()` và reset `currentIndex` về 0.
+
+---
+
+### [ADR-5] Stage 2 là API call riêng, fire-and-forget từ client — 12/04/2026
+
+**Bối cảnh:** Stage 2 (generate slides + quiz) cần chạy sau Stage 1. Có 2 lựa chọn: bundle vào cùng 1 API call hoặc tách riêng.
+
+**Các lựa chọn đã xem xét:**
+- **Bundle Stage 1 + Stage 2 trong 1 API call**: Đơn giản hơn, nhưng user phải chờ cả 2 stage xong mới thấy sidebar. Với N chapters thì timeout serverless có thể bị hit.
+- **Stage 2 tách riêng, gọi fire-and-forget từ client**: Stage 1 xong → sidebar hiện ngay → Stage 2 chạy nền → khi xong slides mới load. UX tốt hơn, mỗi stage có timeout riêng.
+
+**Quyết định:** `/api/generate-content` là route mới, nhận `Course` JSON và chạy `Promise.allSettled()` cho tất cả chapters song song. Client gọi ngay sau khi `setStatus('done')` mà không await — hiển thị "Generating slides..." badge ở top bar. Dùng `Promise.allSettled` thay `Promise.all` để 1 chapter fail không crash toàn bộ — chapter fail nhận fallback minimal ChapterContent.
+
+**Hệ quả:** Thêm `courseContent`, `stage2Loading`, `stage2Error` state. Sidebar + Stage 1 data available ngay sau ~10s. Slides + quiz available sau thêm ~10-20s tùy số chapters.
+
+---
+
+### [ADR-6] Load Reveal.js từ CDN trong layout.tsx — 12/04/2026
+
+**Bối cảnh:** Cần render presentation slides trong right panel. Reveal.js là thư viện presentation phổ biến nhưng có vấn đề với Next.js SSR (dùng `window`, `document`).
+
+**Các lựa chọn đã xem xét:**
+- **npm install reveal.js + dynamic import**: Sạch hơn về dependency management, nhưng phức tạp hơn với SSR và bundle size.
+- **CDN script trong layout.tsx**: Load một lần cho toàn app, `window.Reveal` available sau DOMContentLoaded. Đơn giản, không cần handle SSR.
+
+**Quyết định:** Load CSS + JS từ `cdn.jsdelivr.net/npm/reveal.js@5.1.0` trong `layout.tsx`. Script dùng `defer` — chạy sau HTML parse. `RevealDeck` component dùng `useEffect` + `useRef` để init `new Reveal(containerRef.current, { embedded: true })`. Dùng React `key` prop để force remount khi đổi lesson — cleanup effect tự gọi `deck.destroy()`.
+
+**Hệ quả:** Reveal.js CSS là global (scoped to `.reveal` selector nên không ảnh hưởng Tailwind). Bundle size tăng ~300KB nhưng load lazy qua CDN. Cần internet để load slides.
 
 ---
 
