@@ -6,7 +6,7 @@ import { MineruParserAdapter } from './adapters/mineru-parser.adapter';
 
 // Comment this out to disable Firebase
 import { FirebaseStorageAdapter } from './adapters/firebase-storage.adapter';
-import { LocalFsStorageAdapter } from './adapters/local-storage.adapter';
+// import { LocalFsStorageAdapter } from './adapters/local-storage.adapter';
 
 // Instantiate adapters
 const storageAdapter = new FirebaseStorageAdapter();
