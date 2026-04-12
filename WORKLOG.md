@@ -23,6 +23,28 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Reveal.js slide viewer (CDN, embedded mode) | Nguyễn Bình Thành | 12/04 | ✅ |
 | Quiz UI: single-choice, show answer + explanation | Nguyễn Bình Thành | 12/04 | ✅ |
 | Fix Stage 2: bullet quality, source_text flow, speaker notes panel, Reveal theme | Nguyễn Bình Thành | 12/04 | ✅ |
+| Refactor codebase theo Clean Architecture (Ports & Adapters) | Nguyễn Bình Thành | 12/04 | ✅ |
+
+---
+
+### [ADR-9] Thiết kế lại hệ thống theo Clean Architecture (Ports & Adapters) — 12/04/2026
+
+**Bối cảnh:** Source code ban đầu gắn chặt logic nghiệp vụ (PDF-to-Lesson) với các third-party service (Firebase, MinerU, OpenAI) trực tiếp trong các API routes. Việc này làm codebase khó bảo trì, khó viết unit test, và khó thay thế service trong tương lai. Nhóm không có hướng dẫn cụ thể về file organization khiến các thành viên gặp khó khi implement tính năng mới.
+
+**Các lựa chọn đã xem xét:**
+- **Giữ nguyên:** Phát triển nhanh ở giai đoạn đầu nhưng tech debt cao, luồng logic rải rác.
+- **Clean Architecture (Ports & Adapters):** Tách tách biệt logic cốt lõi (Use Cases) khỏi các phụ thuộc bên ngoài (Adapters). Thống nhất quy ước cho team.
+
+**Quyết định:** Áp dụng Clean Architecture cho dự án:
+- Define rõ các **Ports** (Interfaces) nằm ở thư mục core (VD: `IStoragePort`, `ILLMPort`, `IParserPort`). Core domain không phụ thuộc external framework.
+- Triển khai các **Adapters** ở layer infrastructure (VD: `FirebaseStorageAdapter`, `MinerUParserAdapter`, `OpenAIAdapter`) để implement các Ports tương ứng.
+- Đóng gói logic tại các **Use Cases**. Next.js API routes chỉ đóng vai trò là Delivery Mechanism (Controllers) - gọi ra Use Case và inject Adapter vào.
+
+**Hệ quả:**
+- (+) Đảm bảo Separation of Concerns, dễ bảo trì và dễ scale.
+- (+) Dễ dàng Unit Test bằng mocking các Ports. Dễ dàng đổi module (ví dụ đổi từ OpenAI API sang Local LLM hoặc API khác).
+- (+) Chuẩn hóa luồng làm việc, team work dễ dàng hơn.
+- (-) Số lượng file boilerplate và code setup interface tăng lên.
 
 ---
 
