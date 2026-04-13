@@ -8,12 +8,22 @@ import { MineruParserAdapter } from './adapters/mineru-parser.adapter';
 import { FirebaseStorageAdapter } from './adapters/firebase-storage.adapter';
 // import { LocalFsStorageAdapter } from './adapters/local-storage.adapter';
 
+import { PinoLoggerAdapter } from './adapters/pino-logger.adapter';
+import { ConsoleMonitoringAdapter } from './adapters/console-monitoring.adapter';
+import { withUseCaseLogging } from '@/core/utils/use-case-logger';
+
 // Instantiate adapters
+export const logger = new PinoLoggerAdapter();
+export const monitoring = new ConsoleMonitoringAdapter(logger);
+
 const storageAdapter = new FirebaseStorageAdapter();
 //const storageAdapter = new LocalFsStorageAdapter(); // Fully dropped Firebase
 const parserAdapter = new MineruParserAdapter();
 const aiAdapter = new OpenAiAdapter();
 
 // Instantiate Use Cases
-export const parseDocumentUseCase = new ParseDocumentUseCase(storageAdapter, parserAdapter);
-export const generateCourseUseCase = new GenerateCourseUseCase(aiAdapter);
+const rawParseDocumentUseCase = new ParseDocumentUseCase(storageAdapter, parserAdapter);
+export const parseDocumentUseCase = withUseCaseLogging(rawParseDocumentUseCase, 'ParseDocumentUseCase', logger, monitoring);
+
+const rawGenerateCourseUseCase = new GenerateCourseUseCase(aiAdapter);
+export const generateCourseUseCase = withUseCaseLogging(rawGenerateCourseUseCase, 'GenerateCourseUseCase', logger, monitoring);

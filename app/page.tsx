@@ -258,7 +258,7 @@ export default function Home() {
     setStatus('generating')
     let resolvedCourse: Course | null = null
     try {
-      const body = parsedContentList ? { contentList: parsedContentList } : { contentList: [] }
+      const body = { markdown }
       const res = await fetch('/api/generate-course', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
