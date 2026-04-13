@@ -87,9 +87,77 @@ const ketQua = await translateDocUseCase.execute("Hello");
 
 ✅ **LUÔN LUÔN**: Nếu một công nghệ dễ bị thay thế (như chuyển từ dịch AWS sang Google, bóc PDF từ Mineru sang GPT-4), hãy tạo Adapter cho nó! Tránh viết cứng (Hard-code) logic thư viện vào dự án.
 
-## 4. Bắt Đầu Cùng Nhau
-Các thành viên đội dự án hãy xem thử 2 file tham chiếu tốt nhất hiện nay:
-- Phân tích tài liệu: `core/use-cases/parse-document.usecase.ts`
-- Trợ lý AI: `core/use-cases/generate-course.usecase.ts`
+## 4. Hướng Dẫn Viết Unit Test Cho Tính Năng
 
-Chúc bạn thiết kế ra những modules sạch sẽ, mạnh mẽ và độc lập nhất!
+Chúng ta sử dụng `vitest` để viết Unit Test. Bất kỳ Use Case hay Middleware cốt lõi nào cũng cần được test đầy đủ.
+- File test nên được đặt trong thư mục `tests/` ở thư mục gốc của dự án, và tái tạo lại đúng cấu trúc thư mục của file code thật. Hãy dùng đuôi `.spec.ts` (ví dụ: `tests/core/use-cases/your-use-case.spec.ts`).
+- **Để test Use case**: Do các Dependency đã được đưa ra interface (Ports), bạn chỉ cần dùng `vi.fn()` để mock lại các object truyền vào. Điều này giúp test chạy rất nhanh mà không đụng tới Database hay External API.
+
+*Ví dụ*:
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+import { TranslateDocumentUseCase } from '@/core/use-cases/translate-document.usecase';
+
+describe('TranslateDocumentUseCase', () => {
+  it('should translate correctly', async () => {
+    // 1. Mock Port
+    const mockTranslator = { translate: vi.fn().mockResolvedValue('Hello') };
+    // 2. Init UseCase
+    const useCase = new TranslateDocumentUseCase(mockTranslator as any);
+    // 3. Execute & Expect
+    const result = await useCase.execute('Xin chào');
+    
+    expect(result).toBe('Hello');
+    expect(mockTranslator.translate).toHaveBeenCalledWith('Xin chào', 'vi');
+  });
+});
+```
+*Chạy test bằng câu lệnh:* `npm run test`
+
+---
+
+## 5. Logging và Monitoring Tập Trung (Centralized)
+
+Chúng ta **KHÔNG rải rác** những câu `console.log()` hay gọi API ghi lỗi (như gửi lên Sentry) một cách thủ công bên trong tầng Core (Use Cases) hay Controller, vì sẽ làm bẩn và rối code. Thay vào đó, chúng ta có các Proxy và Middleware để gánh vác việc đó.
+
+- **Đối với Use Cases**: Đã có wrapper `withUseCaseLogging` (Proxy). Bạn chỉ cần tiêm Use Case qua hàm này ở `infrastructure/di.ts` thì nó sẽ tự động log thông tin ("bắt đầu chạy", "hoàn thành bao lâu") và "tự động capture exception vào monitoring nếu lỗi".
+
+*Ví dụ tích hợp trong `di.ts`:*
+```typescript
+import { withUseCaseLogging } from '@/core/utils/use-case-logger';
+import { logger, monitoring } from './logger-and-monitor-instances';
+
+const rawUseCase = new TranslateDocumentUseCase(translatorAdapter);
+
+// Bọc use-case bằng proxy logger
+export const translateDocUseCase = withUseCaseLogging(
+  rawUseCase, 
+  'TranslateDocument', // Tên theo dõi
+  logger, 
+  monitoring
+);
+```
+
+- **Đối với API Routes (Next.js)**: Sử dụng middleware `withApiLogging` bọc lấy handler trong file `route.ts`. 
+
+*Ví dụ trong `app/api/.../route.ts`:*
+```typescript
+import { withApiLogging } from '@/lib/middlewares/with-api-logging';
+
+async function logicHandler(req: Request) { ... }
+
+export const POST = withApiLogging('TranslateAPI', logicHandler);
+```
+
+✅ Tuân thủ thiết kế này, các hàm xử lý logic (Use Cases, API Handlers) của bạn mãi mãi "Sạch sẽ", bạn tập trung 100% vào Business Rule thay vì ngồi viết `.catch(e => logger.error(...))`!
+
+---
+
+## 6. Lời Kết
+
+Các thành viên dự án hãy xem thử những file này làm tham chiếu:
+- Phân tích tài liệu: `core/use-cases/parse-document.usecase.ts`
+- Cách config Dependency Injection: `infrastructure/di.ts`
+- Middleware & Proxy Logger: `core/utils/use-case-logger.ts` và `lib/middlewares/with-api-logging.ts`
+
+Chúc bạn thiết kế ra những ứng dụng sạch sẽ, mạnh mẽ và dễ mở rộng!
