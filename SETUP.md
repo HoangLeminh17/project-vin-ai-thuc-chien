@@ -61,6 +61,51 @@ Ví dụ: `feat: add upload UI + course viewer with accordion`
 
 > Ghi chi tiết quyết định kỹ thuật, phân công, brainstorming vào [WORKLOG.md](WORKLOG.md)
 
-## Bước 6 — Test
+## Bước 6 — Tạo branch trước khi code
+
+Mỗi tính năng / task làm trên branch riêng, **không commit thẳng vào `main`**.
+
+```bash
+git checkout -b <type>/<mô-tả-ngắn>
+# Ví dụ:
+git checkout -b feat/upload-ui
+git checkout -b fix/parse-pdf-error
+git checkout -b docs/weekly-report-week1
+```
+
+Quy tắc đặt tên branch: `<type>/<short-description>` — type giống commit convention ở trên.
+
+## Bước 7 — Commit & Push
+
+```bash
+git add <files>
+git commit -m "feat: mô tả thay đổi"
+git push -u origin <tên-branch>
+```
+
+**Lưu ý:** Mỗi commit chỉ chứa **một thay đổi logic** — không gộp nhiều feature/fix vào một commit.
+
+## Bước 8 — Tạo Pull Request (PR)
+
+1. Vào GitHub repo → nhấn **"Compare & pull request"** (hoặc tạo PR thủ công)
+2. Điền theo format:
+
+```
+Title: Mô tả ngắn gọn
+
+## Summary
+<mô tả tổng quan thay đổi>
+
+## Changes
+- <file 1>: mô tả
+- <file 2>: mô tả
+```
+
+3. Chọn reviewer (nếu có) → nhấn **Create pull request**
+4. Chờ review xong → **Merge** vào `main`
+
+> Trước khi tạo PR, chạy `bash scripts/setup_hooks.sh` để cài git hooks.
+
+## Bước 9 — Test
 Tìm 1 file PDF ngắn có heading rõ ràng (ví dụ: slide bài giảng, tài liệu học)
 Upload lên → xem kết quả chapters và lessons

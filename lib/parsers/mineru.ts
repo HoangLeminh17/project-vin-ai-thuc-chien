@@ -1,6 +1,6 @@
 import JSZip from 'jszip'
 import { getBucket } from '@/lib/firebase-admin'
-import type { ParsePDF } from './index'
+import type { ParsePDF, ParsePDFResult } from './index'
 import fs from 'fs/promises'
 import path from 'path'
 
@@ -52,6 +52,10 @@ async function submitExtractTask(fileUrl: string): Promise<string> {
       enable_formula: true,
       enable_table: true,
       language: 'vi',
+      // content_list_v2 returns structured content blocks alongside markdown.
+      // NOTE: if MinerU API doesn't support this param, it should be silently ignored.
+      // Check MinerU docs to confirm support.
+      make_mode: 'content_list_v2',
     }),
   })
   const data = await res.json()
@@ -64,7 +68,7 @@ async function submitExtractTask(fileUrl: string): Promise<string> {
 
 const OUTPUT_DIR = path.join(process.cwd(), '.mineru-output')
 
-async function pollAndExtract(taskId: string, safeName: string, timeoutMs = 300_000, intervalMs = 3_000): Promise<string> {
+async function pollAndExtract(taskId: string, safeName: string, timeoutMs = 300_000, intervalMs = 3_000): Promise<ParsePDFResult> {
   const deadline = Date.now() + timeoutMs
 
   while (Date.now() < deadline) {
@@ -88,7 +92,7 @@ async function pollAndExtract(taskId: string, safeName: string, timeoutMs = 300_
   throw new Error(`MinerU task ${taskId} timed out after ${timeoutMs / 1000}s`)
 }
 
-async function downloadAndSave(zipUrl: string, safeName: string): Promise<string> {
+async function downloadAndSave(zipUrl: string, safeName: string): Promise<ParsePDFResult> {
   const res = await fetch(zipUrl)
   if (!res.ok) throw new Error(`Failed to download zip (${res.status})`)
 
@@ -99,24 +103,34 @@ async function downloadAndSave(zipUrl: string, safeName: string): Promise<string
   await fs.mkdir(outDir, { recursive: true })
 
   let markdown = ''
+  let contentList: any[] | undefined
 
   for (const [zipPath, entry] of Object.entries(zip.files)) {
     if (entry.dir) continue
     const dest = path.join(outDir, zipPath)
     await fs.mkdir(path.dirname(dest), { recursive: true })
 
+    const data = zipPath.endsWith('.md') || zipPath.endsWith('.json')
+      ? await entry.async('string')
+      : await entry.async('nodebuffer')
+
+    await fs.writeFile(dest, data, typeof data === 'string' ? 'utf-8' : undefined)
+
+    // Extract relevant fields
     if (zipPath.endsWith('full.md')) {
-      markdown = await entry.async('string')
-      await fs.writeFile(dest, markdown, 'utf-8')
-    } else {
-      const data = await entry.async('nodebuffer')
-      await fs.writeFile(dest, data)
+      markdown = data as string
+    } else if (zipPath.endsWith('content_list.json') || zipPath.endsWith('_content_list_v2.json')) {
+      try {
+        contentList = JSON.parse(data as string)
+      } catch {
+        console.warn(`[parse-pdf] Failed to parse content_list JSON from ${zipPath}`)
+      }
     }
   }
 
   if (!markdown) throw new Error('full.md not found in zip archive')
   console.log(`[parse-pdf] Saved to ${outDir}`)
-  return markdown
+  return { markdown, contentList }
 }
 
 // ── Step 4: Cleanup Firebase file ──
