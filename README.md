@@ -2,6 +2,9 @@
 
 Upload a PDF, parse it to structured markdown (MinerU API), then use an AI Planner Agent (OpenAI GPT-4o) to split it into chapters, lessons, slides, and quizzes.
 
+![App demo](image.png)
+<!-- Replace with a better screenshot or screen recording when available -->
+
 ## Stack
 
 - **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
