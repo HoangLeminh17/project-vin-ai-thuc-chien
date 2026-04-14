@@ -42,7 +42,44 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ## Tuần 2 — 12/04/2026
 
-**Thành viên:** Lê Kim Dũng
+**Thành viên:** Nguyễn Bình Thành, Lê Kim Dũng
+
+---
+
+### Nguyễn Bình Thành
+
+#### Đã làm
+- Chuyển AI provider từ Gemini sang OpenAI GPT-4o
+- Tách pipeline thành 2 stage: Stage 1 (outline) → Stage 2 (slides + quiz); dùng `contentList` thay markdown làm input
+- Xây Stage 2 (`/api/generate-content`): generate slides + quiz song song cho tất cả chapters (`Promise.allSettled`)
+- Tích hợp Reveal.js slide viewer (CDN, embedded) với speaker notes panel; sync index qua event listener
+- Xây Quiz UI: single-choice, hiển thị đáp án + giải thích
+- Fix Stage 1 bỏ sót/gộp lessons: inject `##` markers vào contentList trước khi gửi LLM thay vì chỉ sửa prompt
+- Thêm AI logging + monitoring
+
+#### Khó nhất tuần này
+- Stage 1 vẫn gộp lessons dù prompt có "do NOT merge" — vì input là plain string, LLM không có boundary signal. Fix: emit `## heading` cho section titles → deterministic, không phụ thuộc LLM.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Build Stage 2 pipeline, Reveal.js integration, fix lesson-splitting bug, viết ADRs | Hoàn thành toàn bộ trong tuần, commit sạch theo convention |
+
+#### Học được
+- Structural signal quan trọng hơn prompt instruction: `## marker` trong input hiệu quả hơn "do NOT merge" trong prompt.
+
+#### Nếu làm lại, sẽ làm khác
+- Luôn inspect input string gửi LLM trước khi debug prompt.
+
+#### Kế hoạch tuần tới
+- Hiển thị ảnh từ PDF gốc vào slides
+- Cải thiện UI/UX, thiết kế slide đẹp hơn
+- Interactive lesson: highlight text đồng bộ theo speech
+- TTS (Text-to-Speech) integration
+
+---
+
+### Lê Kim Dũng
 
 #### Đã làm
 - **Dự án chính (PDF-to-Lesson):**
@@ -64,7 +101,6 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 #### Kế hoạch tuần tới
 - Làm tính năng authentication
-- 
 
 ---
 
