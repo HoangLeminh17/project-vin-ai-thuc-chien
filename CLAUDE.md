@@ -41,6 +41,13 @@ npm run lint          # ESLint
 
 ## Git conventions
 
+**Every change must go through a branch and PR — never commit directly to `main`.**
+
+Workflow for every task:
+1. `git checkout -b <type>/<short-description>` before writing any code
+2. Commit changes on that branch
+3. Push and open a PR targeting `main`
+
 Use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
@@ -57,6 +64,7 @@ Branch naming: `<type>/<short-description>` (e.g. `docs/weekly-report-week1`)
 
 ## PR requirements
 
+- Run `bash scripts/setup_hooks.sh` before creating any PR (one-time setup)
 - **Title**: Short description of the change
 - **Description** must include:
 
@@ -68,7 +76,6 @@ Branch naming: `<type>/<short-description>` (e.g. `docs/weekly-report-week1`)
 - <list of changed files>
 ```
 
-- Run `bash scripts/setup_hooks.sh` before creating any PR
 - Do NOT commit `.ai-log/*.jsonl` files (gitignored)
 
 ## Code conventions
