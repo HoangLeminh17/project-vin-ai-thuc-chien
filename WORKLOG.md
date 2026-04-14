@@ -6,6 +6,20 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+## Pivot: Đổi hướng sản phẩm — 15/04/2026
+
+**Người đề xuất:** Lê Minh Hoàng, Nguyễn Bình Thành
+
+**Painpoint cũ:** "Tôi có tài liệu PDF, muốn chuyển thành khóa học có cấu trúc." — Scope quá rộng, không xác định rõ user là ai, dùng trong hoàn cảnh nào.
+
+**Painpoint mới:** "Tôi có kỳ thi ngày mai. Tôi cần ôn nhanh nhất có thể trong tối nay."
+
+**Hướng đi mới:** Vẫn là document → course, nhưng toàn bộ output được thiết kế cho mục tiêu ôn thi nhanh.
+
+**Tech/pipeline:** Chưa xác định cụ thể — sẽ làm rõ khi bắt đầu implement.
+
+---
+
 ## Sprint 1 — 05/04 → ???. MVP
 
 | Task | Người làm | Deadline | Trạng thái |
