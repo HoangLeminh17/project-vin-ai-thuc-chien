@@ -2,12 +2,8 @@
 export type Lesson = {
   title: string
   key_concept: string
-  source_heading: string  // the ## heading from the source doc this lesson maps to
+  outline: string[]  // factual bullet points extracted by the planner; used by Stage 2 to generate slides
 }
-
-// Stage 2 input — lesson enriched with extracted source text (populated by our code, not LLM)
-export type LessonWithText = Lesson & { source_text: string }
-export type ChapterWithText = Omit<Chapter, 'lessons'> & { lessons: LessonWithText[] }
 
 export type Quiz = {
   topic: string  // Stage 1 chỉ cần topic, content gen ở Stage 2

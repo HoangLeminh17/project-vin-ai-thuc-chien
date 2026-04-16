@@ -1,31 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateChapterContent } from '@/lib/ai'
-import { extractSection } from '@/lib/markdown-sections'
-import type { Course, ChapterContent, CourseContent, ChapterWithText } from '@/lib/types'
+import type { Course, ChapterContent, CourseContent } from '@/lib/types'
 import { logger } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 const handler = async (req: NextRequest) => {
-  const { course, markdown } = (await req.json()) as { course?: Course; markdown?: string }
+  const { course } = (await req.json()) as { course?: Course }
   if (!course?.chapters?.length) {
     return NextResponse.json({ success: false, error: 'Missing course' }, { status: 400 })
   }
-  if (!markdown) {
-    return NextResponse.json({ success: false, error: 'Missing markdown' }, { status: 400 })
-  }
-
-  // Enrich each chapter's lessons with source text extracted from the original markdown
-  const chaptersWithText: ChapterWithText[] = course.chapters.map(ch => ({
-    ...ch,
-    lessons: ch.lessons.map(l => ({
-      ...l,
-      source_text: extractSection(markdown, l.source_heading),
-    })),
-  }))
 
   // Generate all chapters in parallel; skip failures instead of crashing
   const results = await Promise.allSettled(
-    chaptersWithText.map(ch => generateChapterContent(ch))
+    course.chapters.map(ch => generateChapterContent(ch))
   )
 
   const chapters: ChapterContent[] = results.map((result, i) => {
@@ -34,14 +21,14 @@ const handler = async (req: NextRequest) => {
     logger.error(`Chapter ${i} ("${course.chapters[i].title}") failed`, { reason: result.reason, context: 'generate-content' })
     // Graceful fallback: return a minimal structure so the UI doesn't break
     return {
-      chapter_title: chaptersWithText[i].title,
-      lessons: chaptersWithText[i].lessons.map(l => ({
+      chapter_title: course.chapters[i].title,
+      lessons: course.chapters[i].lessons.map(l => ({
         lesson_title: l.title,
         slides: [
           {
             heading: l.title,
-            bullets: [l.key_concept],
-            speaker_notes: l.source_text.slice(0, 300),
+            bullets: l.outline.slice(0, 4),
+            speaker_notes: l.key_concept,
           },
         ],
       })),
