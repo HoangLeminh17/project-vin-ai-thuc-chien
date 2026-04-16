@@ -102,7 +102,7 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
 
   const content: ChapterContent = JSON.parse(text)
 
-  if (!content.lessons || !content.quiz) {
+  if (!Array.isArray(content.lessons) || !content.quiz) {
     throw new Error(`Invalid ChapterContent structure for chapter: ${chapter.title}`)
   }
 
