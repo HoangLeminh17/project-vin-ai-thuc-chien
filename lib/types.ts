@@ -20,7 +20,14 @@ export type Course = {
   chapters: Chapter[]
 }
 
-// Stage 2 — quiz content
+// Stage 2 — concept card + quiz content
+export type ConceptCard = {
+  question: string    // active recall question e.g. "X hoạt động như thế nào?"
+  answer: string      // TL;DR 2-3 câu
+  detail?: string     // 3-5 câu, có analogy/ví dụ
+  followUps: string[] // 2 follow-up questions
+}
+
 export type QuizQuestion = {
   question: string
   options: string[]   // exactly 4
@@ -30,6 +37,7 @@ export type QuizQuestion = {
 
 export type LessonContent = {
   lesson_title: string
+  concept: ConceptCard
 }
 
 export type ChapterContent = {
