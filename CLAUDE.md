@@ -2,11 +2,12 @@
 
 ## Project overview
 
-AI-powered course generator — upload a PDF, parse it to markdown (MinerU API), then use an AI Planner Agent (OpenAI GPT-4o) to split it into structured chapters/lessons.
+AI-powered course generator — upload a PDF, parse it to markdown (MinerU API), then use a two-stage AI pipeline to generate structured chapters, lessons, slides, and quizzes.
 
 - **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
 - **Backend**: Next.js API routes (`app/api/`)
-- **AI**: OpenAI GPT-4o via REST API
+- **AI Stage 1**: OpenAI GPT-4o (planner — outlines lessons from source)
+- **AI Stage 2**: OpenAI GPT-4o-mini (generator — expands outlines into slides + quiz)
 - **Storage**: Firebase Storage (temporary upload for MinerU)
 - **PDF parsing**: MinerU Precision API
 
@@ -78,6 +79,17 @@ Branch naming: `<type>/<short-description>` (e.g. `docs/weekly-report-week1`)
 
 - Do NOT commit `.ai-log/*.jsonl` files (gitignored)
 
+## Architecture
+
+This project follows **Clean Architecture (Ports & Adapters)**. Before writing any code, read [ARCHITECTURE.md](ARCHITECTURE.md) — it covers the layer structure, the 5-step feature workflow, forbidden import rules, and logging conventions.
+
+Short version:
+- `core/ports/` — interfaces only, no external dependencies
+- `core/use-cases/` — business logic, imports ports only
+- `infrastructure/adapters/` — concrete implementations (OpenAI, Firebase, MinerU…)
+- `infrastructure/di.ts` — single place to wire adapters into use cases
+- `app/api/` — HTTP layer, calls use cases only
+
 ## Code conventions
 
 - TypeScript strict mode is enabled
@@ -86,6 +98,7 @@ Branch naming: `<type>/<short-description>` (e.g. `docs/weekly-report-week1`)
 - Use interfaces in `lib/types.ts` for shared types
 - Parser implementations follow the `ParsePDF` interface in `lib/parsers/index.ts` for swappability
 - Environment variables: see `.env.example` — never commit `.env`
+- **Always ask before implementing** — propose the plan first, wait for confirmation, then code
 
 ## Environment variables
 
