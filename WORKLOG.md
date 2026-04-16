@@ -350,3 +350,63 @@ Lý do chọn A thay vì B:
 - (+) Parse logic tập trung trong `lib/parsers/`, không bị duplicate ở route.
 - (-) Nếu MinerU thay đổi cách dùng `text_level` thì cần update lại function này.
 - Prompt được cập nhật để reference `##` markers, giữ alignment giữa input format và instruction.
+
+---
+
+## Sprint 2 — 17/04/2026
+
+| Task | Người làm | Deadline | Trạng thái |
+|---|---|---|---|
+| Remove Reveal.js + Add ConceptCard | Nguyễn Bình Thành | 17/04 | ✅ |
+
+---
+
+### [ADR-12] Remove Reveal.js — 17/04/2026
+
+**Bối cảnh:** Stage 2 sinh slides (2–4 slides/lesson) được render bằng Reveal.js embedded mode. Sau khi sử dụng thực tế, slide format không phù hợp với mục tiêu học tập chủ động: learner thụ động xem bullet points thay vì tự recall kiến thức. Ngoài ra, Reveal.js CDN load thêm ~200KB, tăng complexity cho một tính năng không còn cần thiết.
+
+**Các lựa chọn đã xem xét:**
+- **Giữ Reveal.js:** Format quen thuộc nhưng passive learning, token waste (Stage 2 dùng nhiều tokens để format slides).
+- **Xóa Reveal.js, thay bằng outline view:** Đơn giản hơn, dùng outline từ Stage 1 trực tiếp — không cần Stage 2 để render nội dung lesson.
+- **Xóa Reveal.js, thay bằng ConceptCard:** Active recall format, Stage 2 tập trung vào việc tạo câu hỏi + quiz thay vì format slides.
+
+**Quyết định:** Xóa toàn bộ Reveal.js (CDN, RevealDeck component, Slide type, slide generation prompt). Lesson view hiển thị outline từ Stage 1. Stage 2 chuyển sang generate ConceptCard và quiz.
+
+**Hệ quả:**
+- (-) Mất slide viewer — nhưng outline bullets đủ informative cho learner.
+- (+) Giảm Stage 2 prompt complexity, giảm tokens.
+- (+) Không còn phụ thuộc CDN external; không còn `window.Reveal` global state.
+- (+) Mở đường cho ConceptCard format active recall.
+
+---
+
+### [ADR-13] ConceptCard thay thế slide — 17/04/2026
+
+**Bối cảnh:** Sau khi xóa Reveal.js, Stage 2 cần format mới cho nội dung lesson. Mục tiêu là active recall thay vì passive presentation.
+
+**Shape mới — `ConceptCard`:**
+```ts
+type ConceptCard = {
+  question: string    // active recall question, dạng "X hoạt động như thế nào?"
+  answer: string      // TL;DR 2-3 câu dense, không bullet
+  detail?: string     // 3-5 câu, có analogy/ví dụ nếu concept abstract
+  followUps: string[] // 2 follow-up questions đào sâu
+}
+```
+
+**2-state UI:**
+- **State A (default):** Progress pips, label "Concept N/total", câu hỏi, input để tự trả lời, nút Reveal.
+- **State B (sau Reveal):** Input disabled/faded, divider, TL;DR (teal), follow-up chips, 4 Anki mock buttons (Again/Hard/Good/Easy).
+
+**Fallback nếu model không trả về concept:**
+```ts
+{ question: `${lesson.title} là gì?`, answer: outline.slice(0, 2).join('. '), followUps: [] }
+```
+
+**Anki buttons + follow-up chips:** `onClick` chỉ `console.log`, không có persistence hay Supabase. Đây là mock UI để validate format trước khi implement spaced repetition.
+
+**Hệ quả:**
+- (+) Active recall format — learner tự trả lời trước khi reveal.
+- (+) Anki-style feedback loop (mock) — chuẩn bị cho future spaced repetition.
+- (+) Fallback đảm bảo UI không bị break khi model fail.
+- (-) Follow-up chips và Anki buttons chưa có logic thực — cần implement spaced repetition ở sprint sau.
