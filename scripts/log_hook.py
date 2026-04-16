@@ -66,33 +66,33 @@ def normalize(data: dict, tool: str) -> dict | None:
         prompt = ""
         # UserPromptSubmit: prompt is at top level
         if event == "UserPromptSubmit":
-            prompt = data.get("prompt", "")[:1000]
+            prompt = (data.get("prompt") or "")[:1000]
         # PostToolUse: extract from tool_input
         elif isinstance(data.get("tool_input"), dict):
             prompt = data["tool_input"].get("prompt") or data["tool_input"].get("content") or ""
         base.update({
             "prompt": prompt,
-            "tool_name": data.get("tool_name", ""),
+            "tool_name": data.get("tool_name") or "",
             "tool_input": data.get("tool_input") if event != "UserPromptSubmit" else None,
-            "tool_response": str(data.get("tool_response", ""))[:500],
+            "tool_response": str(data.get("tool_response") or "")[:500],
         })
 
     elif tool == "gemini":
         if event == "BeforeAgent":
-            prompt = data.get("prompt", "")[:1000]
+            prompt = (data.get("prompt") or "")[:1000]
             base.update({"prompt": prompt})
         else:
-            req = data.get("request", {})
-            contents = req.get("contents", [])
+            req = data.get("request") or {}
+            contents = req.get("contents") or []
             prompt = ""
             for c in reversed(contents):
-                for part in c.get("parts", []):
+                for part in c.get("parts") or []:
                     if part.get("text"):
                         prompt = part["text"][:1000]
                         break
                 if prompt:
                     break
-            resp = data.get("response", {})
+            resp = data.get("response") or {}
             answer = ""
             try:
                 answer = resp["candidates"][0]["content"]["parts"][0]["text"][:500]
@@ -102,21 +102,21 @@ def normalize(data: dict, tool: str) -> dict | None:
 
     elif tool == "codex":
         base.update({
-            "prompt": data.get("prompt", "")[:1000],
-            "turn_id": data.get("turn_id", ""),
-            "transcript_path": data.get("transcript_path", ""),
+            "prompt": (data.get("prompt") or "")[:1000],
+            "turn_id": data.get("turn_id") or "",
+            "transcript_path": data.get("transcript_path") or "",
         })
 
     elif tool == "cursor":
         base.update({
-            "prompt": data.get("prompt", "")[:1000],
-            "files_context": data.get("attachments", []),
+            "prompt": (data.get("prompt") or "")[:1000],
+            "files_context": data.get("attachments") or [],
         })
 
     elif tool == "copilot":
         base.update({
-            "prompt": data.get("prompt", "")[:1000],
-            "tool_name": data.get("toolName", ""),
+            "prompt": (data.get("prompt") or "")[:1000],
+            "tool_name": data.get("toolName") or "",
             "tool_args": data.get("toolArgs"),
         })
 
