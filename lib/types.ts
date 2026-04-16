@@ -20,13 +20,7 @@ export type Course = {
   chapters: Chapter[]
 }
 
-// Stage 2 — Slide + quiz content
-export type Slide = {
-  heading: string
-  bullets: string[]
-  speaker_notes: string
-}
-
+// Stage 2 — quiz content
 export type QuizQuestion = {
   question: string
   options: string[]   // exactly 4
@@ -36,7 +30,6 @@ export type QuizQuestion = {
 
 export type LessonContent = {
   lesson_title: string
-  slides: Slide[]     // 2-4 slides per lesson
 }
 
 export type ChapterContent = {
