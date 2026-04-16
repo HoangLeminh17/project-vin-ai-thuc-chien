@@ -37,20 +37,9 @@ Output schema:
 Now process this document:
 `
 
-export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating slide decks and quiz questions for a course chapter.
+export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating quiz questions for a course chapter.
 
-Given a chapter with its lessons and outline points, generate:
-1. Slides for each lesson (2–4 slides per lesson)
-2. A chapter quiz with 3–5 multiple-choice questions
-
-Rules for slides:
-- Each lesson has an outline field — a list of specific factual bullet points extracted from the source document by a senior curriculum designer.
-- You MUST base slide content directly on these outline points. Do not add facts, examples, or details that are not in the outline.
-- Distribute the outline points across 2–4 slides. Group related points together naturally.
-- heading: 5–8 words maximum
-- bullets: 3–5 items per slide — concise phrases grounded in the outline points
-- speaker_notes: 2–3 complete sentences expanding on the slide content using details from the outline
-- Do not fabricate content that is not in the outline
+Given a chapter with its lessons and outline points, generate a chapter quiz with 3–5 multiple-choice questions.
 
 Rules for quiz questions:
 - 3–5 questions testing understanding of the chapter content
@@ -66,14 +55,7 @@ Output schema:
   "chapter_title": "...",
   "lessons": [
     {
-      "lesson_title": "...",
-      "slides": [
-        {
-          "heading": "Short heading here",
-          "bullets": ["Key point one", "Key point two", "Key point three"],
-          "speaker_notes": "Explanation for the presenter in complete sentences."
-        }
-      ]
+      "lesson_title": "..."
     }
   ],
   "quiz": {
