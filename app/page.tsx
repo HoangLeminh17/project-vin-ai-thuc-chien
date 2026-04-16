@@ -9,8 +9,9 @@ type Chapter = { title: string; lessons: Lesson[]; quiz: Quiz }
 type Course = { title: string; chapters: Chapter[] }
 
 // ── Stage 2 types ──────────────────────────────────────────────────────────────
+type ConceptCard = { question: string; answer: string; detail?: string; followUps: string[] }
 type QuizQuestion = { question: string; options: string[]; answer: number; explanation: string }
-type LessonContent = { lesson_title: string }
+type LessonContent = { lesson_title: string; concept: ConceptCard }
 type ChapterContent = { chapter_title: string; lessons: LessonContent[]; quiz: { topic: string; questions: QuizQuestion[] } }
 type CourseContent = { chapters: ChapterContent[] }
 
@@ -25,6 +26,111 @@ function Spinner() {
   )
 }
 
+
+function ConceptCardView({ concept, index, total }: { concept: ConceptCard; index: number; total: number }) {
+  const [answer, setAnswer] = useState('')
+  const [revealed, setRevealed] = useState(false)
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      {/* Progress pips + label */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1">
+          {Array.from({ length: total }).map((_, i) => (
+            <span
+              key={i}
+              className={`inline-block h-1.5 w-4 rounded-full ${i === index ? 'bg-teal-500' : 'bg-gray-200'}`}
+            />
+          ))}
+        </div>
+        <span className="text-xs text-gray-400 font-mono">Concept {index + 1} / {total}</span>
+      </div>
+
+      {/* Question */}
+      <p className="text-[17px] font-medium text-gray-900 leading-snug">{concept.question}</p>
+
+      {/* Answer input */}
+      <textarea
+        disabled={revealed}
+        value={answer}
+        onChange={e => setAnswer(e.target.value)}
+        placeholder="Thử trả lời trước khi reveal..."
+        rows={3}
+        className={`w-full resize-none rounded-lg border px-3 py-2.5 text-sm leading-relaxed outline-none transition-colors
+          ${revealed
+            ? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+            : 'border-gray-300 bg-white text-gray-800 focus:border-teal-400'
+          }`}
+      />
+
+      {!revealed && (
+        <button
+          onClick={() => setRevealed(true)}
+          className="w-full py-2 rounded-lg bg-teal-500 text-white text-sm font-medium hover:bg-teal-600 transition-colors"
+        >
+          Reveal
+        </button>
+      )}
+
+      {revealed && (
+        <>
+          <hr className="border-gray-100" />
+
+          {/* TL;DR */}
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-teal-600 uppercase tracking-wider">TL;DR</p>
+            <p className="text-sm text-gray-800 leading-relaxed">{concept.answer}</p>
+          </div>
+
+          {concept.detail && (
+            <p className="text-sm text-gray-600 leading-relaxed">{concept.detail}</p>
+          )}
+
+          {/* Follow-ups */}
+          {concept.followUps.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Follow-up</p>
+              <div className="flex flex-wrap gap-2">
+                {concept.followUps.map((q, i) => (
+                  <button
+                    key={i}
+                    onClick={() => console.log('[follow-up]', q)}
+                    className="px-3 py-1.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Anki mock buttons */}
+          <div className="grid grid-cols-4 gap-2 pt-1">
+            {(['Again', 'Hard', 'Good', 'Easy'] as const).map((label, i) => {
+              const sub = ['không nhớ', 'lờ mờ', 'nhớ rồi', 'quá dễ'][i]
+              const colors = [
+                'border-red-200 text-red-600 hover:bg-red-50',
+                'border-orange-200 text-orange-600 hover:bg-orange-50',
+                'border-green-200 text-green-700 hover:bg-green-50',
+                'border-blue-200 text-blue-600 hover:bg-blue-50',
+              ][i]
+              return (
+                <button
+                  key={label}
+                  onClick={() => console.log('[anki]', label)}
+                  className={`flex flex-col items-center py-2 rounded-lg border text-xs font-medium transition-colors ${colors}`}
+                >
+                  {label}
+                  <span className="text-[10px] font-normal opacity-70 mt-0.5">{sub}</span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
 
 function QuizView({ quiz }: { quiz: ChapterContent['quiz'] }) {
   const [selected, setSelected] = useState<(number | null)[]>(() => quiz.questions.map(() => null))
@@ -359,6 +465,10 @@ export default function Home() {
 
   // ── done: sidebar + right panel ───────────────────────────────────────────────
   const selectedLesson = openLesson ? course?.chapters[openLesson.ci]?.lessons[openLesson.li] : null
+  const lessonContent = openLesson && courseContent
+    ? courseContent.chapters[openLesson.ci]?.lessons[openLesson.li]
+    : null
+  const chapterLessonCount = openLesson ? (course?.chapters[openLesson.ci]?.lessons.length ?? 1) : 1
   const quizContent = quizChapter !== null && courseContent
     ? courseContent.chapters[quizChapter]?.quiz
     : null
@@ -455,15 +565,34 @@ export default function Home() {
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto">
 
-            {/* Lesson outline view */}
+            {/* Lesson view */}
             {isLessonView && selectedLesson && (
-              <div className="px-8 py-6 space-y-4">
+              <div className="px-8 py-6 space-y-5">
                 <div>
                   <p className="text-xs text-gray-400 mb-0.5">{course?.chapters[openLesson!.ci]?.title}</p>
                   <h2 className="text-lg font-semibold text-gray-900">{selectedLesson.title}</h2>
                   <p className="text-sm text-gray-500 mt-0.5">{selectedLesson.key_concept}</p>
                 </div>
-                <ul className="space-y-2 pt-2">
+
+                {/* Concept card */}
+                {stage2Loading ? (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm py-4">
+                    <Spinner />
+                    <span>Generating concept...</span>
+                  </div>
+                ) : lessonContent?.concept ? (
+                  <ConceptCardView
+                    key={`${openLesson!.ci}-${openLesson!.li}`}
+                    concept={lessonContent.concept}
+                    index={openLesson!.li}
+                    total={chapterLessonCount}
+                  />
+                ) : null}
+
+                <hr className="border-gray-100" />
+
+                {/* Outline */}
+                <ul className="space-y-2">
                   {selectedLesson.outline.map((point, i) => (
                     <li key={i} className="flex gap-3 text-sm text-gray-700">
                       <span className="text-blue-400 mt-0.5 shrink-0">•</span>
