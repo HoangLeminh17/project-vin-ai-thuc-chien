@@ -27,8 +27,8 @@ const handler = async (req: NextRequest) => {
         slides: [
           {
             heading: l.title,
-            bullets: [l.key_concept],
-            speaker_notes: l.source_text.slice(0, 300),
+            bullets: l.outline.slice(0, 4),
+            speaker_notes: l.key_concept,
           },
         ],
       })),

@@ -41,6 +41,34 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+### [ADR-11] Thay thế source_text verbatim bằng outline do planner tạo — 16/04/2026
+
+**Bối cảnh:** Stage 1 (PLANNER_PROMPT) yêu cầu LLM copy verbatim 200–600 words/lesson vào field `source_text`. Điều này gây ra 8,173 completion tokens chỉ để re-type text đã có sẵn trong markdown, làm Stage 1 mất ~88s với GPT-4o.
+
+**Các lựa chọn đã xem xét:**
+- **Giữ verbatim copy:** Grounded tốt nhưng token waste cực lớn, chậm.
+- **source_heading marker:** LLM chỉ output `##` heading, code extract text. Thất bại vì MinerU output dùng `#` không phải `##`, và approach này fragile với doc không có heading.
+- **Planner tạo outline:** LLM đọc toàn bộ, trích 4–8 bullet points cụ thể (facts, examples, numbers) thay vì copy verbatim. Stage 2 nhận outline và expand thành slides.
+
+**Quyết định:** `Lesson.source_text` → `Lesson.outline: string[]`. Planner prompt yêu cầu 4–8 bullet points factual per lesson. Stage 2 prompt dùng outline thay vì source_text. `generate-content` route không cần nhận markdown nữa.
+
+**Hệ quả:**
+- Stage 1 completion tokens: 8,173 → 1,737 (-79%). Stage 1 time: ~88s → ~28s.
+- Pipeline sạch hơn: không cần truyền raw markdown sang Stage 2.
+- Fallback minimal content dùng `l.outline.slice(0, 4)` thay vì `l.source_text`.
+
+---
+
+### [ADR-10] Chuyển cả 2 stage sang GPT-4o-mini — 16/04/2026
+
+**Bối cảnh:** Stage 1 và Stage 2 đều dùng GPT-4o. Stage 1 mất ~88s, Stage 2 mỗi chapter mất ~15–20s. GPT-4o-mini generate tokens nhanh hơn ~5x với chi phí thấp hơn đáng kể.
+
+**Quyết định:** Đổi `model: 'gpt-4o'` → `'gpt-4o-mini'` ở cả `infrastructure/adapters/openai.adapter.ts` (Stage 1) và `lib/ai.ts` (Stage 1 legacy + Stage 2). Sau đó tách tiếp: Stage 1 (planner) dùng model thông minh hơn khi cần thiết, Stage 2 (generator) dùng model nhanh/rẻ.
+
+**Hệ quả:** Stage 1 time giảm từ ~88s xuống ~20–28s. Stage 2 nhanh hơn đáng kể. Trade-off: output quality có thể giảm nhẹ nhưng chấp nhận được cho curriculum structuring.
+
+---
+
 ### [ADR-9] Thiết kế lại hệ thống theo Clean Architecture (Ports & Adapters) — 12/04/2026
 
 **Bối cảnh:** Source code ban đầu gắn chặt logic nghiệp vụ (PDF-to-Lesson) với các third-party service (Firebase, MinerU, OpenAI) trực tiếp trong các API routes. Việc này làm codebase khó bảo trì, khó viết unit test, và khó thay thế service trong tương lai. Nhóm không có hướng dẫn cụ thể về file organization khiến các thành viên gặp khó khi implement tính năng mới.

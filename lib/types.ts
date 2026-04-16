@@ -2,7 +2,7 @@
 export type Lesson = {
   title: string
   key_concept: string
-  source_text: string  // verbatim từ tài liệu gốc
+  outline: string[]  // factual bullet points extracted by the planner; used by Stage 2 to generate slides
 }
 
 export type Quiz = {

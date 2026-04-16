@@ -67,7 +67,7 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
     lessons: chapter.lessons.map(l => ({
       title: l.title,
       key_concept: l.key_concept,
-      source_text: l.source_text,
+      outline: l.outline,
     })),
   }
   console.log('[Stage2 Input]', JSON.stringify(chapterInput, null, 2))

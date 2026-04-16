@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
 
 // ── Stage 1 types ──────────────────────────────────────────────────────────────
-type Lesson = { title: string; key_concept: string; source_text: string }
+type Lesson = { title: string; key_concept: string; outline: string[] }
 type Quiz = { topic: string }
 type Chapter = { title: string; lessons: Lesson[]; quiz: Quiz }
 type Course = { title: string; chapters: Chapter[] }
