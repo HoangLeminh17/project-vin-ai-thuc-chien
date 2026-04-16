@@ -37,9 +37,19 @@ Output schema:
 Now process this document:
 `
 
-export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating quiz questions for a course chapter.
+export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating concept cards and quiz questions for a course chapter.
 
-Given a chapter with its lessons and outline points, generate a chapter quiz with 3–5 multiple-choice questions.
+Given a chapter with its lessons and outline points, generate:
+1. A concept card for each lesson
+2. A chapter quiz with 3–5 multiple-choice questions
+
+Rules for concept cards:
+- question: active recall question about the lesson's core idea
+  - Use forms like "X hoạt động như thế nào?", "Tại sao ...?", "X là gì và khi nào dùng?"
+  - Do NOT use "Giải thích X" form
+- answer: TL;DR 2-3 dense sentences, no bullets, answer the question directly
+- detail: 3-5 sentences expanding the answer; include analogy or concrete example if the concept is abstract
+- followUps: exactly 2 genuine follow-up questions that dig deeper, not just topic labels
 
 Rules for quiz questions:
 - 3–5 questions testing understanding of the chapter content
@@ -55,7 +65,13 @@ Output schema:
   "chapter_title": "...",
   "lessons": [
     {
-      "lesson_title": "..."
+      "lesson_title": "...",
+      "concept": {
+        "question": "X hoạt động như thế nào?",
+        "answer": "TL;DR 2-3 câu trả lời thẳng vào câu hỏi.",
+        "detail": "3-5 câu mở rộng, có analogy hoặc ví dụ.",
+        "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"]
+      }
     }
   ],
   "quiz": {
