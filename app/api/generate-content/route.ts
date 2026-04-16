@@ -24,13 +24,11 @@ const handler = async (req: NextRequest) => {
       chapter_title: course.chapters[i].title,
       lessons: course.chapters[i].lessons.map(l => ({
         lesson_title: l.title,
-        slides: [
-          {
-            heading: l.title,
-            bullets: l.outline.slice(0, 4),
-            speaker_notes: l.key_concept,
-          },
-        ],
+        concept: {
+          question: `${l.title} là gì?`,
+          answer: l.outline.slice(0, 2).join('. '),
+          followUps: [] as string[],
+        },
       })),
       quiz: {
         topic: course.chapters[i].quiz.topic,

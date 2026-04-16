@@ -100,11 +100,27 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
   const text = data.choices?.[0]?.message?.content
   if (!text) throw new Error('OpenAI returned no content for chapter content')
 
-  const content: ChapterContent = JSON.parse(text)
+  const raw: ChapterContent = JSON.parse(text)
 
-  if (!content.lessons || !content.quiz) {
+  if (!Array.isArray(raw.lessons) || !raw.quiz) {
     throw new Error(`Invalid ChapterContent structure for chapter: ${chapter.title}`)
   }
+
+  // Ensure each lesson has a concept; apply fallback if the model omitted it
+  const lessons = raw.lessons.map((l, i) => {
+    if (l.concept) return l
+    const src = chapter.lessons[i]
+    return {
+      ...l,
+      concept: {
+        question: `${src?.title ?? l.lesson_title} là gì?`,
+        answer: src?.outline.slice(0, 2).join('. ') ?? '',
+        followUps: [] as string[],
+      },
+    }
+  })
+
+  const content: ChapterContent = { ...raw, lessons }
 
   console.log(`[generate-content] Chapter done: ${chapter.title}`)
   return content

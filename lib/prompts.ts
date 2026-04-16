@@ -37,20 +37,19 @@ Output schema:
 Now process this document:
 `
 
-export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating slide decks and quiz questions for a course chapter.
+export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating concept cards and quiz questions for a course chapter.
 
 Given a chapter with its lessons and outline points, generate:
-1. Slides for each lesson (2–4 slides per lesson)
+1. A concept card for each lesson
 2. A chapter quiz with 3–5 multiple-choice questions
 
-Rules for slides:
-- Each lesson has an outline field — a list of specific factual bullet points extracted from the source document by a senior curriculum designer.
-- You MUST base slide content directly on these outline points. Do not add facts, examples, or details that are not in the outline.
-- Distribute the outline points across 2–4 slides. Group related points together naturally.
-- heading: 5–8 words maximum
-- bullets: 3–5 items per slide — concise phrases grounded in the outline points
-- speaker_notes: 2–3 complete sentences expanding on the slide content using details from the outline
-- Do not fabricate content that is not in the outline
+Rules for concept cards:
+- question: active recall question about the lesson's core idea
+  - Use forms like "X hoạt động như thế nào?", "Tại sao ...?", "X là gì và khi nào dùng?"
+  - Do NOT use "Giải thích X" form
+- answer: TL;DR 2-3 dense sentences, no bullets, answer the question directly
+- detail: 3-5 sentences expanding the answer; include analogy or concrete example if the concept is abstract
+- followUps: exactly 2 genuine follow-up questions that dig deeper, not just topic labels
 
 Rules for quiz questions:
 - 3–5 questions testing understanding of the chapter content
@@ -67,13 +66,12 @@ Output schema:
   "lessons": [
     {
       "lesson_title": "...",
-      "slides": [
-        {
-          "heading": "Short heading here",
-          "bullets": ["Key point one", "Key point two", "Key point three"],
-          "speaker_notes": "Explanation for the presenter in complete sentences."
-        }
-      ]
+      "concept": {
+        "question": "X hoạt động như thế nào?",
+        "answer": "TL;DR 2-3 câu trả lời thẳng vào câu hỏi.",
+        "detail": "3-5 câu mở rộng, có analogy hoặc ví dụ.",
+        "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"]
+      }
     }
   ],
   "quiz": {
