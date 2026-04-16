@@ -1,5 +1,5 @@
 import { PLANNER_PROMPT, STAGE2_CHAPTER_PROMPT } from './prompts'
-import type { Chapter, ChapterContent, Course } from './types'
+import type { ChapterContent, ChapterWithText, Course } from './types'
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY!
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
@@ -60,7 +60,7 @@ export async function generateCourse(parsedContent: string): Promise<{ course: C
   return { course, tokens }
 }
 
-export async function generateChapterContent(chapter: Chapter): Promise<ChapterContent> {
+export async function generateChapterContent(chapter: ChapterWithText): Promise<ChapterContent> {
   const chapterInput = {
     chapter_title: chapter.title,
     quiz_topic: chapter.quiz.topic,

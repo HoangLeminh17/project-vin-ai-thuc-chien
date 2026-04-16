@@ -8,7 +8,7 @@ Instructions:
 - Include ALL topics found in the document as separate lessons. Do NOT merge multiple topics into one lesson. Do NOT skip any topic even if it seems minor.
 - Each lesson should have a clear title and a one-sentence key_concept summary.
 - Each chapter MUST have a quiz with a topic string — a short description of what should be tested at the end of the chapter.
-- source_text: Copy ALL relevant paragraphs from the document VERBATIM for this lesson. Do NOT summarize or paraphrase even a single word. Include every sentence from the source that relates to this lesson's topic. This field should be long — typically 200–600 words depending on how much the document covers this topic.
+- source_heading: Output the EXACT text of the ## heading from the document that this lesson is based on. Copy it character-for-character including capitalization. Do NOT include the ## prefix itself.
 - Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
 Output schema:
@@ -21,7 +21,7 @@ Output schema:
         {
           "title": "Lesson title",
           "key_concept": "One sentence summarizing the key idea",
-          "source_text": "Exact verbatim text from the source document"
+          "source_heading": "Exact ## heading text from the source document"
         }
       ],
       "quiz": {

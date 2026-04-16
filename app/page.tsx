@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
 
 // ── Stage 1 types ──────────────────────────────────────────────────────────────
-type Lesson = { title: string; key_concept: string; source_text: string }
+type Lesson = { title: string; key_concept: string; source_heading: string }
 type Quiz = { topic: string }
 type Chapter = { title: string; lessons: Lesson[]; quiz: Quiz }
 type Course = { title: string; chapters: Chapter[] }
@@ -289,7 +289,7 @@ export default function Home() {
     fetch('/api/generate-content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ course: resolvedCourse }),
+      body: JSON.stringify({ course: resolvedCourse, markdown }),
     })
       .then(r => r.json())
       .then(d => {
