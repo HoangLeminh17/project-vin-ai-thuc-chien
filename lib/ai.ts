@@ -14,7 +14,7 @@ export async function generateCourse(parsedContent: string): Promise<{ course: C
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       temperature: 0.2,
       max_tokens: 16000,
       response_format: { type: 'json_object' },
@@ -80,7 +80,7 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       temperature: 0.3,
       response_format: { type: 'json_object' },
       messages: [
