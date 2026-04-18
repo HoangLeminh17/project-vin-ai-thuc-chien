@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef, useCallback, type DragEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
+import { useAuth } from '@/lib/contexts/auth-context'
 
 // ── Stage 1 types ──────────────────────────────────────────────────────────────
 type Lesson = { title: string; key_concept: string; outline: string[] }
@@ -212,6 +213,7 @@ export default function Home() {
   const [tokens, setTokens] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(null)
   const [debugOpen, setDebugOpen] = useState<'md' | 'json' | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { user, loading, login, logout } = useAuth()
 
   const reset = useCallback(() => {
     setFile(null)
@@ -404,10 +406,20 @@ export default function Home() {
     return (
       <main className="min-h-screen bg-gray-50 p-6">
         <div className="w-full max-w-lg mx-auto space-y-6 pt-20">
-          <h1 className="text-2xl font-bold text-gray-900 text-center">PDF Course Builder</h1>
+          <div className="flex justify-between items-center mb-4">
+             <h1 className="text-2xl font-bold text-gray-900">PDF Course Builder</h1>
+             {user ? (
+               <div className="flex items-center gap-2">
+                 <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full border border-green-200">Đã đăng nhập</span>
+                 {user.photoURL && <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full border" />}
+               </div>
+             ) : (
+               <button onClick={login} className="text-sm text-blue-600 hover:underline">Đăng nhập ngay</button>
+             )}
+          </div>
 
           <div
-            onClick={() => inputRef.current?.click()}
+            onClick={() => user ? inputRef.current?.click() : login()}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
@@ -421,26 +433,32 @@ export default function Home() {
               accept="application/pdf"
               className="hidden"
               onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+              disabled={!user}
             />
             <div className="text-gray-400 mb-2">
               <svg className="mx-auto h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16V4m0 0L8 8m4-4l4 4M4 20h16" />
               </svg>
             </div>
-            {file
-              ? <p className="text-gray-700 font-medium">{file.name}</p>
-              : <p className="text-gray-500">Kéo thả file PDF vào đây hoặc click để chọn</p>
-            }
+            {!user ? (
+              <p className="text-gray-500">Bạn cần đăng nhập để sử dụng tính năng này</p>
+            ) : file ? (
+              <p className="text-gray-700 font-medium">{file.name}</p>
+            ) : (
+              <p className="text-gray-500">Kéo thả file PDF vào đây hoặc click để chọn</p>
+            )}
           </div>
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
 
           <button
-            onClick={handleStart}
-            disabled={!file}
-            className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg disabled:opacity-40 hover:bg-blue-700 transition-colors"
+            onClick={user ? handleStart : login}
+            disabled={!!(user && !file)}
+            className={`w-full py-3 text-white font-medium rounded-lg transition-colors ${
+              !user ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-40'
+            }`}
           >
-            Tạo course
+            {!user ? 'Đăng nhập để bắt đầu' : 'Tạo course'}
           </button>
         </div>
 
@@ -490,12 +508,43 @@ export default function Home() {
             <span className="text-xs text-red-500 shrink-0">Stage 2 failed: {stage2Error}</span>
           )}
         </div>
-        <button
-          onClick={reset}
-          className="ml-4 shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          Upload file khác
-        </button>
+        
+        <div className="flex items-center gap-4">
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-gray-900">{user.displayName || user.email}</p>
+                <button 
+                  onClick={logout}
+                  className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+              {user.photoURL && (
+                <img 
+                  src={user.photoURL} 
+                  alt="Profile" 
+                  className="h-8 w-8 rounded-full border border-gray-200"
+                />
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={login}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Đăng nhập
+            </button>
+          )}
+          
+          <button
+            onClick={reset}
+            className="shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Upload file khác
+          </button>
+        </div>
       </div>
 
       {/* Body */}
