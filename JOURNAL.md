@@ -104,6 +104,54 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ---
 
+## Tuần 3 — 19/04/2026
+
+**Thành viên:** Nguyễn Bình Thành, Lê Kim Dũng
+
+---
+
+### Nguyễn Bình Thành
+
+#### Đã làm
+- (Đang chờ cập nhật từ Thành)
+
+---
+
+### Lê Kim Dũng
+
+#### Đã làm
+- **Tính năng Authentication (Xác thực):**
+  - Hoàn thiện luồng xác thực sử dụng Firebase Admin SDK và cơ chế Session Cookie (HttpOnly).
+  - Tách biệt logic xác thực thành các Use Cases (`CreateSession`, `VerifySession`) và Port/Adapter để đảm bảo tính Module hóa.
+  - Xây dụng các endpoint API: `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`.
+  - Kiểm thử thành công luồng login và tạo session cookie trên môi trường dev.
+- **Pipeline CI/CD:**
+  - Khởi tạo branch `cicd` và thiết lập GitHub Actions workflow tự động (`cicd.yml`).
+  - Cấu hình các bước tự động Lint, Unit Test (Vitest), và Build để đảm bảo chất lượng code trước khi merge.
+  - Chuẩn bị tài liệu mô tả kiến trúc tính năng Authentication cho team.
+
+#### Khó nhất tuần này
+- Xử lý các vấn đề liên quan đến biến môi trường (Environment Variables) cho Firebase Private Key khi chạy trên GitHub Actions và local.
+- Đổi hướng từ sử dụng JWT thuần túy sang Session Cookie để tăng độ bảo mật chống XSS.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| AI Agent | Hỗ trợ viết code cho Auth Ports/Adapters, thiết kế pipeline CI/CD, viết tài liệu mô tả và cập nhật logs. | Tăng tốc độ triển khai phần khung (scaffolding) và giải quyết các lỗi cấu hình GitHub Actions nhanh chóng. |
+
+#### Học được
+- Hiểu sâu hơn về sự khác biệt giữa ID Token và Session Cookie trong hệ sinh thái Firebase.
+- Cách thiết lập một pipeline CI/CD cơ bản nhưng chặt chẽ cho dự án Next.js 15.
+
+#### Nếu làm lại, sẽ làm khác
+- Nên viết spec cho các API Auth trước khi code để frontend có thể song hành nhanh hơn.
+
+#### Kế hoạch tuần tới
+- Hiện thực hóa phân quyền (Authorization) dựa trên Role người dùng.
+- Tích hợp thêm bước tự động deploy (CD) lên Railway hoặc Vercel ngay khi check-in code.
+
+---
+
 ## Template
 
 ```markdown

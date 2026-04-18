@@ -424,3 +424,30 @@ type ConceptCard = {
 - (+) Anki-style feedback loop (mock) — chuẩn bị cho future spaced repetition.
 - (+) Fallback đảm bảo UI không bị break khi model fail.
 - (-) Follow-up chips và Anki buttons chưa có logic thực — cần implement spaced repetition ở sprint sau.
+
+---
+
+## Sprint 3 — 18/04/2026
+
+| Task | Người làm | Deadline | Trạng thái |
+|---|---|---|---|
+| Cấu hình CI/CD Pipeline (GitHub Actions) | Lê Kim Dũng | 18/04 | ✅ |
+| Implement Authentication (Firebase + Session Cookie) | Lê Kim Dũng | 18/04 | ✅ |
+| API Routes: /login, /logout, /me | Lê Kim Dũng | 18/04 | ✅ |
+
+---
+
+### [ADR-14] Bảo mật xác thực bằng Session Cookie (HttpOnly) — 18/04/2026
+
+**Bối cảnh:** Cần cơ chế xác thực để quản lý khóa học của từng người dùng. Lựa chọn giữa JWT lưu ở LocalStorage và Session Cookie lưu ở Server.
+
+**Các lựa chọn đã xem xét:**
+- **JWT (LocalStorage):** Dễ triển khai, stateless. Tuy nhiên dễ bị tấn công XSS (đánh cắp token qua javascript).
+- **Session Cookie (HttpOnly):** Bảo mật cao hơn trước XSS. Firebase Admin SDK hỗ trợ mạnh mẽ việc tạo và xác thực session cookie.
+
+**Quyết định:** Sử dụng **Session Cookie (HttpOnly, Secure)**. Khi người dùng login, server sẽ đổi ID Token lấy Session Cookie và set vào trình duyệt.
+
+**Hệ quả:**
+- (+) Chống XSS tốt hơn.
+- (+) Có thể thu hồi session từ server-side ngay khi cần.
+- (-) Phải xử lý logic CSRF kỹ hơn trong tương lai (hiện tại Next.js App Router đã có những bảo vệ mặc định).
