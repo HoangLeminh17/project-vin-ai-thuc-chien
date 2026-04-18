@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createSessionUseCase } from '@/infrastructure/di';
+import { createSessionUseCase } from '@/infrastructure/registry';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 
 async function loginHandler(req: Request) {

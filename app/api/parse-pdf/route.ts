@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parseDocumentUseCase } from '@/infrastructure/di'
+import { parseDocumentUseCase } from '@/infrastructure/registry'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 const MAX_SIZE = 20 * 1024 * 1024 // 20 MB

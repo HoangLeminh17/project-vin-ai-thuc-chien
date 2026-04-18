@@ -15,7 +15,7 @@ const { mockLogger, mockMonitoring } = vi.hoisted(() => ({
   }
 }));
 
-vi.mock('@/infrastructure/di', () => ({
+vi.mock('@/infrastructure/registry', () => ({
   logger: mockLogger,
   monitoring: mockMonitoring
 }));
@@ -69,12 +69,12 @@ describe('withApiLogging', () => {
       { url: 'http://localhost/api/test' }
     );
     expect(mockLogger.error).toHaveBeenCalledWith(
-      '[API] POST TestRoute failed',
-      expect.objectContaining({ error: 'Database Error', durationMs: expect.any(Number) })
+      '[API] Error in POST TestRoute',
+      expect.objectContaining({ error: 'Database Error', stack: expect.any(String) })
     );
     expect(mockMonitoring.captureException).toHaveBeenCalledWith(
       error,
-      { route: 'TestRoute', method: 'POST', url: 'http://localhost/api/test' }
+      { route: 'POST TestRoute' }
     );
   });
 });

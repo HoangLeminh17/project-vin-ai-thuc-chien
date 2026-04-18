@@ -3,18 +3,7 @@
 import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 
-// ── Stage 1 types ──────────────────────────────────────────────────────────────
-type Lesson = { title: string; key_concept: string; outline: string[] }
-type Quiz = { topic: string }
-type Chapter = { title: string; lessons: Lesson[]; quiz: Quiz }
-type Course = { title: string; chapters: Chapter[] }
-
-// ── Stage 2 types ──────────────────────────────────────────────────────────────
-type ConceptCard = { question: string; answer: string; detail?: string; followUps: string[] }
-type QuizQuestion = { question: string; options: string[]; answer: number; explanation: string }
-type LessonContent = { lesson_title: string; concept: ConceptCard }
-type ChapterContent = { chapter_title: string; lessons: LessonContent[]; quiz: { topic: string; questions: QuizQuestion[] } }
-type CourseContent = { chapters: ChapterContent[] }
+import { Course, Chapter, Lesson, CourseContent, ChapterContent, LessonContent, ConceptCard, QuizQuestion } from '@/core/models/learning-model'
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -575,7 +564,7 @@ export default function Home() {
 
                   {openChapter === ci && (
                     <div>
-                      {ch.lessons.map((lesson, li) => {
+                      {ch.lessons?.map((lesson, li) => {
                         const active = openLesson?.ci === ci && openLesson?.li === li
                         return (
                           <button
@@ -642,7 +631,7 @@ export default function Home() {
 
                 {/* Outline */}
                 <ul className="space-y-2">
-                  {selectedLesson.outline.map((point, i) => (
+                  {selectedLesson.outline?.map((point, i) => (
                     <li key={i} className="flex gap-3 text-sm text-gray-700">
                       <span className="text-blue-400 mt-0.5 shrink-0">•</span>
                       <span>{point}</span>

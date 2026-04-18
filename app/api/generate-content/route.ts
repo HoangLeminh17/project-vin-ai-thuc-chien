@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateChapterContent } from '@/lib/ai'
 import type { Course, ChapterContent, CourseContent } from '@/lib/types'
-import { logger } from '@/infrastructure/di'
+import { logger } from '@/infrastructure/registry'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 const handler = async (req: NextRequest) => {

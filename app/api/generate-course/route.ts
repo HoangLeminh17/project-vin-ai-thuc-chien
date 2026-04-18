@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateCourseUseCase } from '@/infrastructure/di'
+import { generateCourseUseCase } from '@/infrastructure/registry'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 const handler = async (req: NextRequest) => {
