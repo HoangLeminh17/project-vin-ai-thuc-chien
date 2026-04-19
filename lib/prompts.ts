@@ -2,13 +2,19 @@ export const PLANNER_PROMPT = `You are a curriculum designer. Given a document's
 
 Instructions:
 - Read the entire content carefully.
-- The document text uses # markers to indicate section headings. Each # heading that has body text below it is a separate lesson — even if the body is short (1–3 paragraphs). Never merge two # sections into one lesson. Short content does NOT justify merging.
+- Output MUST match source document language. Never translate.
+- The document text uses ## and ### markers to indicate section headings.
+  - "---" marks an absolute chapter boundary — always start a new chapter entry when you see "---".
+  - ## marks a chapter boundary — each ## is a separate chapter, never merge multiple ## sections into one chapter.
+  - ### marks a lesson boundary within the current chapter — each ### is a separate lesson, never merge two ### sections.
+  - Each heading that has body text below it is a separate lesson — even if the body is short (1–3 paragraphs). Short content does NOT justify merging.
 - Skip sections with no educational value: table of contents, disclaimers, acknowledgments, references, bibliography, glossary, appendix, copyright notices, assessment questions, practical assignments. When in doubt, include it rather than skip it.
 - Group the remaining content into logical chapters and lessons.
 - Include ALL topics found in the document as separate lessons. Do NOT merge multiple topics into one lesson. Do NOT skip any topic even if it seems minor.
 - Each lesson should have a clear title and a one-sentence key_concept summary.
 - Each chapter MUST have a quiz with a topic string — a short description of what should be tested at the end of the chapter.
 - outline: Extract 4–8 specific, factual bullet points for this lesson from the document content. Each bullet must be a concrete statement — include specific examples, named technologies, numbers, mechanisms, or outcomes that appear in the source. These bullets will be handed to a second model to generate slides, so they must be informative enough to stand alone.
+- Table expansion rule: if table rows are distinct entities (e.g. drug names, drug groups) → expand into N separate lessons, one per row. If table rows are comparison attributes of a single entity → collapse into one lesson.
 - Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
 Output schema:
