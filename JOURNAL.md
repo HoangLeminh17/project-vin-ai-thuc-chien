@@ -42,7 +42,44 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ## Tuần 2 — 12/04/2026
 
-**Thành viên:** Lê Kim Dũng
+**Thành viên:** Nguyễn Bình Thành, Lê Kim Dũng
+
+---
+
+### Nguyễn Bình Thành
+
+#### Đã làm
+- Chuyển AI provider từ Gemini sang OpenAI GPT-4o
+- Tách pipeline thành 2 stage: Stage 1 (outline) → Stage 2 (slides + quiz); dùng `contentList` thay markdown làm input
+- Xây Stage 2 (`/api/generate-content`): generate slides + quiz song song cho tất cả chapters (`Promise.allSettled`)
+- Tích hợp Reveal.js slide viewer (CDN, embedded) với speaker notes panel; sync index qua event listener
+- Xây Quiz UI: single-choice, hiển thị đáp án + giải thích
+- Fix Stage 1 bỏ sót/gộp lessons: inject `##` markers vào contentList trước khi gửi LLM thay vì chỉ sửa prompt
+- Thêm AI logging + monitoring
+
+#### Khó nhất tuần này
+- Stage 1 vẫn gộp lessons dù prompt có "do NOT merge" — vì input là plain string, LLM không có boundary signal. Fix: emit `## heading` cho section titles → deterministic, không phụ thuộc LLM.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Build Stage 2 pipeline, Reveal.js integration, fix lesson-splitting bug, viết ADRs | Hoàn thành toàn bộ trong tuần, commit sạch theo convention |
+
+#### Học được
+- Structural signal quan trọng hơn prompt instruction: `## marker` trong input hiệu quả hơn "do NOT merge" trong prompt.
+
+#### Nếu làm lại, sẽ làm khác
+- Luôn inspect input string gửi LLM trước khi debug prompt.
+
+#### Kế hoạch tuần tới
+- Hiển thị ảnh từ PDF gốc vào slides
+- Cải thiện UI/UX, thiết kế slide đẹp hơn
+- Interactive lesson: highlight text đồng bộ theo speech
+- TTS (Text-to-Speech) integration
+
+---
+
+### Lê Kim Dũng
 
 #### Đã làm
 - **Dự án chính (PDF-to-Lesson):**
@@ -64,7 +101,54 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 #### Kế hoạch tuần tới
 - Làm tính năng authentication
-- 
+
+---
+
+## Tuần 3 — 19/04/2026
+
+**Thành viên:** Nguyễn Bình Thành, Lê Kim Dũng
+
+---
+
+### Nguyễn Bình Thành
+
+#### Đã làm
+- (Đang chờ cập nhật từ Thành)
+
+---
+
+### Lê Kim Dũng
+
+#### Đã làm
+- **Tính năng Authentication (Xác thực):**
+  - Hoàn thiện luồng xác thực sử dụng Firebase Admin SDK và cơ chế Session Cookie (HttpOnly).
+  - Tách biệt logic xác thực thành các Use Cases (`CreateSession`, `VerifySession`) và Port/Adapter để đảm bảo tính Module hóa.
+  - Xây dụng các endpoint API: `/api/auth/login`, `/api/auth/logout`, `/api/auth/me`.
+  - Kiểm thử thành công luồng login và tạo session cookie trên môi trường dev.
+- **Pipeline CI/CD:**
+  - Khởi tạo branch `cicd` và thiết lập GitHub Actions workflow tự động (`cicd.yml`).
+  - Cấu hình các bước tự động Lint, Unit Test (Vitest), và Build để đảm bảo chất lượng code trước khi merge.
+  - Chuẩn bị tài liệu mô tả kiến trúc tính năng Authentication cho team.
+
+#### Khó nhất tuần này
+- Xử lý các vấn đề liên quan đến biến môi trường (Environment Variables) cho Firebase Private Key khi chạy trên GitHub Actions và local.
+- Đổi hướng từ sử dụng JWT thuần túy sang Session Cookie để tăng độ bảo mật chống XSS.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| AI Agent | Hỗ trợ viết code cho Auth Ports/Adapters, thiết kế pipeline CI/CD, viết tài liệu mô tả và cập nhật logs. | Tăng tốc độ triển khai phần khung (scaffolding) và giải quyết các lỗi cấu hình GitHub Actions nhanh chóng. |
+
+#### Học được
+- Hiểu sâu hơn về sự khác biệt giữa ID Token và Session Cookie trong hệ sinh thái Firebase.
+- Cách thiết lập một pipeline CI/CD cơ bản nhưng chặt chẽ cho dự án Next.js 15.
+
+#### Nếu làm lại, sẽ làm khác
+- Nên viết spec cho các API Auth trước khi code để frontend có thể song hành nhanh hơn.
+
+#### Kế hoạch tuần tới
+- Hiện thực hóa phân quyền (Authorization) dựa trên Role người dùng.
+- Tích hợp thêm bước tự động deploy (CD) lên Railway hoặc Vercel ngay khi check-in code.
 
 ---
 

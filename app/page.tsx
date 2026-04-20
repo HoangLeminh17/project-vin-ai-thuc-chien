@@ -1,19 +1,9 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
+import { useAuth } from '@/lib/contexts/auth-context'
 
-// ── Stage 1 types ──────────────────────────────────────────────────────────────
-type Lesson = { title: string; key_concept: string; source_text: string }
-type Quiz = { topic: string }
-type Chapter = { title: string; lessons: Lesson[]; quiz: Quiz }
-type Course = { title: string; chapters: Chapter[] }
-
-// ── Stage 2 types ──────────────────────────────────────────────────────────────
-type Slide = { heading: string; bullets: string[]; speaker_notes: string }
-type QuizQuestion = { question: string; options: string[]; answer: number; explanation: string }
-type LessonContent = { lesson_title: string; slides: Slide[] }
-type ChapterContent = { chapter_title: string; lessons: LessonContent[]; quiz: { topic: string; questions: QuizQuestion[] } }
-type CourseContent = { chapters: ChapterContent[] }
+import { Course, Chapter, Lesson, CourseContent, ChapterContent, LessonContent, ConceptCard, QuizQuestion } from '@/core/models/learning-model'
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -26,86 +16,108 @@ function Spinner() {
   )
 }
 
-// Reveal.js slide viewer. Use `key` prop on parent to force remount on lesson change.
-function RevealDeck({ slides }: { slides: Slide[] }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [currentIndex, setCurrentIndex] = useState(0)
 
-  useEffect(() => {
-    if (!containerRef.current) return
-
-    type RevealInstance = {
-      initialize(): Promise<void>
-      destroy(): void
-      on(event: string, cb: (e: { indexh: number }) => void): void
-    }
-    type RevealCtor = new (el: HTMLElement, cfg: Record<string, unknown>) => RevealInstance
-
-    const R = (window as unknown as { Reveal?: RevealCtor }).Reveal
-    if (!R) return
-
-    let deck: RevealInstance | null = null
-    let mounted = true
-
-    ;(async () => {
-      try {
-        deck = new R(containerRef.current!, {
-          embedded: true,
-          controls: true,
-          progress: true,
-          center: false,
-          hash: false,
-          transition: 'fade',
-          slideNumber: 'c/t',
-        })
-        await deck.initialize()
-        if (!mounted) return
-        setCurrentIndex(0)
-        deck.on('slidechanged', (e) => {
-          if (mounted) setCurrentIndex(e.indexh)
-        })
-      } catch (err) {
-        console.error('[RevealDeck] init failed', err)
-      }
-    })()
-
-    return () => {
-      mounted = false
-      try { deck?.destroy() } catch {}
-    }
-  }, []) // runs once on mount; parent uses key prop to remount on lesson change
-
-  const currentNotes = slides[currentIndex]?.speaker_notes ?? ''
+function ConceptCardView({ concept, index, total }: { concept: ConceptCard; index: number; total: number }) {
+  const [answer, setAnswer] = useState('')
+  const [revealed, setRevealed] = useState(false)
 
   return (
-    <div className="flex h-full w-full">
-      {/* Slide viewer — 62% */}
-      <div ref={containerRef} className="reveal" style={{ width: '62%', height: '100%' }}>
-        <div className="slides">
-          {slides.map((s, i) => (
-            <section key={i}>
-              <h2>{s.heading}</h2>
-              <ul>
-                {s.bullets.map((b, j) => <li key={j}>{b}</li>)}
-              </ul>
-              <aside className="notes">{s.speaker_notes}</aside>
-            </section>
+    <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      {/* Progress pips + label */}
+      <div className="flex items-center justify-between">
+        <div className="flex gap-1">
+          {Array.from({ length: total }).map((_, i) => (
+            <span
+              key={i}
+              className={`inline-block h-1.5 w-4 rounded-full ${i === index ? 'bg-teal-500' : 'bg-gray-200'}`}
+            />
           ))}
         </div>
+        <span className="text-xs text-gray-400 font-mono">Concept {index + 1} / {total}</span>
       </div>
 
-      {/* Speaker notes panel — 38% */}
-      <div className="flex flex-col border-l bg-gray-50 overflow-hidden" style={{ width: '38%' }}>
-        <div className="px-4 py-2.5 border-b bg-white shrink-0">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Speaker Notes</p>
-        </div>
-        <div className="flex-1 overflow-y-auto p-5">
-          {currentNotes
-            ? <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{currentNotes}</p>
-            : <p className="text-sm text-gray-400 italic">(no notes for this slide)</p>
-          }
-        </div>
-      </div>
+      {/* Question */}
+      <p className="text-[17px] font-medium text-gray-900 leading-snug">{concept.question}</p>
+
+      {/* Answer input */}
+      <textarea
+        disabled={revealed}
+        value={answer}
+        onChange={e => setAnswer(e.target.value)}
+        placeholder="Thử trả lời trước khi reveal..."
+        rows={3}
+        className={`w-full resize-none rounded-lg border px-3 py-2.5 text-sm leading-relaxed outline-none transition-colors
+          ${revealed
+            ? 'border-gray-100 bg-gray-50 text-gray-400 cursor-not-allowed'
+            : 'border-gray-300 bg-white text-gray-800 focus:border-teal-400'
+          }`}
+      />
+
+      {!revealed && (
+        <button
+          onClick={() => setRevealed(true)}
+          className="w-full py-2 rounded-lg bg-teal-500 text-white text-sm font-medium hover:bg-teal-600 transition-colors"
+        >
+          Reveal
+        </button>
+      )}
+
+      {revealed && (
+        <>
+          <hr className="border-gray-100" />
+
+          {/* TL;DR */}
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-teal-600 uppercase tracking-wider">TL;DR</p>
+            <p className="text-sm text-gray-800 leading-relaxed">{concept.answer}</p>
+          </div>
+
+          {concept.detail && (
+            <p className="text-sm text-gray-600 leading-relaxed">{concept.detail}</p>
+          )}
+
+          {/* Follow-ups */}
+          {concept.followUps.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Follow-up</p>
+              <div className="flex flex-wrap gap-2">
+                {concept.followUps.map((q, i) => (
+                  <button
+                    key={i}
+                    onClick={() => console.log('[follow-up]', q)}
+                    className="px-3 py-1.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-gray-50 transition-colors"
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Anki mock buttons */}
+          <div className="grid grid-cols-4 gap-2 pt-1">
+            {(['Again', 'Hard', 'Good', 'Easy'] as const).map((label, i) => {
+              const sub = ['không nhớ', 'lờ mờ', 'nhớ rồi', 'quá dễ'][i]
+              const colors = [
+                'border-red-200 text-red-600 hover:bg-red-50',
+                'border-orange-200 text-orange-600 hover:bg-orange-50',
+                'border-green-200 text-green-700 hover:bg-green-50',
+                'border-blue-200 text-blue-600 hover:bg-blue-50',
+              ][i]
+              return (
+                <button
+                  key={label}
+                  onClick={() => console.log('[anki]', label)}
+                  className={`flex flex-col items-center py-2 rounded-lg border text-xs font-medium transition-colors ${colors}`}
+                >
+                  {label}
+                  <span className="text-[10px] font-normal opacity-70 mt-0.5">{sub}</span>
+                </button>
+              )
+            })}
+          </div>
+        </>
+      )}
     </div>
   )
 }
@@ -190,6 +202,7 @@ export default function Home() {
   const [tokens, setTokens] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(null)
   const [debugOpen, setDebugOpen] = useState<'md' | 'json' | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { user, loading, login, logout } = useAuth()
 
   const reset = useCallback(() => {
     setFile(null)
@@ -258,7 +271,7 @@ export default function Home() {
     setStatus('generating')
     let resolvedCourse: Course | null = null
     try {
-      const body = parsedContentList ? { contentList: parsedContentList } : { contentList: [] }
+      const body = { markdown }
       const res = await fetch('/api/generate-course', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -382,10 +395,20 @@ export default function Home() {
     return (
       <main className="min-h-screen bg-gray-50 p-6">
         <div className="w-full max-w-lg mx-auto space-y-6 pt-20">
-          <h1 className="text-2xl font-bold text-gray-900 text-center">PDF Course Builder</h1>
+          <div className="flex justify-between items-center mb-4">
+             <h1 className="text-2xl font-bold text-gray-900">PDF Course Builder</h1>
+             {user ? (
+               <div className="flex items-center gap-2">
+                 <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full border border-green-200">Đã đăng nhập</span>
+                 {user.photoURL && <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full border" />}
+               </div>
+             ) : (
+               <button onClick={login} className="text-sm text-blue-600 hover:underline">Đăng nhập ngay</button>
+             )}
+          </div>
 
           <div
-            onClick={() => inputRef.current?.click()}
+            onClick={() => user ? inputRef.current?.click() : login()}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
@@ -399,26 +422,32 @@ export default function Home() {
               accept="application/pdf"
               className="hidden"
               onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+              disabled={!user}
             />
             <div className="text-gray-400 mb-2">
               <svg className="mx-auto h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 16V4m0 0L8 8m4-4l4 4M4 20h16" />
               </svg>
             </div>
-            {file
-              ? <p className="text-gray-700 font-medium">{file.name}</p>
-              : <p className="text-gray-500">Kéo thả file PDF vào đây hoặc click để chọn</p>
-            }
+            {!user ? (
+              <p className="text-gray-500">Bạn cần đăng nhập để sử dụng tính năng này</p>
+            ) : file ? (
+              <p className="text-gray-700 font-medium">{file.name}</p>
+            ) : (
+              <p className="text-gray-500">Kéo thả file PDF vào đây hoặc click để chọn</p>
+            )}
           </div>
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
 
           <button
-            onClick={handleStart}
-            disabled={!file}
-            className="w-full py-3 bg-blue-600 text-white font-medium rounded-lg disabled:opacity-40 hover:bg-blue-700 transition-colors"
+            onClick={user ? handleStart : login}
+            disabled={!!(user && !file)}
+            className={`w-full py-3 text-white font-medium rounded-lg transition-colors ${
+              !user ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-40'
+            }`}
           >
-            Tạo course
+            {!user ? 'Đăng nhập để bắt đầu' : 'Tạo course'}
           </button>
         </div>
 
@@ -446,10 +475,11 @@ export default function Home() {
   const lessonContent = openLesson && courseContent
     ? courseContent.chapters[openLesson.ci]?.lessons[openLesson.li]
     : null
+  const chapterLessonCount = openLesson ? (course?.chapters[openLesson.ci]?.lessons.length ?? 1) : 1
   const quizContent = quizChapter !== null && courseContent
     ? courseContent.chapters[quizChapter]?.quiz
     : null
-  const isSlideView = openLesson !== null && quizChapter === null
+  const isLessonView = openLesson !== null && quizChapter === null
 
   return (
     <main className="h-screen flex flex-col overflow-hidden bg-gray-50">
@@ -460,19 +490,50 @@ export default function Home() {
           {stage2Loading && (
             <span className="flex items-center gap-1.5 text-xs text-blue-500 shrink-0">
               <Spinner />
-              Generating slides...
+              Generating content...
             </span>
           )}
           {!stage2Loading && stage2Error && (
             <span className="text-xs text-red-500 shrink-0">Stage 2 failed: {stage2Error}</span>
           )}
         </div>
-        <button
-          onClick={reset}
-          className="ml-4 shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-        >
-          Upload file khác
-        </button>
+        
+        <div className="flex items-center gap-4">
+          {user ? (
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-sm font-medium text-gray-900">{user.displayName || user.email}</p>
+                <button 
+                  onClick={logout}
+                  className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                >
+                  Đăng xuất
+                </button>
+              </div>
+              {user.photoURL && (
+                <img 
+                  src={user.photoURL} 
+                  alt="Profile" 
+                  className="h-8 w-8 rounded-full border border-gray-200"
+                />
+              )}
+            </div>
+          ) : (
+            <button
+              onClick={login}
+              className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Đăng nhập
+            </button>
+          )}
+          
+          <button
+            onClick={reset}
+            className="shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Upload file khác
+          </button>
+        </div>
       </div>
 
       {/* Body */}
@@ -503,7 +564,7 @@ export default function Home() {
 
                   {openChapter === ci && (
                     <div>
-                      {ch.lessons.map((lesson, li) => {
+                      {ch.lessons?.map((lesson, li) => {
                         const active = openLesson?.ci === ci && openLesson?.li === li
                         return (
                           <button
@@ -540,60 +601,71 @@ export default function Home() {
 
         {/* Content panel */}
         <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
 
-          {/* Lesson slide view */}
-          {isSlideView && (
-            <>
-              <div className="shrink-0 px-8 py-4 border-b bg-white">
-                <p className="text-xs text-gray-400 mb-0.5">{course?.chapters[openLesson!.ci]?.title}</p>
-                <h2 className="text-lg font-semibold text-gray-900">{selectedLesson?.title}</h2>
-                <p className="text-sm text-gray-500 mt-0.5">{selectedLesson?.key_concept}</p>
-              </div>
-              <div className="flex-1 relative overflow-hidden">
-                {stage2Loading ? (
-                  <div className="absolute inset-0 flex items-center justify-center gap-3 text-gray-500">
-                    <Spinner />
-                    <span className="text-sm">Generating slides...</span>
-                  </div>
-                ) : lessonContent ? (
-                  <RevealDeck
-                    key={`${openLesson!.ci}-${openLesson!.li}`}
-                    slides={lessonContent.slides}
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-gray-400">
-                    <p className="text-sm">Slides không có sẵn</p>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-
-          {/* Quiz / empty state — scrollable so debug panel is reachable */}
-          {!isSlideView && (
-            <div className="flex-1 overflow-y-auto">
-              {quizChapter !== null && (
-                stage2Loading ? (
-                  <div className="flex items-center justify-center min-h-64 gap-3 text-gray-500">
-                    <Spinner />
-                    <span className="text-sm">Generating quiz...</span>
-                  </div>
-                ) : quizContent ? (
-                  <QuizView key={quizChapter} quiz={quizContent} />
-                ) : (
-                  <div className="flex items-center justify-center min-h-64 text-gray-400">
-                    <p className="text-sm">Quiz không có sẵn</p>
-                  </div>
-                )
-              )}
-              {openLesson === null && quizChapter === null && (
-                <div className="flex items-center justify-center min-h-[60vh] text-gray-400">
-                  <p className="text-sm">Chọn một bài học để xem nội dung</p>
+            {/* Lesson view */}
+            {isLessonView && selectedLesson && (
+              <div className="px-8 py-6 space-y-5">
+                <div>
+                  <p className="text-xs text-gray-400 mb-0.5">{course?.chapters[openLesson!.ci]?.title}</p>
+                  <h2 className="text-lg font-semibold text-gray-900">{selectedLesson.title}</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">{selectedLesson.key_concept}</p>
                 </div>
-              )}
-              {debugPanel}
-            </div>
-          )}
+
+                {/* Concept card */}
+                {stage2Loading ? (
+                  <div className="flex items-center gap-2 text-gray-400 text-sm py-4">
+                    <Spinner />
+                    <span>Generating concept...</span>
+                  </div>
+                ) : lessonContent?.concept ? (
+                  <ConceptCardView
+                    key={`${openLesson!.ci}-${openLesson!.li}`}
+                    concept={lessonContent.concept}
+                    index={openLesson!.li}
+                    total={chapterLessonCount}
+                  />
+                ) : null}
+
+                <hr className="border-gray-100" />
+
+                {/* Outline */}
+                <ul className="space-y-2">
+                  {selectedLesson.outline?.map((point, i) => (
+                    <li key={i} className="flex gap-3 text-sm text-gray-700">
+                      <span className="text-blue-400 mt-0.5 shrink-0">•</span>
+                      <span>{point}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Quiz view */}
+            {quizChapter !== null && (
+              stage2Loading ? (
+                <div className="flex items-center justify-center min-h-64 gap-3 text-gray-500">
+                  <Spinner />
+                  <span className="text-sm">Generating quiz...</span>
+                </div>
+              ) : quizContent ? (
+                <QuizView key={quizChapter} quiz={quizContent} />
+              ) : (
+                <div className="flex items-center justify-center min-h-64 text-gray-400">
+                  <p className="text-sm">Quiz không có sẵn</p>
+                </div>
+              )
+            )}
+
+            {/* Empty state */}
+            {openLesson === null && quizChapter === null && (
+              <div className="flex items-center justify-center min-h-[60vh] text-gray-400">
+                <p className="text-sm">Chọn một bài học để xem nội dung</p>
+              </div>
+            )}
+
+            {debugPanel}
+          </div>
 
         </div>
       </div>

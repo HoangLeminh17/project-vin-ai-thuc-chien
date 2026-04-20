@@ -1,5 +1,5 @@
 import { IAiService, TokenUsage } from '../ports/ai.port'
-import type { Course } from '@/lib/types'
+import type { Course } from '../models/learning-model'
 
 export class GenerateCourseUseCase {
   constructor(private readonly aiService: IAiService) {}

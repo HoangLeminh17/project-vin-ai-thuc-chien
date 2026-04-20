@@ -2,25 +2,43 @@ import { IDocumentParser } from '@/core/ports/parser.port';
 import JSZip from 'jszip';
 import fs from 'fs/promises';
 import path from 'path';
+import { InfrastructureError } from '@/core/errors/domain-error'
 
-const BASE_URL = process.env.PDF_MINERU_BASE_URL!;
-const API_KEY = process.env.PDF_MINERU_API_KEY!;
-const OUTPUT_DIR = path.join(process.cwd(), '.mineru-output');
+export interface MineruConfig {
+  baseUrl: string
+  apiKey: string
+  outputDir?: string
+}
 
 export class MineruParserAdapter implements IDocumentParser {
+  private readonly baseUrl: string
+  private readonly apiKey: string
+  private readonly outputDir: string
+
+  constructor(config: MineruConfig) {
+    this.baseUrl = config.baseUrl
+    this.apiKey = config.apiKey
+    this.outputDir = config.outputDir || path.join(process.cwd(), '.mineru-output')
+  }
+
   private async mineruFetch(apiPath: string, init?: RequestInit): Promise<Response> {
-    const res = await fetch(`${BASE_URL}${apiPath}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${API_KEY}`,
-        ...init?.headers,
-      },
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      throw new Error(`MinerU ${apiPath} failed (${res.status}): ${body}`);
+    try {
+      const res = await fetch(`${this.baseUrl}${apiPath}`, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          ...init?.headers,
+        },
+      });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new InfrastructureError(`MinerU ${apiPath} failed (${res.status}): ${body}`);
+      }
+      return res;
+    } catch (e) {
+      if (e instanceof InfrastructureError) throw e;
+      throw new InfrastructureError(`Connection error to MinerU API: ${apiPath}`, e);
     }
-    return res;
   }
 
   private async submitExtractTask(fileUrl: string): Promise<string> {
@@ -36,7 +54,7 @@ export class MineruParserAdapter implements IDocumentParser {
     });
     const data = await res.json();
     const taskId = data.data?.task_id;
-    if (!taskId) throw new Error(`MinerU: no task_id returned: ${JSON.stringify(data)}`);
+    if (!taskId) throw new InfrastructureError(`MinerU: no task_id returned: ${JSON.stringify(data)}`);
     return taskId;
   }
 
@@ -50,28 +68,28 @@ export class MineruParserAdapter implements IDocumentParser {
 
       if (state === 'done') {
         const zipUrl = data.data?.full_zip_url;
-        if (!zipUrl) throw new Error('MinerU: task done but no full_zip_url');
+        if (!zipUrl) throw new InfrastructureError('MinerU: task done but no full_zip_url');
         return this.downloadAndSave(zipUrl, safeName);
       }
 
       if (state === 'failed') {
-        throw new Error(`MinerU task failed: ${data.data?.err_msg || JSON.stringify(data.data)}`);
+        throw new InfrastructureError(`MinerU task failed: ${data.data?.err_msg || JSON.stringify(data.data)}`);
       }
 
       await new Promise((r) => setTimeout(r, intervalMs));
     }
 
-    throw new Error(`MinerU task ${taskId} timed out after ${timeoutMs / 1000}s`);
+    throw new InfrastructureError(`MinerU task ${taskId} timed out after ${timeoutMs / 1000}s`);
   }
 
   private async downloadAndSave(zipUrl: string, safeName: string): Promise<string> {
     const res = await fetch(zipUrl);
-    if (!res.ok) throw new Error(`Failed to download zip (${res.status})`);
+    if (!res.ok) throw new InfrastructureError(`Failed to download zip (${res.status})`);
 
     const buf = await res.arrayBuffer();
     const zip = await JSZip.loadAsync(buf);
 
-    const outDir = path.join(OUTPUT_DIR, safeName.replace(/\.pdf$/i, ''));
+    const outDir = path.join(this.outputDir, safeName.replace(/\.pdf$/i, ''));
     await fs.mkdir(outDir, { recursive: true });
 
     let markdown = '';
@@ -90,15 +108,12 @@ export class MineruParserAdapter implements IDocumentParser {
       }
     }
 
-    if (!markdown) throw new Error('full.md not found in zip archive');
+    if (!markdown) throw new InfrastructureError('full.md not found in zip archive');
     console.log(`[parse-pdf] Saved to ${outDir}`);
     return markdown;
   }
 
   async extractMarkdown(fileUrl: string, safeName: string): Promise<string> {
-    if (!BASE_URL || !API_KEY) {
-      throw new Error('Missing PDF_MINERU_BASE_URL or PDF_MINERU_API_KEY in env');
-    }
     const taskId = await this.submitExtractTask(fileUrl);
     return await this.pollAndExtract(taskId, safeName);
   }

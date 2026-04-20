@@ -1,11 +1,12 @@
 import { IStorageService, UploadResult } from '@/core/ports/storage.port';
-import { getBucket } from '@/lib/firebase-admin';
+import type { Bucket } from '@google-cloud/storage';
 
 export class FirebaseStorageAdapter implements IStorageService {
+  constructor(private readonly bucket: Bucket) {}
+
   async upload(file: Buffer, safeName: string): Promise<UploadResult> {
     const filePath = `uploads/${Date.now()}_${safeName}`;
-    const bucket = getBucket();
-    const fileRef = bucket.file(filePath);
+    const fileRef = this.bucket.file(filePath);
 
     await fileRef.save(file, {
       metadata: { contentType: 'application/pdf' },
@@ -13,13 +14,13 @@ export class FirebaseStorageAdapter implements IStorageService {
 
     await fileRef.makePublic();
 
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+    const publicUrl = `https://storage.googleapis.com/${this.bucket.name}/${filePath}`;
     return { publicUrl, filePath };
   }
 
   async delete(filePath: string): Promise<void> {
     try {
-      await getBucket().file(filePath).delete();
+      await this.bucket.file(filePath).delete();
     } catch {
       // non-critical, ignore
     }

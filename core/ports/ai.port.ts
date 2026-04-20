@@ -1,4 +1,4 @@
-import type { Course } from '@/lib/types'
+import type { Course } from '../models/learning-model'
 
 export type TokenUsage = { promptTokens: number; completionTokens: number; totalTokens: number }
 

@@ -1,81 +1,72 @@
-# Starter Code App
+# AI Course Generator
 
-A template for building AI Agents in Python.
+Upload a PDF, parse it to structured markdown (MinerU API), then use an AI Planner Agent (OpenAI GPT-4o) to split it into chapters, lessons, slides, and quizzes.
 
-## Structure
+![App demo](image.png)
+<!-- Replace with a better screenshot or screen recording when available -->
 
-```
-├── src/
-│   ├── agent.py        # Main agent loop
-│   ├── tools.py        # Tool definitions
-│   └── config.py       # Configuration
-├── scripts/
-│   ├── setup_hooks.sh  # One-time hook installer
-│   ├── log_hook.py     # AI tool hook handler
-│   └── submit_log.py   # Submits logs on git push
-├── requirements.txt
-├── .env.example
-├── AGENTS.md           # Rules for using AI coding agents
-├── JOURNAL.md          # Weekly journal — product journey & learnings
-└── WORKLOG.md          # Technical decisions, task assignments, brainstorming
-```
+## Stack
+
+- **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
+- **Backend**: Next.js API routes (`app/api/`)
+- **AI**: OpenAI GPT-4o
+- **Storage**: Firebase Storage (temporary upload for MinerU)
+- **PDF parsing**: MinerU Precision API
 
 ## Getting Started
 
-### 1. Clone and setup
+### 1. Clone and install
 
 ```bash
 git clone <repo-url>
 cd <repo>
+npm install
+```
 
-# Install git pre-push hook (required, run once)
+### 2. Install git hooks (required, run once)
+
+```bash
 bash scripts/setup_hooks.sh
 ```
 
-### 2. Configure environment
+### 3. Configure environment
 
 ```bash
 cp .env.example .env
 ```
 
-Open `.env` and fill in your `ANTHROPIC_API_KEY`. The `AI_LOG_*` variables are pre-filled.
+Fill in `.env`:
 
-### 3. Run
+```
+OPENAI_API_KEY=
 
-```bash
-python -m venv venv
-source venv/bin/activate       # Linux/Mac
-# or: venv\Scripts\activate    # Windows
+PDF_MINERU_BASE_URL=https://mineru.net/api/v4
+PDF_MINERU_API_KEY=
+# Get at: mineru.net → sign up → API Management
 
-pip install -r requirements.txt
-python -m src.agent
+FIREBASE_PROJECT_ID=
+FIREBASE_CLIENT_EMAIL=
+FIREBASE_PRIVATE_KEY=
+FIREBASE_STORAGE_BUCKET=
+# Get at: Firebase Console → Project Settings → Service Accounts → Generate new private key
 ```
 
-## Weekly Journal
+`AI_LOG_SERVER` and `AI_LOG_API_KEY` are pre-filled in `.env.example`.
 
-Update **[JOURNAL.md](./JOURNAL.md)** at the end of every week to document your product-building journey:
+### 4. Run
 
-- Features shipped
-- AI tools used and how they helped
-- Hardest problem of the week and how you solved it
-- What you'd do differently
-- Plan for next week
+```bash
+npm run dev
+```
 
-> JOURNAL.md **must be updated** before each PR. It is your learning record for the course.
-
-## Worklog
-
-Update **[WORKLOG.md](./WORKLOG.md)** whenever your team makes a technical decision or changes direction:
-
-- **Technical decisions** — why did you choose this approach over alternatives?
-- **Task assignments** — who does what, by when
-- **Brainstorming** — options considered, pros/cons, conclusion
-- **Important bugs** — root cause and fix
-
-See each file for the format and examples.
+Open http://localhost:3000. Upload a PDF with clear headings (e.g. lecture slides) to test.
 
 ## AI Logging
 
-Prompts and tool calls are **automatically logged** when you use any supported AI tool (Claude Code, Cursor, Codex, Gemini, Copilot). No manual steps needed after running `setup_hooks.sh`.
+Prompts and tool calls are automatically logged when you use any supported AI tool (Claude Code, Cursor, Codex, Gemini, Copilot). No manual steps needed after running `setup_hooks.sh`. Logs go to `.ai-log/session.jsonl` and are submitted on `git push`.
 
-See [AGENTS.md](./AGENTS.md) for details.
+## Docs
+
+- [ARCHITECTURE.md](ARCHITECTURE.md) — Clean Architecture guide (ports, use cases, adapters, DI, testing)
+- [WORKLOG.md](WORKLOG.md) — ADRs, sprint log, technical decisions
+- [JOURNAL.md](JOURNAL.md) — Weekly learning journal

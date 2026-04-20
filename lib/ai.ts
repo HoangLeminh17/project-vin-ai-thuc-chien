@@ -14,7 +14,7 @@ export async function generateCourse(parsedContent: string): Promise<{ course: C
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       temperature: 0.2,
       max_tokens: 16000,
       response_format: { type: 'json_object' },
@@ -67,7 +67,7 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
     lessons: chapter.lessons.map(l => ({
       title: l.title,
       key_concept: l.key_concept,
-      source_text: l.source_text,
+      outline: l.outline,
     })),
   }
   console.log('[Stage2 Input]', JSON.stringify(chapterInput, null, 2))
@@ -80,7 +80,7 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
       'Authorization': `Bearer ${OPENAI_API_KEY}`,
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       temperature: 0.3,
       response_format: { type: 'json_object' },
       messages: [
@@ -100,11 +100,27 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
   const text = data.choices?.[0]?.message?.content
   if (!text) throw new Error('OpenAI returned no content for chapter content')
 
-  const content: ChapterContent = JSON.parse(text)
+  const raw: ChapterContent = JSON.parse(text)
 
-  if (!content.lessons || !content.quiz) {
+  if (!Array.isArray(raw.lessons) || !raw.quiz) {
     throw new Error(`Invalid ChapterContent structure for chapter: ${chapter.title}`)
   }
+
+  // Ensure each lesson has a concept; apply fallback if the model omitted it
+  const lessons = raw.lessons.map((l, i) => {
+    if (l.concept) return l
+    const src = chapter.lessons[i]
+    return {
+      ...l,
+      concept: {
+        question: `${src?.title ?? l.lesson_title} là gì?`,
+        answer: src?.outline.slice(0, 2).join('. ') ?? '',
+        followUps: [] as string[],
+      },
+    }
+  })
+
+  const content: ChapterContent = { ...raw, lessons }
 
   console.log(`[generate-content] Chapter done: ${chapter.title}`)
   return content
