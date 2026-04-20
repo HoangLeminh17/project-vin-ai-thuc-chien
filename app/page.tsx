@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 
 import { Course, Chapter, Lesson, CourseContent, ChapterContent, LessonContent, ConceptCard, QuizQuestion } from '@/core/models/learning-model'
+import type { AiProvider } from '@/lib/ai-provider'
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
@@ -185,6 +186,7 @@ function QuizView({ quiz }: { quiz: ChapterContent['quiz'] }) {
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const [provider, setProvider] = useState<AiProvider>('openai')
   const [file, setFile] = useState<File | null>(null)
   const [status, setStatus] = useState<'idle' | 'parsing' | 'generating' | 'done'>('idle')
   const [course, setCourse] = useState<Course | null>(null)
@@ -271,7 +273,7 @@ export default function Home() {
     setStatus('generating')
     let resolvedCourse: Course | null = null
     try {
-      const body = { markdown }
+      const body = { markdown, provider }
       const res = await fetch('/api/generate-course', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -302,7 +304,7 @@ export default function Home() {
     fetch('/api/generate-content', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ course: resolvedCourse }),
+      body: JSON.stringify({ course: resolvedCourse, provider }),
     })
       .then(r => r.json())
       .then(d => {
@@ -436,6 +438,21 @@ export default function Home() {
             ) : (
               <p className="text-gray-500">Kéo thả file PDF vào đây hoặc click để chọn</p>
             )}
+          </div>
+
+          <div className="space-y-2">
+            <label htmlFor="ai-provider" className="block text-sm font-medium text-gray-700">
+              AI provider
+            </label>
+            <select
+              id="ai-provider"
+              value={provider}
+              onChange={(e) => setProvider(e.target.value as AiProvider)}
+              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 outline-none transition-colors focus:border-blue-500"
+            >
+              <option value="openai">OpenAI</option>
+              <option value="gemini">Gemini</option>
+            </select>
           </div>
 
           {error && <p className="text-red-600 text-sm">{error}</p>}

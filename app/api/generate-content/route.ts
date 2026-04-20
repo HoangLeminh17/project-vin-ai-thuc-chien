@@ -3,16 +3,19 @@ import { generateChapterContent } from '@/lib/ai'
 import type { Course, ChapterContent, CourseContent } from '@/lib/types'
 import { logger } from '@/infrastructure/registry'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
+import { resolveAiProvider } from '@/lib/ai-provider'
 
 const handler = async (req: NextRequest) => {
-  const { course } = (await req.json()) as { course?: Course }
+  const { course, provider } = (await req.json()) as { course?: Course; provider?: string }
   if (!course?.chapters?.length) {
     return NextResponse.json({ success: false, error: 'Missing course' }, { status: 400 })
   }
 
+  const resolvedProvider = resolveAiProvider(provider)
+
   // Generate all chapters in parallel; skip failures instead of crashing
   const results = await Promise.allSettled(
-    course.chapters.map(ch => generateChapterContent(ch))
+    course.chapters.map(ch => generateChapterContent(ch, resolvedProvider))
   )
 
   const chapters: ChapterContent[] = results.map((result, i) => {

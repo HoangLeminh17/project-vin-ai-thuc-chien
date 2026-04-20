@@ -8,10 +8,6 @@ import path from 'path';
 const baseUrl = process.env.PDF_MINERU_BASE_URL;
 const apiKey = process.env.PDF_MINERU_API_KEY;
 
-if (!baseUrl || !apiKey) {
-  console.warn('[DI-Parser] Warning: MinerU configuration is incomplete');
-}
-
 export const parserAdapter = new MineruParserAdapter({
   baseUrl: baseUrl || '',
   apiKey: apiKey || '',
