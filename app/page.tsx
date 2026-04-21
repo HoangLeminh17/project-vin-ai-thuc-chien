@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
+import { useCourses } from '@/lib/hooks/use-courses'
 
 import { Course, Chapter, Lesson, CourseContent, ChapterContent, LessonContent, ConceptCard, QuizQuestion } from '@/core/models/learning-model'
 
@@ -201,8 +203,11 @@ export default function Home() {
   const [rawCourseJson, setRawCourseJson] = useState('')
   const [tokens, setTokens] = useState<{ promptTokens: number; completionTokens: number; totalTokens: number } | null>(null)
   const [debugOpen, setDebugOpen] = useState<'md' | 'json' | null>(null)
+  const [savedCourseId, setSavedCourseId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
   const { user, loading, login, logout } = useAuth()
+  const { saveCourse } = useCourses(user?.uid ?? null)
 
   const reset = useCallback(() => {
     setFile(null)
@@ -220,6 +225,7 @@ export default function Home() {
     setRawCourseJson('')
     setTokens(null)
     setDebugOpen(null)
+    setSavedCourseId(null)
     if (inputRef.current) inputRef.current.value = ''
   }, [])
 
@@ -305,11 +311,14 @@ export default function Home() {
       body: JSON.stringify({ course: resolvedCourse }),
     })
       .then(r => r.json())
-      .then(d => {
-        if (d.success) {
-          setCourseContent(d.courseContent)
-        } else {
-          setStage2Error(d.error || 'Stage 2 failed')
+      .then(async d => {
+        const content = d.success ? d.courseContent : null
+        if (!d.success) setStage2Error(d.error || 'Stage 2 failed')
+        else setCourseContent(content)
+
+        if (user && resolvedCourse) {
+          const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content)
+          if (saved) setSavedCourseId(saved.id)
         }
       })
       .catch(e => setStage2Error(e instanceof Error ? e.message : 'Network error'))
@@ -399,7 +408,7 @@ export default function Home() {
              <h1 className="text-2xl font-bold text-gray-900">PDF Course Builder</h1>
              {user ? (
                <div className="flex items-center gap-2">
-                 <span className="text-xs text-green-600 font-medium bg-green-50 px-2 py-1 rounded-full border border-green-200">Đã đăng nhập</span>
+                 <button onClick={() => router.push('/dashboard')} className="text-sm text-blue-600 hover:underline font-medium">My Courses</button>
                  {user.photoURL && <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full border" />}
                </div>
              ) : (
@@ -527,6 +536,20 @@ export default function Home() {
             </button>
           )}
           
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            My Courses
+          </button>
+          {savedCourseId && (
+            <button
+              onClick={() => router.push(`/course/${savedCourseId}`)}
+              className="shrink-0 px-4 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+            >
+              View saved ↗
+            </button>
+          )}
           <button
             onClick={reset}
             className="shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
