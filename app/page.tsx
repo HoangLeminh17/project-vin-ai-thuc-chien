@@ -347,12 +347,12 @@ export default function Home() {
               Step 1: PDF &rarr; Structured JSON (MinerU)
             </span>
             <span className="text-yellow-600 text-xs">
-              {contentList !== null ? contentListStats(contentList) : (rawMarkdown ? `${rawMarkdown.length.toLocaleString()} chars` : 'pending...')}
+              {rawMarkdown ? `${rawMarkdown.length.toLocaleString()} chars` : 'pending...'}
             </span>
           </button>
           {debugOpen === 'md' && (
             <pre className="px-4 py-3 bg-yellow-50/50 text-xs text-gray-700 overflow-auto max-h-96 whitespace-pre-wrap border-t border-yellow-200">
-              {contentList !== null ? JSON.stringify(contentList, null, 2) : (rawMarkdown || '(empty)')}
+              {rawMarkdown || '(empty)'}
             </pre>
           )}
         </div>

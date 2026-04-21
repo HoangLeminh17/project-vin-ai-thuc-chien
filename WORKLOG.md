@@ -16,6 +16,36 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Cấu hình CI/CD Pipeline (GitHub Actions) | Lê Kim Dũng | 18/04 | ✅ |
 | Implement Authentication (Firebase + Session Cookie) | Lê Kim Dũng | 18/04 | ✅ |
 | API Routes: /login, /logout, /me | Lê Kim Dũng | 18/04 | ✅ |
+| Switch parser source: full.md → content_list.json | Nguyễn Bình Thành | 19/04 | ✅ |
+
+---
+
+### [ADR-15] Parser classifier + dedupe cho content_list.json — 19/04/2026
+
+**Người làm:** Nguyễn Bình Thành
+
+**Bối cảnh:** `contentListToMarkdown()` naive emit `##` cho mọi `text_level=1`, tạo ra 72 marker trong file ĐTĐ (33 Roman numeral lặp, nhiều noise decorative như "INSULIN REGULAR", "THANK YOU"). Kết quả: Stage 1 bị flood context → drop nhóm Glinid, Amylin, tạo phantom chapter "Introduction", output tiếng Anh dù source tiếng Việt.
+
+**Các lựa chọn đã xem xét:**
+- **Giữ naive (emit ## cho mọi text_level=1):** Đơn giản nhưng flood LLM, mất thông tin thực sự.
+- **Chỉ dedupe, không classifier:** Bớt lặp nhưng vẫn emit ## cho "INSULIN REGULAR" và noise decorative.
+- **Classifier + dedupe (lựa chọn chọn):** Regex phân loại `##` (Roman numeral chương) vs `###` (Roman.digit hoặc numeric sub-section) vs plain text. Seen-set dedupe theo `text.trim()` — lần đầu emit marker, lần sau giữ plain text.
+
+**Quyết định:** Regex theo thứ tự ưu tiên:
+1. `/^(I{1,3}|IV|V|VI{0,3}|IX|X)\.\s+\S/` → `##` chapter
+2. `/^(I{1,3}|IV|V|VI{0,3}|IX|X)\.\d+\.?\s+\S/` → `###` lesson
+3. `/^\d+\.(\d+\.)?\s+\S/` → `###` lesson
+4. Không match → plain text (bỏ marker)
+
+Dedupe: `Set<string>` theo `text.trim()`, áp dụng cho cả `##` và `###`.
+
+Bug fix kèm theo: `item.img_path` đã có prefix `images/` sẵn → bỏ prefix thừa trong template.
+
+**Hệ quả:**
+- (+) 72 marker → 8 `##` + 20 `###` cho file ĐTĐ. Glinid và Amylin không còn bị mất.
+- (+) Logic tách thành `content-list-converter.ts` — có unit test với fixture thật (15 test cases).
+- (+) Prompt PLANNER thêm 4 rule: ngôn ngữ, `##` = chapter boundary, `###` = lesson boundary, table expansion rule.
+- (-) Regex phụ thuộc vào convention đánh số La Mã của tài liệu y khoa Việt Nam — tài liệu không theo convention này cần điều chỉnh regex.
 
 ---
 

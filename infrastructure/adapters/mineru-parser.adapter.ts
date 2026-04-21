@@ -1,8 +1,9 @@
-import { IDocumentParser } from '@/core/ports/parser.port';
+import { IDocumentParser, ParseResult } from '@/core/ports/parser.port';
 import JSZip from 'jszip';
 import fs from 'fs/promises';
 import path from 'path';
 import { InfrastructureError } from '@/core/errors/domain-error'
+import { contentListToMarkdown } from './content-list-converter'
 
 export interface MineruConfig {
   baseUrl: string
@@ -58,7 +59,7 @@ export class MineruParserAdapter implements IDocumentParser {
     return taskId;
   }
 
-  private async pollAndExtract(taskId: string, safeName: string, timeoutMs = 300_000, intervalMs = 3_000): Promise<string> {
+  private async pollAndExtract(taskId: string, safeName: string, timeoutMs = 300_000, intervalMs = 3_000): Promise<ParseResult> {
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {
@@ -69,7 +70,7 @@ export class MineruParserAdapter implements IDocumentParser {
       if (state === 'done') {
         const zipUrl = data.data?.full_zip_url;
         if (!zipUrl) throw new InfrastructureError('MinerU: task done but no full_zip_url');
-        return this.downloadAndSave(zipUrl, safeName);
+        return await this.downloadAndSave(zipUrl, safeName);
       }
 
       if (state === 'failed') {
@@ -82,7 +83,7 @@ export class MineruParserAdapter implements IDocumentParser {
     throw new InfrastructureError(`MinerU task ${taskId} timed out after ${timeoutMs / 1000}s`);
   }
 
-  private async downloadAndSave(zipUrl: string, safeName: string): Promise<string> {
+  private async downloadAndSave(zipUrl: string, safeName: string): Promise<ParseResult> {
     const res = await fetch(zipUrl);
     if (!res.ok) throw new InfrastructureError(`Failed to download zip (${res.status})`);
 
@@ -92,6 +93,7 @@ export class MineruParserAdapter implements IDocumentParser {
     const outDir = path.join(this.outputDir, safeName.replace(/\.pdf$/i, ''));
     await fs.mkdir(outDir, { recursive: true });
 
+    let contentList: any[] = [];
     let markdown = '';
 
     for (const [zipPath, entry] of Object.entries(zip.files)) {
@@ -99,21 +101,29 @@ export class MineruParserAdapter implements IDocumentParser {
       const dest = path.join(outDir, zipPath);
       await fs.mkdir(path.dirname(dest), { recursive: true });
 
-      if (zipPath.endsWith('full.md')) {
-        markdown = await entry.async('string');
-        await fs.writeFile(dest, markdown, 'utf-8');
-      } else {
-        const data = await entry.async('nodebuffer');
-        await fs.writeFile(dest, data);
+      const data = zipPath.endsWith('.md') || zipPath.endsWith('.json')
+        ? await entry.async('string')
+        : await entry.async('nodebuffer');
+
+      await fs.writeFile(dest, data, typeof data === 'string' ? 'utf-8' : undefined);
+
+      if (zipPath.endsWith('content_list.json') || zipPath.endsWith('_content_list_v2.json')) {
+        try {
+          contentList = JSON.parse(data as string);
+          markdown = contentListToMarkdown(contentList);
+          await fs.writeFile(path.join(outDir, 'content_list_parsed.md'), markdown, 'utf-8');
+        } catch {
+          console.warn(`[parse-pdf] Failed to parse content_list JSON from ${zipPath}`);
+        }
       }
     }
 
-    if (!markdown) throw new InfrastructureError('full.md not found in zip archive');
+    if (!markdown) throw new InfrastructureError('content_list.json not found or empty in zip archive');
     console.log(`[parse-pdf] Saved to ${outDir}`);
-    return markdown;
+    return { markdown, contentList };
   }
 
-  async extractMarkdown(fileUrl: string, safeName: string): Promise<string> {
+  async extractMarkdown(fileUrl: string, safeName: string): Promise<ParseResult> {
     const taskId = await this.submitExtractTask(fileUrl);
     return await this.pollAndExtract(taskId, safeName);
   }
