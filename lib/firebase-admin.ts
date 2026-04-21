@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert, type App } from 'firebase-admin/app'
 import { getStorage } from 'firebase-admin/storage'
 import { getAuth } from 'firebase-admin/auth'
+import { getFirestore } from 'firebase-admin/firestore'
 
 function getApp(): App {
   if (getApps().length > 0) return getApps()[0]
@@ -26,4 +27,8 @@ export function getBucket() {
 
 export function getFirebaseAdminAuth() {
   return getAuth(getApp())
+}
+
+export function getFirebaseAdminFirestore() {
+  return getFirestore(getApp())
 }
