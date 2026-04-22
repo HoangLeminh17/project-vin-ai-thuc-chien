@@ -3,20 +3,14 @@
 import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
+import { SRSStatsWidget, Spinner, FlashFactGallery } from '@/app/components'
 import { useCourses } from '@/lib/hooks/use-courses'
 
 import { Course, Chapter, Lesson, CourseContent, ChapterContent, LessonContent, ConceptCard, QuizQuestion } from '@/core/models/learning-model'
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
 
-function Spinner() {
-  return (
-    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-    </svg>
-  )
-}
+// Component Spinner đã được chuyển ra tệp riêng
 
 
 function ConceptCardView({ concept, index, total }: { concept: ConceptCard; index: number; total: number }) {
@@ -109,7 +103,21 @@ function ConceptCardView({ concept, index, total }: { concept: ConceptCard; inde
               return (
                 <button
                   key={label}
-                  onClick={() => console.log('[anki]', label)}
+                  onClick={async () => {
+                    console.log('[anki]', label)
+                    const cardId = `${concept.question.substring(0, 20)}-${index}` // Simple stable ID for demo
+                    await fetch('/api/progress/review', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        cardId,
+                        rating: i as 0 | 1 | 2 | 3,
+                        question: concept.question,
+                        answer: concept.answer
+                      })
+                    })
+                    alert(`Đã thêm vào lộ trình ôn tập: ${label}`)
+                  }}
                   className={`flex flex-col items-center py-2 rounded-lg border text-xs font-medium transition-colors ${colors}`}
                 >
                   {label}
@@ -190,13 +198,14 @@ export default function Home() {
   const [file, setFile] = useState<File | null>(null)
   const [status, setStatus] = useState<'idle' | 'parsing' | 'generating' | 'done'>('idle')
   const [course, setCourse] = useState<Course | null>(null)
-  const [courseContent, setCourseContent] = useState<CourseContent | null>(null)
-  const [stage2Loading, setStage2Loading] = useState(false)
+  const [courseContentMap, setCourseContentMap] = useState<Record<number, ChapterContent>>({})
+  const [stage2Loading, setStage2Loading] = useState<Record<number, boolean>>({})
   const [stage2Error, setStage2Error] = useState('')
   const [error, setError] = useState('')
   const [openChapter, setOpenChapter] = useState<number | null>(null)
   const [openLesson, setOpenLesson] = useState<{ ci: number; li: number } | null>(null)
   const [quizChapter, setQuizChapter] = useState<number | null>(null)
+  const [currentHash, setCurrentHash] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [rawMarkdown, setRawMarkdown] = useState('')
   const [contentList, setContentList] = useState<unknown[] | null>(null)
@@ -213,8 +222,8 @@ export default function Home() {
     setFile(null)
     setStatus('idle')
     setCourse(null)
-    setCourseContent(null)
-    setStage2Loading(false)
+    setCourseContentMap({})
+    setStage2Loading({})
     setStage2Error('')
     setError('')
     setOpenChapter(null)
@@ -246,7 +255,7 @@ export default function Home() {
     if (!file) return
     setError('')
     setCourse(null)
-    setCourseContent(null)
+    setCourseContentMap({})
 
     // Step 1: Parse PDF
     setStatus('parsing')
@@ -276,6 +285,7 @@ export default function Home() {
     // Step 2 (Stage 1): Generate course outline
     setStatus('generating')
     let resolvedCourse: Course | null = null
+    let hash = ''
     try {
       const body = { markdown }
       const res = await fetch('/api/generate-course', {
@@ -290,39 +300,87 @@ export default function Home() {
         return
       }
       resolvedCourse = data.course
+      hash = data.hash
+      setCurrentHash(hash || '')
       setCourse(data.course)
       setOpenChapter(0)
       setRawCourseJson(JSON.stringify(data.course, null, 2))
       if (data.tokens) setTokens(data.tokens)
       setStatus('done')
+
+      // If content is already in response (from cache) and complete, load it instantly
+      if (resolvedCourse && data.courseContent && data.fromCache && data.courseContent.chapters.length === resolvedCourse.chapters.length) {
+        const contentMap: Record<number, ChapterContent> = {}
+        data.courseContent.chapters.forEach((ch: ChapterContent, i: number) => {
+          contentMap[i] = ch
+        })
+        setCourseContentMap(contentMap)
+        if (!openLesson) setOpenLesson({ ci: 0, li: 0 })
+
+        // Save to user courses in background
+        if (user && resolvedCourse) {
+          saveCourse(resolvedCourse.title, resolvedCourse, data.courseContent).then(saved => {
+            if (saved) setSavedCourseId(saved.id)
+          })
+        }
+        return 
+      }
+
+      // Step 3 (Stage 2): Generate chapters
+      if (!resolvedCourse) return
+
+      const fromCache = data.fromCache
+      const chapters = resolvedCourse.chapters.map((_, i) => i)
+
+      const fetchChapter = async (i: number): Promise<ChapterContent | null> => {
+        setStage2Loading(prev => ({ ...prev, [i]: true }))
+        try {
+          const res = await fetch('/api/generate-content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ course: resolvedCourse, chapterIndex: i, hash: hash || currentHash }),
+          })
+          if (res.ok) {
+            const d = await res.json()
+            if (d.success) {
+              setCourseContentMap(prev => ({ ...prev, [i]: d.chapter }))
+              if (i === 0 && !openLesson) {
+                setOpenLesson({ ci: 0, li: 0 })
+              }
+              return d.chapter
+            }
+          }
+        } catch (e) {
+          console.error(`Fetch chapter ${i} failed`, e)
+        } finally {
+          setStage2Loading(prev => ({ ...prev, [i]: false }))
+        }
+        return null
+      }
+
+      let allChapterContents: (ChapterContent | null)[] = []
+      if (fromCache) {
+        allChapterContents = await Promise.all(chapters.map(i => fetchChapter(i)))
+      } else {
+        for (const i of chapters) {
+          const ch = await fetchChapter(i)
+          allChapterContents.push(ch)
+        }
+      }
+
+      // Step 4: Save course to DB
+      if (user && resolvedCourse) {
+        const content: CourseContent = { 
+          chapters: allChapterContents.filter(Boolean) as ChapterContent[] 
+        }
+        const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content)
+        if (saved) setSavedCourseId(saved.id)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error')
       setStatus('idle')
       return
     }
-
-    // Step 3 (Stage 2): Generate slides + quiz in background (fire-and-forget)
-    if (!resolvedCourse) return
-    setStage2Loading(true)
-    setStage2Error('')
-    fetch('/api/generate-content', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ course: resolvedCourse }),
-    })
-      .then(r => r.json())
-      .then(async d => {
-        const content = d.success ? d.courseContent : null
-        if (!d.success) setStage2Error(d.error || 'Stage 2 failed')
-        else setCourseContent(content)
-
-        if (user && resolvedCourse) {
-          const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content)
-          if (saved) setSavedCourseId(saved.id)
-        }
-      })
-      .catch(e => setStage2Error(e instanceof Error ? e.message : 'Network error'))
-      .finally(() => setStage2Loading(false))
   }
 
   const hasDebugData = rawMarkdown.length > 0 || rawCourseJson.length > 0 || contentList !== null
@@ -405,25 +463,39 @@ export default function Home() {
       <main className="min-h-screen bg-gray-50 p-6">
         <div className="w-full max-w-lg mx-auto space-y-6 pt-20">
           <div className="flex justify-between items-center mb-4">
-             <h1 className="text-2xl font-bold text-gray-900">PDF Course Builder</h1>
-             {user ? (
-               <div className="flex items-center gap-2">
-                 <button onClick={() => router.push('/dashboard')} className="text-sm text-blue-600 hover:underline font-medium">My Courses</button>
-                 {user.photoURL && <img src={user.photoURL} alt="" className="w-6 h-6 rounded-full border" />}
-               </div>
-             ) : (
-               <button onClick={login} className="text-sm text-blue-600 hover:underline">Đăng nhập ngay</button>
-             )}
+            <h1 className="text-2xl font-bold text-gray-900">PDF Course Builder</h1>
+            {user ? (
+              <div className="flex items-center gap-3">
+                <button 
+                  onClick={() => router.push('/dashboard')} 
+                  className="text-sm text-blue-600 hover:bg-blue-50 px-3 py-1 rounded-full transition-colors font-medium border border-blue-100"
+                >
+                  My Courses
+                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full border border-green-200">Online</span>
+                  {user.photoURL && <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full border shadow-sm" />}
+                </div>
+              </div>
+            ) : (
+              <button 
+                onClick={login} 
+                className="px-4 py-1.5 text-sm font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 shadow-sm transition-all"
+              >
+                Đăng nhập
+              </button>
+            )}
           </div>
+
+          {user && <SRSStatsWidget />}
 
           <div
             onClick={() => user ? inputRef.current?.click() : login()}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
-              dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white hover:border-gray-400'
-            }`}
+            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragOver ? 'border-blue-500 bg-blue-50' : 'border-gray-300 bg-white hover:border-gray-400'
+              }`}
           >
             <input
               ref={inputRef}
@@ -452,9 +524,8 @@ export default function Home() {
           <button
             onClick={user ? handleStart : login}
             disabled={!!(user && !file)}
-            className={`w-full py-3 text-white font-medium rounded-lg transition-colors ${
-              !user ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-40'
-            }`}
+            className={`w-full py-3 text-white font-medium rounded-lg transition-colors ${!user ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-600 hover:bg-blue-700 disabled:opacity-40'
+              }`}
           >
             {!user ? 'Đăng nhập để bắt đầu' : 'Tạo course'}
           </button>
@@ -468,12 +539,21 @@ export default function Home() {
   // ── loading ───────────────────────────────────────────────────────────────────
   if (status === 'parsing' || status === 'generating') {
     return (
-      <main className="min-h-screen bg-gray-50 p-6">
-        <div className="flex flex-col items-center justify-center gap-4 pt-20">
-          <Spinner />
-          <p className="text-gray-600">
-            {status === 'parsing' ? 'Đang phân tích tài liệu PDF...' : 'Đang tạo cấu trúc course...'}
-          </p>
+      <main className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
+        <div className="w-full max-w-2xl space-y-12">
+          <div className="flex flex-col items-center justify-center gap-6">
+            <div className="p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
+              <Spinner />
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-xl font-semibold text-gray-900">
+                {status === 'parsing' ? 'Đang đọc và phân tích tài liệu PDF...' : 'Đang thiết kế lộ trình khóa học...'}
+              </p>
+              <p className="text-sm text-gray-400">Quá trình này có thể mất tới 1 phút, vui lòng đợi nhé.</p>
+            </div>
+          </div>
+
+          <FlashFactGallery markdown={rawMarkdown} />
         </div>
       </main>
     )
@@ -481,12 +561,12 @@ export default function Home() {
 
   // ── done: sidebar + right panel ───────────────────────────────────────────────
   const selectedLesson = openLesson ? course?.chapters[openLesson.ci]?.lessons[openLesson.li] : null
-  const lessonContent = openLesson && courseContent
-    ? courseContent.chapters[openLesson.ci]?.lessons[openLesson.li]
+  const lessonContent = openLesson
+    ? courseContentMap[openLesson.ci]?.lessons[openLesson.li]
     : null
   const chapterLessonCount = openLesson ? (course?.chapters[openLesson.ci]?.lessons.length ?? 1) : 1
-  const quizContent = quizChapter !== null && courseContent
-    ? courseContent.chapters[quizChapter]?.quiz
+  const quizContent = quizChapter !== null
+    ? courseContentMap[quizChapter]?.quiz
     : null
   const isLessonView = openLesson !== null && quizChapter === null
 
@@ -496,23 +576,20 @@ export default function Home() {
       <div className="shrink-0 bg-white border-b px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <h1 className="font-semibold text-gray-900 truncate">{course?.title || 'Course Structure'}</h1>
-          {stage2Loading && (
+          {Object.values(stage2Loading).some(Boolean) && (
             <span className="flex items-center gap-1.5 text-xs text-blue-500 shrink-0">
               <Spinner />
-              Generating content...
+              Đang soạn thảo nội dung...
             </span>
           )}
-          {!stage2Loading && stage2Error && (
-            <span className="text-xs text-red-500 shrink-0">Stage 2 failed: {stage2Error}</span>
-          )}
         </div>
-        
+
         <div className="flex items-center gap-4">
           {user ? (
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-gray-900">{user.displayName || user.email}</p>
-                <button 
+                <button
                   onClick={logout}
                   className="text-xs text-gray-500 hover:text-red-600 transition-colors"
                 >
@@ -520,9 +597,9 @@ export default function Home() {
                 </button>
               </div>
               {user.photoURL && (
-                <img 
-                  src={user.photoURL} 
-                  alt="Profile" 
+                <img
+                  src={user.photoURL}
+                  alt="Profile"
                   className="h-8 w-8 rounded-full border border-gray-200"
                 />
               )}
@@ -535,7 +612,7 @@ export default function Home() {
               Đăng nhập
             </button>
           )}
-          
+
           <button
             onClick={() => router.push('/dashboard')}
             className="shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
@@ -573,10 +650,13 @@ export default function Home() {
                     onClick={() => setOpenChapter(openChapter === ci ? null : ci)}
                     className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-gray-50 transition-colors"
                   >
-                    <span className="text-sm font-semibold text-gray-700 leading-snug pr-2">
-                      <span className="text-blue-500 mr-1">Ch {ci + 1}.</span>
-                      {ch.title}
-                    </span>
+                    <div className="flex items-center min-w-0 pr-2">
+                      <span className="text-blue-500 mr-2 shrink-0 font-mono text-xs">{ci + 1}.</span>
+                      <span className={`text-sm font-semibold truncate ${courseContentMap[ci] ? 'text-gray-700' : 'text-gray-400'}`}>
+                        {ch.title}
+                      </span>
+                      {stage2Loading[ci] && <div className="ml-2 mt-0.5"><Spinner /></div>}
+                    </div>
                     <svg
                       className={`h-3.5 w-3.5 shrink-0 text-gray-400 transition-transform ${openChapter === ci ? 'rotate-180' : ''}`}
                       fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -593,11 +673,10 @@ export default function Home() {
                           <button
                             key={li}
                             onClick={() => { setOpenLesson({ ci, li }); setQuizChapter(null) }}
-                            className={`w-full text-left px-5 py-2 text-sm transition-colors border-r-2 ${
-                              active
-                                ? 'bg-blue-50 text-blue-700 border-blue-500'
-                                : 'text-gray-600 hover:bg-gray-50 border-transparent'
-                            }`}
+                            className={`w-full text-left px-5 py-2 text-sm transition-colors border-r-2 ${active
+                              ? 'bg-blue-50 text-blue-700 border-blue-500'
+                              : 'text-gray-600 hover:bg-gray-50 border-transparent'
+                              }`}
                           >
                             {lesson.title}
                           </button>
@@ -606,11 +685,10 @@ export default function Home() {
                       {/* Quiz entry */}
                       <button
                         onClick={() => { setQuizChapter(ci); setOpenLesson(null) }}
-                        className={`w-full text-left px-5 py-2 text-sm font-medium transition-colors border-r-2 ${
-                          quizChapter === ci
-                            ? 'bg-orange-50 text-orange-700 border-orange-400'
-                            : 'text-gray-400 hover:bg-gray-50 border-transparent hover:text-gray-600'
-                        }`}
+                        className={`w-full text-left px-5 py-2 text-sm font-medium transition-colors border-r-2 ${quizChapter === ci
+                          ? 'bg-orange-50 text-orange-700 border-orange-400'
+                          : 'text-gray-400 hover:bg-gray-50 border-transparent hover:text-gray-600'
+                          }`}
                       >
                         Quiz
                       </button>
@@ -636,7 +714,7 @@ export default function Home() {
                 </div>
 
                 {/* Concept card */}
-                {stage2Loading ? (
+                {stage2Loading[openLesson!.ci] ? (
                   <div className="flex items-center gap-2 text-gray-400 text-sm py-4">
                     <Spinner />
                     <span>Generating concept...</span>
@@ -666,7 +744,7 @@ export default function Home() {
 
             {/* Quiz view */}
             {quizChapter !== null && (
-              stage2Loading ? (
+              stage2Loading[quizChapter] ? (
                 <div className="flex items-center justify-center min-h-64 gap-3 text-gray-500">
                   <Spinner />
                   <span className="text-sm">Generating quiz...</span>

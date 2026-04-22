@@ -68,7 +68,24 @@ function ConceptCardView({ concept, index, total }: { concept: ConceptCard; inde
               const sub = ['không nhớ', 'lờ mờ', 'nhớ rồi', 'quá dễ'][i];
               const colors = ['border-red-200 text-red-600 hover:bg-red-50', 'border-orange-200 text-orange-600 hover:bg-orange-50', 'border-green-200 text-green-700 hover:bg-green-50', 'border-blue-200 text-blue-600 hover:bg-blue-50'][i];
               return (
-                <button key={label} className={`flex flex-col items-center py-2 rounded-lg border text-xs font-medium transition-colors ${colors}`}>
+                <button
+                  key={label}
+                  onClick={async () => {
+                    const cardId = `${concept.question.substring(0, 20)}-${index}`;
+                    await fetch('/api/progress/review', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        cardId,
+                        rating: i as 0 | 1 | 2 | 3,
+                        question: concept.question,
+                        answer: concept.answer
+                      })
+                    });
+                    alert(`Đã lưu vào lộ trình ôn tập: ${label}`);
+                  }}
+                  className={`flex flex-col items-center py-2 rounded-lg border text-xs font-medium transition-colors ${colors}`}
+                >
                   {label}
                   <span className="text-[10px] font-normal opacity-70 mt-0.5">{sub}</span>
                 </button>

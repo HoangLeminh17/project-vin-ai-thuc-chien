@@ -1,6 +1,7 @@
 import type { Firestore } from 'firebase-admin/firestore';
 import { ICourseRepository, CreateCourseInput } from '@/core/ports/course-repository.port';
 import { SavedCourse } from '@/core/models/saved-course';
+import { Course, ChapterContent, CourseContent } from '@/core/models/learning-model';
 import { NotFoundError, InfrastructureError, BusinessRuleError } from '@/core/errors/domain-error';
 
 const COLLECTION = 'courses';
@@ -63,5 +64,58 @@ export class FirestoreCourseAdapter implements ICourseRepository {
       if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
       throw new InfrastructureError('Failed to delete course from Firestore', e);
     }
+  }
+
+  // --- Caching Methods (Stage 1 & 2) ---
+
+  async saveCourse(hash: string, course: Course): Promise<void> {
+    await this.db.collection('course_cache').doc(hash).set({
+      ...course,
+      cachedAt: new Date().toISOString(),
+    }, { merge: true });
+  }
+
+  async getCourse(hash: string): Promise<Course | null> {
+    const doc = await this.db.collection('course_cache').doc(hash).get();
+    if (!doc.exists) return null;
+    return doc.data() as Course;
+  }
+
+  async saveChapter(hash: string, chapterIndex: number, content: ChapterContent): Promise<void> {
+    await this.db.collection('course_cache').doc(hash)
+      .collection('chapters').doc(chapterIndex.toString())
+      .set({
+        ...content,
+        cachedAt: new Date().toISOString(),
+      });
+  }
+
+  async getChapter(hash: string, chapterIndex: number): Promise<ChapterContent | null> {
+    const doc = await this.db.collection('course_cache').doc(hash)
+      .collection('chapters').doc(chapterIndex.toString()).get();
+    if (!doc.exists) return null;
+    return doc.data() as ChapterContent;
+  }
+
+  async getFullCachedCourse(hash: string): Promise<{ course: Course; content: CourseContent } | null> {
+    const courseDoc = await this.db.collection('course_cache').doc(hash).get();
+    if (!courseDoc.exists) return null;
+
+    const course = courseDoc.data() as Course;
+    const chaptersSnapshot = await this.db.collection('course_cache').doc(hash)
+      .collection('chapters').get();
+
+    if (chaptersSnapshot.empty) {
+      return { course, content: { chapters: [] } };
+    }
+
+    // Sort by document ID (which is the index string)
+    const chapterDocs = chaptersSnapshot.docs.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+    const chapters = chapterDocs.map(d => d.data() as ChapterContent);
+
+    return {
+      course,
+      content: { chapters }
+    };
   }
 }

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { useCourses } from '@/lib/hooks/use-courses';
 import { SavedCourse } from '@/core/models/saved-course';
+import { SRSStatsWidget } from '@/app/components';
 
 function CourseCard({ course, onDelete }: { course: SavedCourse; onDelete: () => void }) {
   const router = useRouter();
@@ -93,7 +94,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
+        <SRSStatsWidget />
+        
         {loading && (
           <div className="text-center py-16 text-gray-400 text-sm">Đang tải...</div>
         )}

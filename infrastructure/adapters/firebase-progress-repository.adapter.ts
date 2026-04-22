@@ -1,0 +1,82 @@
+import { IProgressRepository } from '@/core/ports/progress-repository.port';
+import { CardProgress } from '@/core/entities/card-progress.entity';
+import { getDb } from '@/lib/firebase-admin';
+
+export class FirebaseProgressRepository implements IProgressRepository {
+  private readonly collectionName = 'user_progress';
+
+  async getByCardId(userId: string, cardId: string): Promise<CardProgress | null> {
+    const snapshot = await getDb()
+      .collection(this.collectionName)
+      .where('userId', '==', userId)
+      .where('cardId', '==', cardId)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) return null;
+
+    const data = snapshot.docs[0].data();
+    return this.mapToEntity(snapshot.docs[0].id, data);
+  }
+
+  async save(progress: CardProgress): Promise<void> {
+    const { id, ...data } = progress;
+    await getDb()
+      .collection(this.collectionName)
+      .doc(id)
+      .set({
+        ...data,
+        nextReviewDate: data.nextReviewDate, // Firestore handles JS Dates
+        lastReviewedAt: data.lastReviewedAt || null,
+        updatedAt: new Date(),
+      }, { merge: true });
+  }
+
+  async getDueCards(userId: string, date: Date): Promise<CardProgress[]> {
+    const snapshot = await getDb()
+      .collection(this.collectionName)
+      .where('userId', '==', userId)
+      .where('nextReviewDate', '<=', date)
+      .orderBy('nextReviewDate', 'asc')
+      .get();
+
+    return snapshot.docs.map(doc => this.mapToEntity(doc.id, doc.data()));
+  }
+
+  async getStats(userId: string): Promise<{ new: number; learning: number; due: number }> {
+    const now = new Date();
+    const snapshot = await getDb()
+      .collection(this.collectionName)
+      .where('userId', '==', userId)
+      .get();
+
+    const stats = { new: 0, learning: 0, due: 0 };
+
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      if (data.status === 'NEW') stats.new++;
+      else if (data.status === 'LEARNING') stats.learning++;
+      
+      const nextReview = data.nextReviewDate.toDate ? data.nextReviewDate.toDate() : new Date(data.nextReviewDate);
+      if (nextReview <= now) stats.due++;
+    });
+
+    return stats;
+  }
+
+  private mapToEntity(id: string, data: any): CardProgress {
+    return {
+      id,
+      cardId: data.cardId,
+      userId: data.userId,
+      interval: data.interval,
+      easeFactor: data.easeFactor,
+      repetitions: data.repetitions,
+      status: data.status,
+      nextReviewDate: data.nextReviewDate.toDate ? data.nextReviewDate.toDate() : new Date(data.nextReviewDate),
+      lastReviewedAt: data.lastReviewedAt?.toDate ? data.lastReviewedAt.toDate() : (data.lastReviewedAt ? new Date(data.lastReviewedAt) : undefined),
+      question: data.question,
+      answer: data.answer,
+    };
+  }
+}

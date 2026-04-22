@@ -6,7 +6,10 @@ const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 
 export type TokenUsage = { promptTokens: number; completionTokens: number; totalTokens: number }
 
-export async function generateCourse(parsedContent: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
+export async function generateCourse(parsedContent: string): Promise<{ 
+  course: Course; 
+  tokens: TokenUsage | null;
+}> {
   const res = await fetch(OPENAI_URL, {
     method: 'POST',
     headers: {
@@ -37,10 +40,7 @@ export async function generateCourse(parsedContent: string): Promise<{ course: C
   const tokens: TokenUsage | null = usage
     ? { promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens }
     : null
-  if (tokens) {
-    console.log(`[generate-course] Tokens — prompt: ${tokens.promptTokens}, completion: ${tokens.completionTokens}, total: ${tokens.totalTokens}`)
-  }
-
+  
   const text = data.choices?.[0]?.message?.content
   if (!text) {
     throw new Error(`OpenAI returned no content: ${JSON.stringify(data)}`)
@@ -56,6 +56,12 @@ export async function generateCourse(parsedContent: string): Promise<{ course: C
   if (!course.chapters || !Array.isArray(course.chapters)) {
     throw new Error(`Invalid course structure: missing chapters array`)
   }
+
+  // Stricter validation
+  course.chapters = course.chapters.map(ch => ({
+    ...ch,
+    lessons: Array.isArray(ch.lessons) ? ch.lessons : []
+  }))
 
   return { course, tokens }
 }
@@ -124,4 +130,41 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
 
   console.log(`[generate-content] Chapter done: ${chapter.title}`)
   return content
+}
+
+export async function extractFacts(content: string): Promise<string[]> {
+  try {
+    const res = await fetch(OPENAI_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        temperature: 0.7,
+        messages: [
+          { role: 'system', content: 'Extract 5 interesting, short, and surprising facts or key takeaways from the provided text. Return them as a JSON object with a "facts" array of strings. Keep each fact under 15 words and in Vietnamese.' },
+          { role: 'user', content: content.slice(0, 5000) }, 
+        ],
+        response_format: { type: 'json_object' },
+      }),
+    })
+    
+    if (!res.ok) throw new Error('AI extraction failed')
+    
+    const data = await res.json()
+    const text = data.choices?.[0]?.message?.content
+    const obj = JSON.parse(text)
+    return obj.facts || []
+  } catch (e) {
+    console.error('[extractFacts] Error:', e)
+    return [
+      "Hệ thống đang chắt lọc những kiến thức tinh túy nhất cho bạn...",
+      "Sắp có một hành trình khám phá tri thức thú vị dành riêng cho bạn!",
+      "Học tập là hạt giống của sự phát triển, hãy cùng kiên nhẫn nhé.",
+      "Mỗi trang sách là một cửa sổ mở ra thế giới mới.",
+      "Kiến thức sẽ giúp bạn đi xa hơn những gì bạn tưởng tượng."
+    ]
+  }
 }

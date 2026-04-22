@@ -32,3 +32,5 @@ export function getFirebaseAdminAuth() {
 export function getFirebaseAdminFirestore() {
   return getFirestore(getApp())
 }
+
+export const getDb = getFirebaseAdminFirestore;
