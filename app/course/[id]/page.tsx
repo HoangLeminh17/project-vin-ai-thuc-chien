@@ -23,6 +23,14 @@ interface FlatCard {
   concept: ConceptCard;
 }
 
+// Stable pseudo source page derived from card id. Placeholder until the
+// generator emits real PDF page numbers. TODO(generator): replace with real value.
+function derivePseudoPage(cardId: string): number {
+  let h = 0;
+  for (let i = 0; i < cardId.length; i++) h = (h * 31 + cardId.charCodeAt(i)) >>> 0;
+  return (h % 148) + 1;
+}
+
 function flattenCards(course: Course, courseContent: { chapters: ChapterContent[] } | null): FlatCard[] {
   if (!courseContent) return [];
   const cards: FlatCard[] = [];
@@ -290,7 +298,12 @@ function QuizView({ quiz, onBack }: { quiz: ChapterContent['quiz']; onBack: () =
 
 // ── Study mode ────────────────────────────────────────────────────────────────
 
-function StudyMode({ cards, filterCi, onExit }: { cards: FlatCard[]; filterCi: number | null; onExit: () => void }) {
+function StudyMode({ cards, filterCi, onExit, onRequestEdit }: {
+  cards: FlatCard[];
+  filterCi: number | null;
+  onExit: () => void;
+  onRequestEdit: (cardId: string, focusAi: boolean) => void;
+}) {
   const subset = filterCi !== null ? cards.filter(c => c.ci === filterCi) : cards;
   const [idx, setIdx] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -320,12 +333,12 @@ function StudyMode({ cards, filterCi, onExit }: { cards: FlatCard[]; filterCi: n
         if (e.key === '3') advance(2);
         if (e.key === '4') advance(3);
       }
-      if (e.key === 'ArrowRight' || e.key === 'j') setIdx(i => Math.min(i + 1, total - 1));
-      if (e.key === 'ArrowLeft'  || e.key === 'k') setIdx(i => Math.max(i - 1, 0));
+      if ((e.key === 'e' || e.key === 'E') && card) onRequestEdit(card.id, false);
+      if ((e.key === 'a' || e.key === 'A') && card) onRequestEdit(card.id, true);
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [revealed, advance, total]);
+  }, [revealed, advance, card, onRequestEdit]);
 
   if (total === 0) return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12 }}>
@@ -357,9 +370,13 @@ function StudyMode({ cards, filterCi, onExit }: { cards: FlatCard[]; filterCi: n
           )}
 
           {/* Meta */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, fontSize: 11 }}>
-            <span className="sy-mono" style={{ color: 'var(--sy-ink-40)' }}>{card.chapterTitle}</span>
-            <span className="sy-mono" style={{ color: 'var(--sy-ink-40)' }}>{card.lessonTitle}</span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, fontSize: 11, gap: 10 }}>
+            <span className="sy-mono" style={{ color: 'var(--sy-ink-40)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {card.chapterTitle} · {card.lessonTitle}
+            </span>
+            <span className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-60)', padding: '3px 8px', borderRadius: 5, background: 'var(--sy-bg-sunken)', flexShrink: 0 }}>
+              📄 tr. {derivePseudoPage(card.id)}
+            </span>
           </div>
 
           {/* Question */}
@@ -405,7 +422,7 @@ function StudyMode({ cards, filterCi, onExit }: { cards: FlatCard[]; filterCi: n
 
       {/* Keyboard hints */}
       <div style={{ padding: '10px 24px', borderTop: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-soft)', fontSize: 11, color: 'var(--sy-ink-40)', display: 'flex', gap: 16, justifyContent: 'center' }}>
-        {[['Space','xem đáp án'], ['1–4','đánh giá'], ['←/→','điều hướng']].map(([k, v]) => (
+        {[['Space','xem đáp án'], ['1–4','đánh giá'], ['E','sửa'], ['A','hỏi AI']].map(([k, v]) => (
           <span key={k}><kbd style={{ fontSize: 10, padding: '1px 5px', background: 'var(--sy-bg-solid)', border: '1px solid var(--sy-ink-10)', borderRadius: 3, fontFamily: 'var(--sy-font-mono)' }}>{k}</kbd> {v}</span>
         ))}
       </div>
@@ -417,12 +434,19 @@ function StudyMode({ cards, filterCi, onExit }: { cards: FlatCard[]; filterCi: n
 
 const AI_CHIPS = ['💡 Giải thích dễ hơn', '📌 Thêm ví dụ', '🎯 Tại sao quan trọng?', '🧪 Tạo câu hỏi biến thể', '🇬🇧 Dịch sang tiếng Anh'] as const;
 
-function EditMode({ cards, filterCi }: { cards: FlatCard[]; filterCi: number | null }) {
+function EditMode({ cards, filterCi, initialCardId, focusAi, onFocusHandled }: {
+  cards: FlatCard[];
+  filterCi: number | null;
+  initialCardId?: string | null;
+  focusAi?: boolean;
+  onFocusHandled?: () => void;
+}) {
   const subset = filterCi !== null ? cards.filter(c => c.ci === filterCi) : cards;
-  const [selectedId, setSelectedId] = useState(subset[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState(initialCardId ?? subset[0]?.id ?? null);
   const [aiInput, setAiInput] = useState('');
   const [aiProposal, setAiProposal] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const aiInputRef = useRef<HTMLInputElement>(null);
 
   const card = subset.find(c => c.id === selectedId) ?? subset[0] ?? null;
 
@@ -432,6 +456,15 @@ function EditMode({ cards, filterCi }: { cards: FlatCard[]; filterCi: number | n
       setSelectedId(subset[0].id);
     }
   }, [filterCi, subset, selectedId]);
+
+  // Honor incoming selection + AI focus requests from Study → Edit handoff
+  useEffect(() => {
+    if (initialCardId) setSelectedId(initialCardId);
+    if (focusAi) {
+      aiInputRef.current?.focus();
+      onFocusHandled?.();
+    }
+  }, [initialCardId, focusAi, onFocusHandled]);
 
   const runAI = (prompt: string) => {
     if (!card || aiLoading) return;
@@ -562,7 +595,7 @@ function EditMode({ cards, filterCi }: { cards: FlatCard[]; filterCi: number | n
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--sy-bg-sunken)', padding: '8px 12px', borderRadius: 8 }}>
               <span style={{ color: 'var(--sy-warm)', fontSize: 13 }}>✨</span>
-              <input value={aiInput} onChange={e => setAiInput(e.target.value)}
+              <input ref={aiInputRef} value={aiInput} onChange={e => setAiInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && aiInput.trim()) { runAI(aiInput); setAiInput(''); } }}
                 placeholder="Hỏi AI bất kỳ điều gì về thẻ này..."
                 style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontFamily: 'var(--sy-font-sans)', color: 'var(--sy-ink)' }} />
@@ -588,6 +621,8 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [filterCi, setFilterCi] = useState<number | null>(null);
   const [openCard, setOpenCard] = useState<FlatCard | null>(null);
   const [quizCi, setQuizCi] = useState<number | null>(null);
+  const [editInitialCardId, setEditInitialCardId] = useState<string | null>(null);
+  const [editFocusAi, setEditFocusAi] = useState(false);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -658,11 +693,26 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
         )}
 
         {mode === 'study' && (
-          <StudyMode cards={cards} filterCi={filterCi} onExit={() => setMode('browse')} />
+          <StudyMode
+            cards={cards}
+            filterCi={filterCi}
+            onExit={() => setMode('browse')}
+            onRequestEdit={(cardId, focusAi) => {
+              setEditInitialCardId(cardId);
+              setEditFocusAi(focusAi);
+              setMode('edit');
+            }}
+          />
         )}
 
         {mode === 'edit' && (
-          <EditMode cards={cards} filterCi={filterCi} />
+          <EditMode
+            cards={cards}
+            filterCi={filterCi}
+            initialCardId={editInitialCardId}
+            focusAi={editFocusAi}
+            onFocusHandled={() => setEditFocusAi(false)}
+          />
         )}
       </div>
 
