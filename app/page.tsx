@@ -37,8 +37,26 @@ function useSRSStats() {
 
 // ── Progress map (per-card SRS state) ────────────────────────────────────────
 
-interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; isDue: boolean }
+interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; lastReviewedAt?: string; isDue: boolean }
 type ProgressMap = Record<string, ProgressMapEntry>
+
+// Buckets each card's lastReviewedAt into a 30-day array, oldest → today.
+// Because we only keep the most recent review per card, each card can
+// contribute at most one day — directionally correct but a lower bound.
+function buildHeatmap(map: ProgressMap, days = 30): number[] {
+  const buckets = Array<number>(days).fill(0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (const entry of Object.values(map)) {
+    if (!entry.lastReviewedAt) continue
+    const d = new Date(entry.lastReviewedAt)
+    d.setHours(0, 0, 0, 0)
+    const diffDays = Math.floor((today.getTime() - d.getTime()) / 86_400_000)
+    if (diffDays < 0 || diffDays >= days) continue
+    buckets[days - 1 - diffDays]++
+  }
+  return buckets
+}
 
 function useProgressMap(userId: string | null) {
   const [map, setMap] = useState<ProgressMap>({})
