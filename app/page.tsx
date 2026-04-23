@@ -463,14 +463,14 @@ export default function Home() {
       <main className="min-h-screen bg-gray-50 p-6">
         <div className="w-full max-w-lg mx-auto space-y-6 pt-20">
           <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">PDF Course Builder</h1>
+            <h1 className="text-2xl font-bold text-gray-900">Synapsy</h1>
             {user ? (
               <div className="flex items-center gap-3">
                 <button 
                   onClick={() => router.push('/dashboard')} 
                   className="text-sm text-blue-600 hover:bg-blue-50 px-3 py-1 rounded-full transition-colors font-medium border border-blue-100"
                 >
-                  My Courses
+                  Thư viện
                 </button>
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-green-600 font-medium bg-green-50 px-2 py-0.5 rounded-full border border-green-200">Online</span>
@@ -617,7 +617,7 @@ export default function Home() {
             onClick={() => router.push('/dashboard')}
             className="shrink-0 px-4 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            My Courses
+            Thư viện
           </button>
           {savedCourseId && (
             <button

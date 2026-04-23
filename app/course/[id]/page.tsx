@@ -197,7 +197,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       <div className="shrink-0 bg-white border-b px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3 min-w-0">
           <button onClick={() => router.push('/dashboard')} className="text-sm text-gray-500 hover:text-gray-800 transition-colors shrink-0">
-            ← Dashboard
+            ← Thư viện
           </button>
           <h1 className="font-semibold text-gray-900 truncate">{course.title}</h1>
         </div>

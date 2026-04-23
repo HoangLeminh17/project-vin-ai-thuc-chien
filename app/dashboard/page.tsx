@@ -82,10 +82,10 @@ export default function DashboardPage() {
       <div className="bg-white border-b px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/')} className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
-            ← Upload mới
+            ← Synapsy
           </button>
           <span className="text-gray-300">|</span>
-          <h1 className="font-semibold text-gray-900">My Courses</h1>
+          <h1 className="font-semibold text-gray-900">Thư viện</h1>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-600">{user.displayName || user.email}</span>
