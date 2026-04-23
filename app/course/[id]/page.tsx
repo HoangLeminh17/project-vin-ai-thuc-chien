@@ -49,6 +49,21 @@ function derivePseudoPage(cardId: string): number {
   return (h % 148) + 1;
 }
 
+// ── MiniRing ─────────────────────────────────────────────────────────────────
+
+function MiniRing({ pct, size = 14, strokeWidth = 2 }: { pct: number; size?: number; strokeWidth?: number }) {
+  const r = (size - strokeWidth) / 2;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
+  return (
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--sy-ink-10)" strokeWidth={strokeWidth} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--sy-accent)" strokeWidth={strokeWidth}
+        strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{ transition: 'stroke-dashoffset .4s ease' }} />
+    </svg>
+  );
+}
+
 // ── StateChip ────────────────────────────────────────────────────────────────
 
 function StateChip({ state }: { state: BrowseStatus }) {
@@ -141,11 +156,13 @@ function ModeSwitcher({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => v
 // ── Chapter rail ──────────────────────────────────────────────────────────────
 
 function ChapterRail({
-  course, filterCi, onFilterCi,
+  course, cards, filterCi, onFilterCi, progressMap,
 }: {
   course: Course;
+  cards: FlatCard[];
   filterCi: number | null;
   onFilterCi: (ci: number | null) => void;
+  progressMap: ProgressMap;
 }) {
   return (
     <aside style={{ width: 240, flexShrink: 0, background: 'var(--sy-bg-sunken)', borderRight: '1px solid var(--sy-ink-10)', overflowY: 'auto', padding: '12px 0' }}>
@@ -161,18 +178,49 @@ function ChapterRail({
       >
         Tất cả chương
       </button>
-      {course.chapters.map((ch, ci) => (
-        <button key={ci} onClick={() => onFilterCi(ci)} style={{
-          width: '100%', textAlign: 'left', padding: '8px 16px', fontSize: 13, cursor: 'pointer', border: 'none',
-          background: filterCi === ci ? 'var(--sy-bg-solid)' : 'transparent',
-          color: filterCi === ci ? 'var(--sy-ink)' : 'var(--sy-ink-60)',
-          borderLeft: `2px solid ${filterCi === ci ? 'var(--sy-warm)' : 'transparent'}`,
-          fontFamily: 'var(--sy-font-serif)',
-        }}>
-          <span style={{ fontSize: 11, color: 'var(--sy-ink-40)', fontFamily: 'var(--sy-font-mono)', marginRight: 6 }}>0{ci + 1}</span>
-          {ch.title}
-        </button>
-      ))}
+      {course.chapters.map((ch, ci) => {
+        const chapterCards = cards.filter(c => c.ci === ci);
+        const chapterDue = chapterCards.filter(c => statusOf(progressMap[c.id]) === 'due').length;
+        const active = filterCi === ci;
+        return (
+          <div key={ci} style={{ marginTop: 6 }}>
+            <button onClick={() => onFilterCi(ci)} style={{
+              width: '100%', textAlign: 'left', padding: '7px 16px 3px', cursor: 'pointer', border: 'none',
+              background: active ? 'var(--sy-bg-solid)' : 'transparent',
+              borderLeft: `2px solid ${active ? 'var(--sy-warm)' : 'transparent'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              fontFamily: 'var(--sy-font-sans)',
+            }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)', flexShrink: 0 }}>0{ci + 1}</span>
+                <span className="sy-serif" style={{ fontSize: 13, fontWeight: 500, color: active ? 'var(--sy-ink)' : 'var(--sy-ink-80)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.title}</span>
+              </span>
+              {chapterDue > 0 && (
+                <span style={{ fontSize: 9, color: 'var(--sy-warm)', background: 'var(--sy-warm-soft)', padding: '1px 6px', borderRadius: 8, fontWeight: 600, flexShrink: 0 }}>{chapterDue}</span>
+              )}
+            </button>
+            {(ch.lessons ?? []).map((lesson, li) => {
+              const lessonCards = chapterCards.filter(c => c.li === li);
+              if (lessonCards.length === 0) return null;
+              const matureCount = lessonCards.filter(c => statusOf(progressMap[c.id]) === 'mature').length;
+              const masteryPct = Math.round((matureCount / lessonCards.length) * 100);
+              return (
+                <div key={li} style={{
+                  padding: '3px 16px 3px 32px',
+                  fontSize: 12, color: 'var(--sy-ink-60)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                }}>
+                  <span className="sy-serif" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>{lesson.title}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                    <MiniRing pct={masteryPct} />
+                    <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)' }}>{lessonCards.length}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
     </aside>
   );
 }
@@ -742,7 +790,13 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Chapter rail (hidden in Study) */}
         {mode !== 'study' && (
-          <ChapterRail course={course} filterCi={filterCi} onFilterCi={ci => { setFilterCi(ci); setQuizCi(null); }} />
+          <ChapterRail
+            course={course}
+            cards={cards}
+            filterCi={filterCi}
+            onFilterCi={ci => { setFilterCi(ci); setQuizCi(null); }}
+            progressMap={progressMap}
+          />
         )}
 
         {/* Content area */}
