@@ -14,7 +14,45 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Spaced Repetition System (SM2 + progress tracking + `/review` page) | Lê Kim Dũng | 22/04 | #22 |
 | Refactor DI: centralize adapter initialization | Lê Kim Dũng | 22/04 | #22 |
 | Course Player (`/course/[id]`) + Instant Load cache | Lê Kim Dũng | 22/04 | #22 |
+| Nâng cấp UI/UX trang Study & Edit (phím tắt, nguồn) | Nguyễn Bình Thành | 23/04 | #26, #27 |
+| Bổ sung Gamification (Streak, Heatmap, Mastery ring) | Nguyễn Bình Thành | 23/04 | #28, #31, #32 |
+| Giao diện Tracker tiến độ AI tạo bài | Nguyễn Bình Thành | 23/04 | #29 |
+| Nâng cấp trang Browse & Refactor Clean Architecture | Nguyễn Bình Thành | 23/04 | #30 |
 
+---
+
+### [ADR-22] Nâng cấp UI/UX & Hệ thống tạo động lực học — 23/04/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #26, #27, #28, #29, #31, #32
+
+**Bối cảnh:** Trải nghiệm học cần mượt mà hơn và tạo được thói quen quay lại hàng ngày cho user. Đã quyết định bỏ "Citation popover" để giữ UI đơn giản.
+
+**Quyết định:**
+- **Thao tác nhanh:** Thêm phím tắt (E/A), dán nhãn nguồn (source badge).
+- **Gamification (Home):** Hiển thị chuỗi ngày học (Streak), biểu đồ nhiệt 30 ngày (Heatmap) và Vòng tròn thành thạo (Mastery ring).
+- **Trải nghiệm chờ:** Thêm thanh tiến trình (Pipeline tracker) lúc đợi AI tạo khóa học.
+
+**Trade-offs:**
+- ✅ Giao diện trực quan, tạo tín hiệu nhắc nhở thói quen tốt.
+- ⚠️ **Chỉ số bị đếm hụt:** Streak và Heatmap hiện tại chỉ lưu lượt học *mới nhất* của thẻ bài. Sẽ cần làm một bảng lưu log riêng sau này để đếm chính xác.
+- ⚠️ Trang nguồn đang dùng mã hash làm tạm, cần đợi generator đánh dấu để thay link thật.
+
+---
+
+### [ADR-21] Nâng cấp luồng Browse & Cấu trúc lại code — 23/04/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #30
+
+**Bối cảnh:** Khi số lượng bài tăng, user cần lọc được thẻ nào đã học/chưa học. Đồng thời logic xử lý dữ liệu đang bị dính chặt vào giao diện.
+
+**Quyết định:**
+- Cải tổ giao diện Browse: thêm thanh điều hướng dọc (rail), chia cột và bộ lọc theo tiến độ.
+- Tách code triệt để theo Clean Architecture (Port/Adapter/Use case/Route) để code UI độc lập với logic lấy data.
+
+**Trade-offs:**
+- ✅ Code sạch sẽ, dễ bảo trì, dễ mở rộng tính năng mới.
+- ⚠️ **Lỗi trùng tiến độ:** Do `cardId` đang được tạo theo ID nội bộ của khóa học, nếu user có 2 khóa trùng ID thẻ thì tiến độ sẽ bị cập nhật chung. (Chấp nhận giới hạn này hiện tại).
+- ⚠️ Bỏ qua các lỗi TypeScript cảnh báo ở các adapter cũ (`firebase-course-repository` và `local-course`).
 ---
 
 ### [ADR-20] Spaced Repetition System — 22/04/2026
