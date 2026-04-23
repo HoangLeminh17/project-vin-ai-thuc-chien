@@ -248,20 +248,31 @@ function BrowseMode({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: 'var(--sy-bg-soft)', position: 'sticky', top: 0, zIndex: 1 }}>
-                {['Câu hỏi', 'Chương', 'Bài học'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '9px 16px', fontSize: 10, fontWeight: 600, color: 'var(--sy-ink-40)', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--sy-ink-10)', fontFamily: 'var(--sy-font-mono)' }}>{h}</th>
+                {[
+                  { label: 'Câu hỏi',    width: undefined },
+                  { label: 'Chương',     width: 140 },
+                  { label: 'Trạng thái', width: 90  },
+                  { label: 'Kế tiếp',    width: 90  },
+                  { label: 'Nguồn',      width: 70  },
+                ].map(h => (
+                  <th key={h.label} style={{ textAlign: 'left', padding: '9px 16px', fontSize: 10, fontWeight: 600, color: 'var(--sy-ink-40)', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--sy-ink-10)', fontFamily: 'var(--sy-font-mono)', width: h.width }}>{h.label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {shown.map((card, i) => (
-                <tr key={card.id} onClick={() => onOpenCard(card)}
-                  style={{ cursor: 'pointer', background: i % 2 ? 'var(--sy-bg-soft)' : 'var(--sy-bg-solid)', borderBottom: '1px solid var(--sy-ink-10)' }}>
-                  <td className="sy-serif" style={{ padding: '12px 16px', color: 'var(--sy-ink)', lineHeight: 1.4, maxWidth: 480 }}>{card.concept.question}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)', whiteSpace: 'nowrap' }}>{card.chapterTitle}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)' }}>{card.lessonTitle}</td>
-                </tr>
-              ))}
+              {shown.map((card, i) => {
+                const entry = progressMap[card.id];
+                return (
+                  <tr key={card.id} onClick={() => onOpenCard(card)}
+                    style={{ cursor: 'pointer', background: i % 2 ? 'var(--sy-bg-soft)' : 'var(--sy-bg-solid)', borderBottom: '1px solid var(--sy-ink-10)' }}>
+                    <td className="sy-serif" style={{ padding: '12px 16px', color: 'var(--sy-ink)', lineHeight: 1.4, maxWidth: 480 }}>{card.concept.question}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)', whiteSpace: 'nowrap' }}>{card.chapterTitle}</td>
+                    <td style={{ padding: '12px 16px' }}><StateChip state={statusOf(entry)} /></td>
+                    <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)' }}>{formatNextReview(entry)}</td>
+                    <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 11, color: 'var(--sy-ink-40)' }}>tr. {derivePseudoPage(card.id)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
