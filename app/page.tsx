@@ -142,6 +142,37 @@ function UploadTile({
   )
 }
 
+// ── Pipeline tracker ──────────────────────────────────────────────────────────
+
+function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal }: {
+  parsed: boolean
+  outlined: boolean
+  chaptersDone: number
+  chaptersTotal: number
+}) {
+  const allChaptersDone = chaptersDone === chaptersTotal
+  const stages: { label: string; state: 'done' | 'active' | 'pending' }[] = [
+    { label: 'Đọc PDF',             state: parsed  ? 'done' : 'active' },
+    { label: 'Phân tích cấu trúc',  state: parsed ? (outlined ? 'done' : 'active') : 'pending' },
+    { label: `Tạo concept cards · ${chaptersDone}/${chaptersTotal}`, state: !outlined ? 'pending' : (allChaptersDone ? 'done' : 'active') },
+  ]
+  return (
+    <div style={{ padding: '14px 16px', background: 'var(--sy-bg-sunken)', borderRadius: 8, fontSize: 11, color: 'var(--sy-ink-60)', lineHeight: 1.55 }}>
+      <p className="sy-mono" style={{ margin: 0, fontWeight: 600, color: 'var(--sy-ink-80)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: 10, marginBottom: 8 }}>Pipeline</p>
+      <div className="sy-mono" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {stages.map(s => (
+          <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {s.state === 'done'    && <span style={{ color: 'var(--sy-accent)' }}>✓</span>}
+            {s.state === 'active'  && <span className="sy-animate-pulse" style={{ color: 'var(--sy-warm)' }}>◉</span>}
+            {s.state === 'pending' && <span style={{ color: 'var(--sy-ink-20)' }}>○</span>}
+            <span style={{ color: s.state === 'pending' ? 'var(--sy-ink-40)' : 'var(--sy-ink-60)' }}>{s.label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 // ── Progressive generation screen ─────────────────────────────────────────────
 
 function GenerationScreen({
@@ -258,12 +289,21 @@ function GenerationScreen({
           )}
         </div>
 
-        {/* Right: Flash Facts companion */}
-        <div style={{ padding: '28px', background: 'var(--sy-bg-soft)' }}>
-          <p className="sy-mono" style={{ fontSize: '10px', color: 'var(--sy-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, margin: '0 0 14px' }}>
-            💡 Flash Facts
-          </p>
-          <FlashFactGallery markdown={rawMarkdown} />
+        {/* Right: Flash Facts + pipeline tracker */}
+        <div style={{ padding: '28px', background: 'var(--sy-bg-soft)', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div>
+            <p className="sy-mono" style={{ fontSize: '10px', color: 'var(--sy-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, margin: '0 0 14px' }}>
+              💡 Flash Facts
+            </p>
+            <FlashFactGallery markdown={rawMarkdown} />
+          </div>
+
+          <PipelineTracker
+            parsed={Boolean(rawMarkdown)}
+            outlined={true}
+            chaptersDone={doneCount}
+            chaptersTotal={course.chapters.length}
+          />
         </div>
       </div>
     </main>
