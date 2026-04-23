@@ -180,7 +180,7 @@ function ChapterRail({
 // ── Browse mode ───────────────────────────────────────────────────────────────
 
 function BrowseMode({
-  cards, filterCi, onOpenCard, onOpenQuiz, course, courseContent,
+  cards, filterCi, onOpenCard, onOpenQuiz, course, courseContent, progressMap,
 }: {
   cards: FlatCard[];
   filterCi: number | null;
@@ -188,17 +188,32 @@ function BrowseMode({
   onOpenQuiz: (ci: number) => void;
   course: Course;
   courseContent: { chapters: ChapterContent[] } | null;
+  progressMap: ProgressMap;
 }) {
   const [query, setQuery] = useState('');
-  const shown = cards
-    .filter(c => filterCi === null || c.ci === filterCi)
+  const [statusFilter, setStatusFilter] = useState<'all' | BrowseStatus>('all');
+
+  const scoped = cards.filter(c => filterCi === null || c.ci === filterCi);
+  const counts: Record<'all' | BrowseStatus, number> = { all: scoped.length, new: 0, learning: 0, due: 0, mature: 0 };
+  for (const c of scoped) counts[statusOf(progressMap[c.id])]++;
+
+  const filters: { id: 'all' | BrowseStatus; label: string }[] = [
+    { id: 'all',      label: 'Tất cả'   },
+    { id: 'due',      label: 'Cần ôn'   },
+    { id: 'learning', label: 'Đang học' },
+    { id: 'new',      label: 'Mới'      },
+    { id: 'mature',   label: 'Đã thuộc' },
+  ];
+
+  const shown = scoped
+    .filter(c => statusFilter === 'all' || statusOf(progressMap[c.id]) === statusFilter)
     .filter(c => !query || c.concept.question.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Toolbar */}
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-solid)', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--sy-bg-sunken)', padding: '7px 12px', borderRadius: 7, maxWidth: 360 }}>
+      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-solid)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 220px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--sy-bg-sunken)', padding: '7px 12px', borderRadius: 7, maxWidth: 340 }}>
           <span style={{ color: 'var(--sy-ink-40)', fontSize: 14 }}>⌕</span>
           <input
             value={query} onChange={e => setQuery(e.target.value)}
@@ -206,7 +221,21 @@ function BrowseMode({
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontFamily: 'var(--sy-font-sans)', color: 'var(--sy-ink)' }}
           />
         </div>
-        <span className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-40)' }}>{shown.length} thẻ</span>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {filters.map(f => {
+            const active = statusFilter === f.id;
+            return (
+              <button key={f.id} onClick={() => setStatusFilter(f.id)} style={{
+                padding: '6px 10px', fontSize: 12, borderRadius: 6, fontWeight: 500, cursor: 'pointer', border: 'none',
+                background: active ? 'var(--sy-ink)' : 'transparent',
+                color: active ? 'var(--sy-bg)' : 'var(--sy-ink-60)',
+                fontFamily: 'var(--sy-font-sans)',
+              }}>
+                {f.label} <span className="sy-mono" style={{ opacity: 0.6, marginLeft: 3 }}>{counts[f.id]}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Table */}
@@ -709,6 +738,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
             onOpenQuiz={setQuizCi}
             course={course}
             courseContent={courseContent}
+            progressMap={progressMap}
           />
         )}
 
