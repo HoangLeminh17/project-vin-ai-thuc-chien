@@ -5,6 +5,7 @@ import { CreateSessionUseCase } from '@/core/use-cases/auth/create-session.useca
 import { ReviewCardUseCase } from '@/core/use-cases/spaced-repetition/review-card.usecase';
 import { GetDueCardsUseCase } from '@/core/use-cases/spaced-repetition/get-due-cards.usecase';
 import { GetSRSStatsUseCase } from '@/core/use-cases/spaced-repetition/get-srs-stats.usecase';
+import { GetProgressMapUseCase } from '@/core/use-cases/spaced-repetition/get-progress-map.usecase';
 
 import { OpenAiAdapter } from './adapters/openai.adapter';
 import { MineruParserAdapter } from './adapters/mineru-parser.adapter';
@@ -61,6 +62,9 @@ export const getDueCardsUseCase = withUseCaseLogging(rawGetDueCardsUseCase, 'Get
 
 const rawGetSRSStatsUseCase = new GetSRSStatsUseCase(progressRepository);
 export const getSRSStatsUseCase = withUseCaseLogging(rawGetSRSStatsUseCase, 'GetSRSStatsUseCase', logger, monitoring);
+
+const rawGetProgressMapUseCase = new GetProgressMapUseCase(progressRepository);
+export const getProgressMapUseCase = withUseCaseLogging(rawGetProgressMapUseCase, 'GetProgressMapUseCase', logger, monitoring);
 
 // Persistence Use Cases
 export const saveCourseUseCase = withUseCaseLogging(new SaveCourseUseCase(courseRepository), 'SaveCourseUseCase', logger, monitoring);
