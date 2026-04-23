@@ -12,6 +12,56 @@ const localAdapter = isLocal ? new LocalCourseAdapter() : null;
 
 type Mode = 'browse' | 'study' | 'edit';
 
+// ── SRS progress map (server-fetched) ────────────────────────────────────────
+
+type BrowseStatus = 'new' | 'learning' | 'due' | 'mature';
+interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; lastReviewedAt?: string; isDue: boolean }
+type ProgressMap = Record<string, ProgressMapEntry>;
+
+// Map a raw progress entry (plus absence) to the four UI states shown in the mock.
+function statusOf(entry: ProgressMapEntry | undefined): BrowseStatus {
+  if (!entry) return 'new';
+  if (entry.isDue) return 'due';
+  if (entry.status === 'LEARNING') return 'learning';
+  return 'mature';
+}
+
+// Human "Kế tiếp" label for the Browse column.
+function formatNextReview(entry: ProgressMapEntry | undefined): string {
+  if (!entry) return 'chưa học';
+  const now = Date.now();
+  const next = new Date(entry.nextReviewDate).getTime();
+  const diffMs = next - now;
+  if (diffMs <= 0) return 'hôm nay';
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 60) return `${mins} phút`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} giờ`;
+  const days = Math.round(hours / 24);
+  return `${days} ngày`;
+}
+
+// Stable pseudo source page derived from card id. Placeholder until the
+// generator emits real PDF page numbers. TODO(generator): replace with real value.
+function derivePseudoPage(cardId: string): number {
+  let h = 0;
+  for (let i = 0; i < cardId.length; i++) h = (h * 31 + cardId.charCodeAt(i)) >>> 0;
+  return (h % 148) + 1;
+}
+
+// ── StateChip ────────────────────────────────────────────────────────────────
+
+function StateChip({ state }: { state: BrowseStatus }) {
+  const map: Record<BrowseStatus, { label: string; bg: string; fg: string }> = {
+    new:      { label: 'Mới',      bg: 'var(--sy-bg-sunken)',   fg: 'var(--sy-ink-60)' },
+    learning: { label: 'Đang học', bg: '#fdf3e6',               fg: 'var(--sy-hard)'   },
+    due:      { label: 'Cần ôn',   bg: 'var(--sy-warm-soft)',   fg: 'var(--sy-warm)'   },
+    mature:   { label: 'Đã thuộc', bg: 'var(--sy-accent-soft)', fg: 'var(--sy-accent)' },
+  };
+  const m = map[state];
+  return <span style={{ fontSize: 10, fontWeight: 500, color: m.fg, background: m.bg, padding: '2px 7px', borderRadius: 8, whiteSpace: 'nowrap' }}>{m.label}</span>;
+}
+
 // ── Flat card model ───────────────────────────────────────────────────────────
 
 interface FlatCard {
@@ -588,6 +638,15 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [filterCi, setFilterCi] = useState<number | null>(null);
   const [openCard, setOpenCard] = useState<FlatCard | null>(null);
   const [quizCi, setQuizCi] = useState<number | null>(null);
+  const [progressMap, setProgressMap] = useState<ProgressMap>({});
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    fetch('/api/progress/map')
+      .then(r => r.ok ? r.json() : {})
+      .then((m: ProgressMap | { error?: string }) => { if (!('error' in m)) setProgressMap(m as ProgressMap); })
+      .catch(() => {});
+  }, [user, authLoading]);
 
   useEffect(() => {
     if (authLoading || !user) return;
