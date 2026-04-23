@@ -277,20 +277,25 @@ function BrowseMode({
           </table>
         )}
 
-        {/* Quiz entries */}
-        {courseContent && (filterCi !== null ? [filterCi] : course.chapters.map((_, i) => i)).map(ci => {
-          const quiz = courseContent.chapters[ci]?.quiz;
-          if (!quiz || quiz.questions.length === 0) return null;
-          return (
-            <div key={ci} style={{ padding: '10px 20px', borderBottom: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-solid)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="sy-mono" style={{ fontSize: 12, color: 'var(--sy-ink-60)' }}>Quiz — {course.chapters[ci]?.title}</span>
-              <button onClick={() => onOpenQuiz(ci)} style={{ fontSize: 12, fontWeight: 500, color: 'var(--sy-warm)', padding: '4px 10px', borderRadius: 5, border: '1px solid rgba(201,100,66,0.25)', background: 'none', cursor: 'pointer', fontFamily: 'var(--sy-font-sans)' }}>
-                Làm quiz →
-              </button>
-            </div>
-          );
-        })}
       </div>
+
+      {/* Quiz strip — kept out of the card table so the list reads like Anki */}
+      {courseContent && (() => {
+        const scope = filterCi !== null ? [filterCi] : course.chapters.map((_, i) => i);
+        const withQuiz = scope.filter(ci => (courseContent.chapters[ci]?.quiz?.questions.length ?? 0) > 0);
+        if (withQuiz.length === 0) return null;
+        return (
+          <div style={{ padding: '8px 20px', borderTop: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-soft)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Quiz</span>
+            {withQuiz.map(ci => (
+              <button key={ci} onClick={() => onOpenQuiz(ci)}
+                style={{ fontSize: 12, fontWeight: 500, color: 'var(--sy-warm)', padding: '4px 10px', borderRadius: 5, border: '1px solid rgba(201,100,66,0.25)', background: 'none', cursor: 'pointer', fontFamily: 'var(--sy-font-sans)' }}>
+                {course.chapters[ci]?.title} →
+              </button>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
