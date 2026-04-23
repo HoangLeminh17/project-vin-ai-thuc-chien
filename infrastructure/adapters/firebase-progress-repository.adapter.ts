@@ -2,6 +2,23 @@ import { IProgressRepository } from '@/core/ports/progress-repository.port';
 import { CardProgress } from '@/core/entities/card-progress.entity';
 import { getDb } from '@/lib/firebase-admin';
 
+function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function computeStreak(days: Set<string>, now: Date): number {
+  // Walk backwards from today until a day with no reviews. Allow today-gap
+  // so the streak doesn't reset the moment midnight passes before review.
+  let streak = 0;
+  const cursor = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (!days.has(dayKey(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(dayKey(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
 export class FirebaseProgressRepository implements IProgressRepository {
   private readonly collectionName = 'user_progress';
 
@@ -43,24 +60,31 @@ export class FirebaseProgressRepository implements IProgressRepository {
     return snapshot.docs.map(doc => this.mapToEntity(doc.id, doc.data()));
   }
 
-  async getStats(userId: string): Promise<{ new: number; learning: number; due: number }> {
+  async getStats(userId: string): Promise<{ new: number; learning: number; due: number; streak: number }> {
     const now = new Date();
     const snapshot = await getDb()
       .collection(this.collectionName)
       .where('userId', '==', userId)
       .get();
 
-    const stats = { new: 0, learning: 0, due: 0 };
+    const stats = { new: 0, learning: 0, due: 0, streak: 0 };
+    const reviewDays = new Set<string>(); // YYYY-MM-DD, local time
 
     snapshot.docs.forEach(doc => {
       const data = doc.data();
       if (data.status === 'NEW') stats.new++;
       else if (data.status === 'LEARNING') stats.learning++;
-      
+
       const nextReview = data.nextReviewDate.toDate ? data.nextReviewDate.toDate() : new Date(data.nextReviewDate);
       if (nextReview <= now) stats.due++;
+
+      if (data.lastReviewedAt) {
+        const d = data.lastReviewedAt.toDate ? data.lastReviewedAt.toDate() : new Date(data.lastReviewedAt);
+        reviewDays.add(dayKey(d));
+      }
     });
 
+    stats.streak = computeStreak(reviewDays, now);
     return stats;
   }
 

@@ -8,5 +8,6 @@ export interface IProgressRepository {
     new: number;
     learning: number;
     due: number;
+    streak: number;
   }>;
 }
