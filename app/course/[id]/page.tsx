@@ -12,12 +12,50 @@ const localAdapter = isLocal ? new LocalCourseAdapter() : null;
 
 // ── Sub-components (same as page.tsx) ─────────────────────────────────────────
 
-function ConceptCardView({ concept, index, total }: { concept: ConceptCard; index: number; total: number }) {
+const RATING_META = [
+  { label: 'Again', sub: 'không nhớ', interval: '1 phút',  colors: 'border-red-200    text-red-600    hover:bg-red-50'    },
+  { label: 'Hard',  sub: 'lờ mờ',     interval: '10 phút', colors: 'border-orange-200 text-orange-600 hover:bg-orange-50' },
+  { label: 'Good',  sub: 'nhớ rồi',   interval: '1 ngày',  colors: 'border-green-200  text-green-700  hover:bg-green-50'  },
+  { label: 'Easy',  sub: 'quá dễ',    interval: '4 ngày',  colors: 'border-blue-200   text-blue-600   hover:bg-blue-50'   },
+] as const;
+
+function ConceptCardView({
+  concept, index, total, onRated,
+}: {
+  concept: ConceptCard;
+  index: number;
+  total: number;
+  onRated?: () => void;
+}) {
   const [answer, setAnswer] = useState('');
   const [revealed, setRevealed] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const handleRate = async (ratingIndex: number) => {
+    const { label, interval } = RATING_META[ratingIndex];
+    const cardId = `${concept.question.substring(0, 20)}-${index}`;
+    fetch('/api/progress/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cardId, rating: ratingIndex, question: concept.question, answer: concept.answer }),
+    });
+    setToast(`${label} · ${interval}`);
+    setTimeout(() => {
+      setToast(null);
+      onRated?.();
+    }, 900);
+  };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+    <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 relative">
+      {toast && (
+        <div className="absolute inset-x-0 -top-10 flex justify-center pointer-events-none">
+          <span className="bg-gray-900 text-white text-xs font-mono px-3 py-1.5 rounded-full shadow-md sy-animate-slide-in">
+            {toast}
+          </span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex gap-1">
           {Array.from({ length: total }).map((_, i) => (
@@ -64,33 +102,17 @@ function ConceptCardView({ concept, index, total }: { concept: ConceptCard; inde
             </div>
           )}
           <div className="grid grid-cols-4 gap-2 pt-1">
-            {(['Again', 'Hard', 'Good', 'Easy'] as const).map((label, i) => {
-              const sub = ['không nhớ', 'lờ mờ', 'nhớ rồi', 'quá dễ'][i];
-              const colors = ['border-red-200 text-red-600 hover:bg-red-50', 'border-orange-200 text-orange-600 hover:bg-orange-50', 'border-green-200 text-green-700 hover:bg-green-50', 'border-blue-200 text-blue-600 hover:bg-blue-50'][i];
-              return (
-                <button
-                  key={label}
-                  onClick={async () => {
-                    const cardId = `${concept.question.substring(0, 20)}-${index}`;
-                    await fetch('/api/progress/review', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        cardId,
-                        rating: i as 0 | 1 | 2 | 3,
-                        question: concept.question,
-                        answer: concept.answer
-                      })
-                    });
-                    alert(`Đã lưu vào lộ trình ôn tập: ${label}`);
-                  }}
-                  className={`flex flex-col items-center py-2 rounded-lg border text-xs font-medium transition-colors ${colors}`}
-                >
-                  {label}
-                  <span className="text-[10px] font-normal opacity-70 mt-0.5">{sub}</span>
-                </button>
-              );
-            })}
+            {RATING_META.map(({ label, sub, colors }, i) => (
+              <button
+                key={label}
+                onClick={() => handleRate(i)}
+                disabled={!!toast}
+                className={`flex flex-col items-center py-2 rounded-lg border text-xs font-medium transition-colors ${colors} disabled:opacity-50`}
+              >
+                {label}
+                <span className="text-[10px] font-normal opacity-70 mt-0.5">{sub}</span>
+              </button>
+            ))}
           </div>
         </>
       )}
@@ -158,6 +180,18 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [openChapter, setOpenChapter] = useState<number | null>(0);
   const [openLesson, setOpenLesson] = useState<{ ci: number; li: number } | null>(null);
   const [quizChapter, setQuizChapter] = useState<number | null>(null);
+
+  const advanceLesson = () => {
+    if (!saved || !openLesson) return;
+    const { ci, li } = openLesson;
+    const chapter = saved.course.chapters[ci];
+    if (li < chapter.lessons.length - 1) {
+      setOpenLesson({ ci, li: li + 1 });
+    } else if (ci < saved.course.chapters.length - 1) {
+      setOpenChapter(ci + 1);
+      setOpenLesson({ ci: ci + 1, li: 0 });
+    }
+  };
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -256,7 +290,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
                 <p className="text-sm text-gray-500 mt-0.5">{selectedLesson.key_concept}</p>
               </div>
               {lessonContent?.concept && (
-                <ConceptCardView key={`${openLesson!.ci}-${openLesson!.li}`} concept={lessonContent.concept} index={openLesson!.li} total={chapterLessonCount} />
+                <ConceptCardView key={`${openLesson!.ci}-${openLesson!.li}`} concept={lessonContent.concept} index={openLesson!.li} total={chapterLessonCount} onRated={advanceLesson} />
               )}
               <hr className="border-gray-100" />
               <ul className="space-y-2">
