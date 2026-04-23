@@ -2,7 +2,8 @@ import { AuthProvider } from '@/lib/contexts/auth-context'
 import './globals.css'
 
 export const metadata = {
-  title: 'A20 App',
+  title: 'Synapsy',
+  description: 'Biến tài liệu thành flashcard thông minh với AI',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
