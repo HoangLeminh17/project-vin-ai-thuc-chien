@@ -35,6 +35,40 @@ function useSRSStats() {
   return { stats, loading }
 }
 
+// ── Progress map (per-card SRS state) ────────────────────────────────────────
+
+interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; isDue: boolean }
+type ProgressMap = Record<string, ProgressMapEntry>
+
+function useProgressMap(userId: string | null) {
+  const [map, setMap] = useState<ProgressMap>({})
+  useEffect(() => {
+    if (!userId) return
+    fetch('/api/progress/map')
+      .then(r => r.ok ? r.json() : {})
+      .then((m: ProgressMap | { error?: string }) => { if (!('error' in m)) setMap(m as ProgressMap) })
+      .catch(() => {})
+  }, [userId])
+  return map
+}
+
+// Collapses a course's flattened cards against the progress map into the
+// three numbers the library card needs to render: total / due / masteryPct.
+function courseStats(saved: SavedCourse, map: ProgressMap): { total: number; due: number; masteryPct: number } {
+  const chapters = saved.courseContent?.chapters ?? []
+  let total = 0, due = 0, mature = 0
+  chapters.forEach((ch, ci) => {
+    ch.lessons.forEach((_, li) => {
+      total++
+      const e = map[`${ci}-${li}`]
+      if (!e) return
+      if (e.isDue) due++
+      else if (e.status === 'REVIEW') mature++
+    })
+  })
+  return { total, due, masteryPct: total === 0 ? 0 : Math.round((mature / total) * 100) }
+}
+
 function SRSHero({ stats, loading }: { stats: SRSStats | null; loading: boolean }) {
   if (loading) {
     return (
