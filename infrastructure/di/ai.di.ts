@@ -1,37 +1,43 @@
 import { OpenAiAdapter } from '../adapters/openai.adapter'
 import { GeminiAdapter } from '../adapters/gemini.adapter'
+import { ChainAiAdapter } from '../adapters/fallback-ai.adapter'
 import { GenerateCourseUseCase } from '@/core/use-cases/generate-course.usecase'
 import { withUseCaseLogging } from '@/core/utils/use-case-logger'
 import { logger, monitoring } from './logger.di'
-import { resolveAiProvider, type AiProvider } from '@/lib/ai-provider'
 import type { IAiService } from '@/core/ports/ai.port'
 
-function createAiAdapter(provider?: AiProvider): IAiService {
-  const resolvedProvider = resolveAiProvider(provider)
+const adapters: IAiService[] = []
 
-  if (resolvedProvider === 'gemini') {
-    return new GeminiAdapter({
-      apiKey: process.env.GEMINI_API_KEY || '',
-      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
-    })
-  }
+// 1. Gemini (Primary)
+if (process.env.GEMINI_API_KEY) {
+  adapters.push(new GeminiAdapter({
+    apiKey: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+  }))
+}
 
-  return new OpenAiAdapter({
-    apiKey: process.env.OPENAI_API_KEY || '',
+// 2. OpenAI (Secondary)
+if (process.env.OPENAI_API_KEY) {
+  adapters.push(new OpenAiAdapter({
+    apiKey: process.env.OPENAI_API_KEY,
     model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  })
+  }))
 }
 
-export function createGenerateCourseUseCase(provider?: AiProvider) {
-  const aiAdapter = createAiAdapter(provider)
-  const rawGenerateCourseUseCase = new GenerateCourseUseCase(aiAdapter)
-
-  return withUseCaseLogging(
-    rawGenerateCourseUseCase,
-    'GenerateCourseUseCase',
-    logger,
-    monitoring,
-  )
+// 3. Local AI (Ollama)
+if (process.env.LOCAL_AI_BASE_URL) {
+  adapters.push(new OpenAiAdapter({
+    apiKey: 'local', // API key is usually ignored for local Ollama
+    baseUrl: process.env.LOCAL_AI_BASE_URL,
+    model: process.env.LOCAL_AI_MODEL || 'qwen2.5:0.5b',
+  }))
 }
 
-export const generateCourseUseCase = createGenerateCourseUseCase()
+const chainAiAdapter = new ChainAiAdapter(adapters)
+
+export const generateCourseUseCase = withUseCaseLogging(
+  new GenerateCourseUseCase(chainAiAdapter),
+  'GenerateCourseUseCase',
+  logger,
+  monitoring,
+)

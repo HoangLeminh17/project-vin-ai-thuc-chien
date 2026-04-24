@@ -3,15 +3,12 @@ import { generateChapterContent } from '@/lib/ai'
 import type { Course, ChapterContent, CourseContent } from '@/lib/types'
 import { logger, courseRepository } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
-import { resolveAiProvider } from '@/lib/ai-provider'
 
 const handler = async (req: NextRequest) => {
   const { course, provider, chapterIndex, hash } = (await req.json()) as { course?: Course; provider?: string; chapterIndex?: number; hash?: string }
   if (!course?.chapters?.length) {
     return NextResponse.json({ success: false, error: 'Missing course' }, { status: 400 })
   }
-
-  const resolvedProvider = resolveAiProvider(provider)
 
   // If chapterIndex is provided, only generate that specific chapter
   if (typeof chapterIndex === 'number') {
@@ -27,7 +24,7 @@ const handler = async (req: NextRequest) => {
       }
     }
 
-    const chapter = await generateChapterContent(course.chapters[chapterIndex], resolvedProvider)
+    const chapter = await generateChapterContent(course.chapters[chapterIndex])
 
     // Save to cache asynchronously
     if (hash) {
@@ -39,7 +36,7 @@ const handler = async (req: NextRequest) => {
 
   // Fallback: Generate all chapters in parallel (backward compatibility)
   const results = await Promise.allSettled(
-    course.chapters.map(ch => generateChapterContent(ch, resolvedProvider))
+    course.chapters.map(ch => generateChapterContent(ch))
   )
 
   const chapters: ChapterContent[] = results.map((result, i) => {

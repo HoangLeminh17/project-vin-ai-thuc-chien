@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createGenerateCourseUseCase } from '@/infrastructure/registry'
-import { courseRepository, logger } from '@/infrastructure/di'
+import { generateCourseUseCase, courseRepository, logger } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
-import { resolveAiProvider } from '@/lib/ai-provider'
 import { getContentHash } from '@/lib/crypto-utils'
 
 const handler = async (req: NextRequest) => {
-  const { markdown, provider } = await req.json()
+  const { markdown } = await req.json()
   
   if (!markdown || typeof markdown !== 'string') {
     return NextResponse.json({ success: false, error: 'Missing or invalid markdown' }, { status: 400 })
@@ -25,7 +23,6 @@ const handler = async (req: NextRequest) => {
     })
   }
 
-  const generateCourseUseCase = createGenerateCourseUseCase(resolveAiProvider(provider))
   const { course, tokens } = await generateCourseUseCase.execute(markdown)
   
   // Save to cache asynchronously (fire-and-forget for speed)

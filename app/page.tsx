@@ -7,7 +7,6 @@ import { FlashFactGallery, Spinner } from '@/app/components'
 import { useCourses } from '@/lib/hooks/use-courses'
 import { SavedCourse } from '@/core/models/saved-course'
 import { Course, CourseContent, ChapterContent } from '@/core/models/learning-model'
-import type { AiProvider } from '@/lib/ai-provider'
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
 
@@ -314,7 +313,6 @@ function GenerationScreen({
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [provider, setProvider] = useState<AiProvider>('openai')
   const [file, setFile] = useState<File | null>(null)
   const [status, setStatus] = useState<'idle' | 'parsing' | 'generating' | 'done'>('idle')
   const [course, setCourse] = useState<Course | null>(null)
@@ -376,7 +374,7 @@ export default function Home() {
       const res = await fetch('/api/generate-course', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown, provider }),
+        body: JSON.stringify({ markdown }),
       })
       const data = await res.json()
       if (!data.success) { setError(data.error || 'Generation failed'); setStatus('idle'); return }
@@ -407,7 +405,7 @@ export default function Home() {
           const res = await fetch('/api/generate-content', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ course: resolvedCourse, chapterIndex: i, hash: hash || currentHash, provider }),
+            body: JSON.stringify({ course: resolvedCourse, chapterIndex: i, hash: hash || currentHash }),
           })
           if (res.ok) {
             const d = await res.json()
@@ -593,14 +591,6 @@ export default function Home() {
               {error && <p style={{ fontSize: '12px', color: 'var(--sy-again)', margin: 0 }}>{error}</p>}
               {file ? (
                 <div className="flex gap-2 shrink-0 items-center">
-                  <select
-                    value={provider}
-                    onChange={(e) => setProvider(e.target.value as AiProvider)}
-                    style={{ fontSize: '12px', padding: '7px 10px', borderRadius: 7, border: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg)', color: 'var(--sy-ink)' }}
-                  >
-                    <option value="openai">OpenAI</option>
-                    <option value="gemini">Gemini</option>
-                  </select>
                   <button
                     onClick={reset}
                     style={{ fontSize: '12px', color: 'var(--sy-ink-60)', padding: '8px 14px', borderRadius: 7, border: '1px solid var(--sy-ink-10)' }}
