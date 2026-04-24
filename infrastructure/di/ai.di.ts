@@ -1,23 +1,43 @@
-import { OpenAiAdapter } from '../adapters/openai.adapter';
-import { GenerateCourseUseCase } from '@/core/use-cases/generate-course.usecase';
-import { withUseCaseLogging } from '@/core/utils/use-case-logger';
-import { logger, monitoring } from './logger.di';
+import { OpenAiAdapter } from '../adapters/openai.adapter'
+import { GeminiAdapter } from '../adapters/gemini.adapter'
+import { ChainAiAdapter } from '../adapters/fallback-ai.adapter'
+import { GenerateCourseUseCase } from '@/core/use-cases/generate-course.usecase'
+import { withUseCaseLogging } from '@/core/utils/use-case-logger'
+import { logger, monitoring } from './logger.di'
+import type { IAiService } from '@/core/ports/ai.port'
 
-const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) {
-  console.warn('[DI-AI] Warning: OPENAI_API_KEY is not defined');
+const adapters: IAiService[] = []
+
+// 1. Gemini (Primary)
+if (process.env.GEMINI_API_KEY) {
+  adapters.push(new GeminiAdapter({
+    apiKey: process.env.GEMINI_API_KEY,
+    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+  }))
 }
 
-export const aiAdapter = new OpenAiAdapter({
-  apiKey: apiKey || '',
-  model: process.env.OPENAI_MODEL || 'gpt-4o-mini'
-});
+// 2. OpenAI (Secondary)
+if (process.env.OPENAI_API_KEY) {
+  adapters.push(new OpenAiAdapter({
+    apiKey: process.env.OPENAI_API_KEY,
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  }))
+}
 
-const rawGenerateCourseUseCase = new GenerateCourseUseCase(aiAdapter);
+// 3. Local AI (Ollama)
+if (process.env.LOCAL_AI_BASE_URL) {
+  adapters.push(new OpenAiAdapter({
+    apiKey: 'local', // API key is usually ignored for local Ollama
+    baseUrl: process.env.LOCAL_AI_BASE_URL,
+    model: process.env.LOCAL_AI_MODEL || 'qwen2.5:0.5b',
+  }))
+}
+
+const chainAiAdapter = new ChainAiAdapter(adapters)
 
 export const generateCourseUseCase = withUseCaseLogging(
-  rawGenerateCourseUseCase, 
-  'GenerateCourseUseCase', 
-  logger, 
-  monitoring
-);
+  new GenerateCourseUseCase(chainAiAdapter),
+  'GenerateCourseUseCase',
+  logger,
+  monitoring,
+)

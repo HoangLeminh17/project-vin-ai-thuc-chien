@@ -1,6 +1,6 @@
 # AI Course Generator
 
-Upload a PDF, parse it to structured markdown (MinerU API), then use an AI Planner Agent (OpenAI GPT-4o) to split it into chapters, lessons, slides, and quizzes.
+Upload a PDF, parse it to structured markdown (MinerU API), then use an AI Planner Agent (OpenAI or Gemini) to split it into chapters, lessons, slides, and quizzes.
 
 ![App demo](image.png)
 <!-- Replace with a better screenshot or screen recording when available -->
@@ -9,7 +9,7 @@ Upload a PDF, parse it to structured markdown (MinerU API), then use an AI Plann
 
 - **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
 - **Backend**: Next.js API routes (`app/api/`)
-- **AI**: OpenAI GPT-4o (planner) + GPT-4o-mini (content generator)
+- **AI**: OpenAI or Gemini
 - **Auth**: Firebase Auth (Google sign-in)
 - **Database**: Firebase Firestore (course persistence)
 - **Storage**: Firebase Storage (temporary PDF upload for MinerU)
@@ -40,7 +40,13 @@ cp .env.example .env
 Fill in `.env`:
 
 ```
+AI_PROVIDER=openai
+
 OPENAI_API_KEY=
+OPENAI_MODEL=gpt-4o-mini
+
+GEMINI_API_KEY=
+GEMINI_MODEL=gemini-2.0-flash
 
 PDF_MINERU_BASE_URL=https://mineru.net/api/v4
 PDF_MINERU_API_KEY=
@@ -53,7 +59,7 @@ FIREBASE_STORAGE_BUCKET=
 # Get at: Firebase Console → Project Settings → Service Accounts → Generate new private key
 ```
 
-`AI_LOG_SERVER` and `AI_LOG_API_KEY` are pre-filled in `.env.example`.
+Set either `OPENAI_API_KEY` or `GEMINI_API_KEY` depending on the provider you want to use. `AI_LOG_SERVER` and `AI_LOG_API_KEY` are pre-filled in `.env.example`.
 
 ### 4. Set up Firebase
 

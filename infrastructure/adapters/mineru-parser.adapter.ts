@@ -33,6 +33,11 @@ export class MineruParserAdapter implements IDocumentParser {
       });
       if (!res.ok) {
         const body = await res.text().catch(() => '');
+        if (res.status === 401) {
+          throw new InfrastructureError(
+            `MinerU authentication failed (401). Check PDF_MINERU_API_KEY (and PDF_MINERU_BASE_URL).`
+          );
+        }
         throw new InfrastructureError(`MinerU ${apiPath} failed (${res.status}): ${body}`);
       }
       return res;

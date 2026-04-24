@@ -590,7 +590,7 @@ export default function Home() {
               </div>
               {error && <p style={{ fontSize: '12px', color: 'var(--sy-again)', margin: 0 }}>{error}</p>}
               {file ? (
-                <div className="flex gap-2 shrink-0">
+                <div className="flex gap-2 shrink-0 items-center">
                   <button
                     onClick={reset}
                     style={{ fontSize: '12px', color: 'var(--sy-ink-60)', padding: '8px 14px', borderRadius: 7, border: '1px solid var(--sy-ink-10)' }}

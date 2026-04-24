@@ -21,6 +21,10 @@ export class OpenAiAdapter implements IAiService {
   }
 
   async generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
+    if (!this.apiKey) {
+      throw new InfrastructureError('Missing OPENAI_API_KEY')
+    }
+
     let res: Response;
     try {
       res = await fetch(this.baseUrl, {
