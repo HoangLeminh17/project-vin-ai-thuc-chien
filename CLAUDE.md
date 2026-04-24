@@ -66,16 +66,41 @@ Branch naming: `<type>/<short-description>` (e.g. `docs/weekly-report-week1`)
 ## PR requirements
 
 - Run `bash scripts/setup_hooks.sh` before creating any PR (one-time setup)
-- **Title**: Short description of the change
-- **Description** must include:
+- **Always target `main` directly** — never chain a PR off another feature branch. Chained PRs auto-close when the base branch is merged and deleted.
+
+### Atomic PR size
+
+Split features into three PRs instead of one large PR:
+
+1. **PR 1 — Structure**: directory layout, types, ports (Clean Architecture)
+2. **PR 2 — UI**: component, loading state, error state
+3. **PR 3 — Logic**: business logic, error handling, edge cases
+
+### Title
+
+Use Conventional Commits format: `feat(scope): short description`
+
+### Description must include
 
 ```
-## Summary
-<description of changes>
+## What
+- <bullet list of what was added/changed>
+
+## Why
+- <architectural reason or user need>
+
+## Evidence
+- <screenshot, GIF, or test output>
 
 ## Changes
 - <list of changed files>
 ```
+
+### Testing
+
+- Add at minimum 3 unit tests for core logic functions: success case, error/network failure, empty/edge input
+- Use `uuid` instead of index-based or `Math.random()` IDs
+- No `console.log(err)` — show user-facing error message or retry button instead
 
 - Do NOT commit `.ai-log/*.jsonl` files (gitignored)
 
