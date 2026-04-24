@@ -10,7 +10,9 @@ Upload a PDF, parse it to structured markdown (MinerU API), then use an AI Plann
 - **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
 - **Backend**: Next.js API routes (`app/api/`)
 - **AI**: OpenAI or Gemini
-- **Storage**: Firebase Storage (temporary upload for MinerU)
+- **Auth**: Firebase Auth (Google sign-in)
+- **Database**: Firebase Firestore (course persistence)
+- **Storage**: Firebase Storage (temporary PDF upload for MinerU)
 - **PDF parsing**: MinerU Precision API
 
 ## Getting Started
@@ -59,13 +61,49 @@ FIREBASE_STORAGE_BUCKET=
 
 Set either `OPENAI_API_KEY` or `GEMINI_API_KEY` depending on the provider you want to use. `AI_LOG_SERVER` and `AI_LOG_API_KEY` are pre-filled in `.env.example`.
 
-### 4. Run
+### 4. Set up Firebase
+
+This project uses Firebase Auth, Storage, and Firestore. All three must be enabled in the same Firebase project.
+
+**a) Create a Firebase project**
+
+Go to [Firebase Console](https://console.firebase.google.com) → Add project.
+
+**b) Enable Google sign-in**
+
+Firebase Console → Authentication → Sign-in method → Google → Enable.
+
+**c) Enable Firestore**
+
+Firebase Console → Firestore Database → Create database → choose **test mode** → select region `asia-southeast1` → Create.
+
+> If you get a "Cloud Firestore API is disabled" error, go to Google Cloud Console → APIs & Services → Enable **Cloud Firestore API** for your project first.
+
+**d) Create Firestore composite index**
+
+Run the app and visit `/dashboard` once. The server log will contain a `FAILED_PRECONDITION` error with a direct link like:
+
+```
+https://console.firebase.google.com/v1/r/project/<your-project>/firestore/indexes?create_composite=...
+```
+
+Copy that link from the terminal, open it in your browser → Firebase Console will show a pre-filled form → click **Create index**. Wait ~1–2 min for status to change from **Building** to **Enabled**.
+
+**e) Get service account credentials**
+
+Firebase Console → Project Settings → Service Accounts → Generate new private key → download JSON → copy values into `.env`.
+
+**f) Enable Firebase Storage**
+
+Firebase Console → Storage → Get started → choose test mode.
+
+### 5. Run
 
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000. Upload a PDF with clear headings (e.g. lecture slides) to test.
+Open http://localhost:3000. Sign in with Google, upload a PDF, and the generated course will be saved to your dashboard at `/dashboard`.
 
 ## AI Logging
 

@@ -6,6 +6,106 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+## Sprint 4 — 20/04 → 26/04/2026
+
+| Task | Người làm | Deadline | PR |
+|---|---|---|---|
+| Learning Dashboard (`/dashboard`, save & browse courses) | Nguyễn Bình Thành | 21/04 | #19 |
+| Spaced Repetition System (SM2 + progress tracking + `/review` page) | Lê Kim Dũng | 22/04 | #22 |
+| Refactor DI: centralize adapter initialization | Lê Kim Dũng | 22/04 | #22 |
+| Course Player (`/course/[id]`) + Instant Load cache | Lê Kim Dũng | 22/04 | #22 |
+
+---
+
+### [ADR-20] Spaced Repetition System — 22/04/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** SM2 algorithm, `/api/progress/*`, `/review` page
+
+**Bối cảnh:** Learner cần ôn tập ConceptCards theo rhythm tối ưu (spaced repetition).
+
+**Quyết định:**
+- Implement SM2 (SuperMemo 2) algorithm: track `ease_factor`, `interval`, `next_due_date` per card.
+- `ProgressRepository` port → persist learning progress (Firestore adapter).
+- `/api/progress/due` — get due cards; `/api/progress/review` — grade card (Again/Hard/Good/Easy).
+- `/review` page — show due cards + SRS stats.
+
+**Trade-offs:**
+- ✅ Learner ôn tập theo cá nhân rhythm (dễ → review mau, khó → review chậm).
+- ✅ Measurable: track learning curve qua ease_factor, interval.
+- ⚠️ Complexity: SM2 state tracking + due card compute.
+- ⚠️ User must grade cards → thêm action, không chỉ quiz.
+
+---
+
+### [ADR-19] DI Refactoring — 22/04/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** `infrastructure/di.ts`
+
+**Bối cảnh:** Adapter instantiation scattered ở API routes → khó reuse, khó test.
+
+**Quyết định:**
+- `infrastructure/di.ts` — single source: `getCourseRepository()`, `getProgressRepository()`, `getAIAdapter()`.
+- Env vars (FIREBASE_*, NEXT_PUBLIC_COURSE_STORE) inject vào adapter constructor.
+- API routes call DI function, không `new Adapter()` trực tiếp.
+
+**Trade-offs:**
+- ✅ Centralized config + easy to swap adapter.
+- ✅ Clean separation: adapter logic ≠ route handler.
+
+---
+
+### [ADR-18] Course Repository Port + Adapters — 21/04/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** `core/ports/course-repository.port.ts`
+
+**Bối cảnh:** Sau generate course, learner save & browse later.
+
+**Quyết định:**
+- `ICourseRepository` port: `save()`, `list(userId)`, `getById()`, `delete()`.
+- `FirestoreCourseAdapter` (prod) + `LocalCourseAdapter` (dev fallback).
+- Auto-save course sau Stage 2 completes.
+- Switch via `NEXT_PUBLIC_COURSE_STORE`.
+
+**Trade-offs:**
+- ✅ Clean abstraction → easy swap storage backend.
+- ✅ Dev offline testing (localStorage).
+- ⚠️ Maintain 2 adapters.
+
+---
+
+### [ADR-17] Course Player + ConceptCard Flow — 21/04/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** `/course/[id]`, interactive player
+
+**Bối cảnh:** Dashboard lists courses; learner needs `/course/[id]` to view chapters/lessons.
+
+**Quyết định:**
+- `/course/[id]` → load from Firestore, render ConceptCards + Quiz per lesson.
+- Session auth verify user ownership.
+
+**Trade-offs:**
+- ✅ Active recall via ConceptCard (learner self-tests before reveal).
+- ✅ Persistent storage (Firestore).
+
+---
+
+### [ADR-16] Firestore Adapter: Unified Cache + User Storage — 21/04/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** `infrastructure/adapters/firestore-course.adapter.ts`
+
+**Bối cảnh:** Generate course = expensive (AI tokens). Need caching + persistence.
+
+**Quyết định:**
+- Firestore adapter manage: hash-based cache (content hash → course) + user storage (user_id → courses).
+- `/api/generate-course` check cache → call AI if miss → save to Firestore.
+
+**Trade-offs:**
+- ✅ Token savings + faster response (cache hits).
+- ✅ Course persistence across restarts.
+- ⚠️ Firestore rules + cost monitoring needed.
+
+---
+
 ## Sprint 3 — 13/04 → 19/04/2026
 
 | Task | Người làm | Deadline | Trạng thái |
@@ -16,6 +116,36 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Cấu hình CI/CD Pipeline (GitHub Actions) | Lê Kim Dũng | 18/04 | ✅ |
 | Implement Authentication (Firebase + Session Cookie) | Lê Kim Dũng | 18/04 | ✅ |
 | API Routes: /login, /logout, /me | Lê Kim Dũng | 18/04 | ✅ |
+| Switch parser source: full.md → content_list.json | Nguyễn Bình Thành | 19/04 | ✅ |
+
+---
+
+### [ADR-15] Parser classifier + dedupe cho content_list.json — 19/04/2026
+
+**Người làm:** Nguyễn Bình Thành
+
+**Bối cảnh:** `contentListToMarkdown()` naive emit `##` cho mọi `text_level=1`, tạo ra 72 marker trong file ĐTĐ (33 Roman numeral lặp, nhiều noise decorative như "INSULIN REGULAR", "THANK YOU"). Kết quả: Stage 1 bị flood context → drop nhóm Glinid, Amylin, tạo phantom chapter "Introduction", output tiếng Anh dù source tiếng Việt.
+
+**Các lựa chọn đã xem xét:**
+- **Giữ naive (emit ## cho mọi text_level=1):** Đơn giản nhưng flood LLM, mất thông tin thực sự.
+- **Chỉ dedupe, không classifier:** Bớt lặp nhưng vẫn emit ## cho "INSULIN REGULAR" và noise decorative.
+- **Classifier + dedupe (lựa chọn chọn):** Regex phân loại `##` (Roman numeral chương) vs `###` (Roman.digit hoặc numeric sub-section) vs plain text. Seen-set dedupe theo `text.trim()` — lần đầu emit marker, lần sau giữ plain text.
+
+**Quyết định:** Regex theo thứ tự ưu tiên:
+1. `/^(I{1,3}|IV|V|VI{0,3}|IX|X)\.\s+\S/` → `##` chapter
+2. `/^(I{1,3}|IV|V|VI{0,3}|IX|X)\.\d+\.?\s+\S/` → `###` lesson
+3. `/^\d+\.(\d+\.)?\s+\S/` → `###` lesson
+4. Không match → plain text (bỏ marker)
+
+Dedupe: `Set<string>` theo `text.trim()`, áp dụng cho cả `##` và `###`.
+
+Bug fix kèm theo: `item.img_path` đã có prefix `images/` sẵn → bỏ prefix thừa trong template.
+
+**Hệ quả:**
+- (+) 72 marker → 8 `##` + 20 `###` cho file ĐTĐ. Glinid và Amylin không còn bị mất.
+- (+) Logic tách thành `content-list-converter.ts` — có unit test với fixture thật (15 test cases).
+- (+) Prompt PLANNER thêm 4 rule: ngôn ngữ, `##` = chapter boundary, `###` = lesson boundary, table expansion rule.
+- (-) Regex phụ thuộc vào convention đánh số La Mã của tài liệu y khoa Việt Nam — tài liệu không theo convention này cần điều chỉnh regex.
 
 ---
 

@@ -1,0 +1,3478 @@
+[
+    {
+        "type": "text",
+        "text": "MOD2.9. LEC22. ",
+        "bbox": [
+            92,
+            304,
+            475,
+            395
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "THUC ĐIU TR ĐÁI THÁO ĐƯNG ",
+        "text_level": 1,
+        "bbox": [
+            90,
+            420,
+            899,
+            524
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "TS.BS. Nguyn Th Thanh Hà BM Dưc Lý - HMU ",
+        "bbox": [
+            500,
+            644,
+            781,
+            737
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            790,
+            588,
+            881,
+            752
+        ],
+        "page_idx": 0
+    },
+    {
+        "type": "text",
+        "text": "MC TIU HC TP ",
+        "text_level": 1,
+        "bbox": [
+            94,
+            124,
+            631,
+            238
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "1. Trình bày đưc co ch tác dng, tác dng, tác dng không mong mun và áp dng điu tr ca insulin, metformin, thuc c ch alpha glucosidase, dãn xuát sulfonylure. ",
+        "bbox": [
+            93,
+            327,
+            912,
+            552
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "2. K tên đưc các thuc thuc nhóm c ch DPP-4, incretin mimetic, nhóm c ché SGLT2 và trình bày đưc co ch tác dng ca các nhóm thuc này. ",
+        "bbox": [
+            91,
+            590,
+            916,
+            814
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 1
+    },
+    {
+        "type": "text",
+        "text": "ĐÁI THÁO ĐU'ÒNG (ADA 2022) ",
+        "text_level": 1,
+        "bbox": [
+            88,
+            120,
+            904,
+            242
+        ],
+        "page_idx": 2
+    },
+    {
+        "type": "text",
+        "text": "Glucose máu lúc đói ≥ 7 mmol/1 (126mg/dl) HbA1c ≥ 6,5% (≥ 2 làn xét nghim) Đái tháo đưng Glucose máu bt $\\mathrm { k } \\dot { \\mathrm { y } } \\geq 1 1 , 1$ Glucose máu ≥ 11,1 mmol/1 mmol/l (200mg/dl) kèm: ung (200mg/dl) 2 gi sau nghim nhiu, đái nhiu, gim cân, pháp dung np glucose (làm 2 đưng niu, ceton niu l) ",
+        "bbox": [
+            88,
+            248,
+            919,
+            966
+        ],
+        "page_idx": 2
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 2
+    },
+    {
+        "type": "table",
+        "img_path": "images/3dd223520af02f746cf46f2e28d52ad36b1d1f1dfa180bfa9bf2e1eaab9f6cb5.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<table><tr><td rowspan=1 colspan=1></td><td rowspan=1 colspan=1>Test HbA1C</td><td rowspan=1 colspan=1>Test Fructosamin</td></tr><tr><td rowspan=1 colspan=1>Gn glucose</td><td rowspan=1 colspan=1>Hb trong hng cu</td><td rowspan=1 colspan=1>Protein huyt thanh</td></tr><tr><td rowspan=1 colspan=1>Đánh giánng đ G.máu</td><td rowspan=1 colspan=1>120 ngàySóm nht 4 tun</td><td rowspan=1 colspan=1>14-21 ngày</td></tr><tr><td rowspan=1 colspan=1>Giá tr BT</td><td rowspan=1 colspan=1>4-6%Tin ĐT: 5,7-6,4%</td><td rowspan=1 colspan=1>2,4 − 3,4 mmol/l</td></tr><tr><td rowspan=1 colspan=1>Áp dnglâm sàng</td><td rowspan=1 colspan=1>Có giá tr:Chn đoánTheo dõiD đoán nguy cơ bin chng</td><td rowspan=1 colspan=1>Hu ích hơn test HbA1C trong:Đánh giá hiu qu điu tr trong thigian ngnĐTĐ thai kTui th HC gimHC bt thưng</td></tr></table>",
+        "bbox": [
+            88,
+            82,
+            906,
+            945
+        ],
+        "page_idx": 3
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 3
+    },
+    {
+        "type": "text",
+        "text": "THUC ĐIU TR! ",
+        "text_level": 1,
+        "bbox": [
+            86,
+            78,
+            544,
+            192
+        ],
+        "page_idx": 4
+    },
+    {
+        "type": "image",
+        "img_path": "images/5d5d555a647d5ebb75c80136f41a4e19949c7caf1a65fa59e1e7617af0af4eab.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            113,
+            281,
+            893,
+            926
+        ],
+        "page_idx": 4
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 4
+    },
+    {
+        "type": "text",
+        "text": "THUC ĐIU TR! ",
+        "text_level": 1,
+        "bbox": [
+            87,
+            78,
+            543,
+            191
+        ],
+        "page_idx": 5
+    },
+    {
+        "type": "image",
+        "img_path": "images/a520fcb47dee454462953a1225136e48402afb2a59de2303d2611dca3faa7094.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            75,
+            291,
+            963,
+            970
+        ],
+        "page_idx": 5
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 5
+    },
+    {
+        "type": "image",
+        "img_path": "images/c95b3a0027c81492921c0f446e43aedf4c18dfbd3f8089b8e5c6019a6eae8fc9.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            161,
+            0,
+            832,
+            970
+        ],
+        "page_idx": 6
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 6
+    },
+    {
+        "type": "text",
+        "text": "THUC ĐIU TR! ",
+        "text_level": 1,
+        "bbox": [
+            86,
+            78,
+            543,
+            190
+        ],
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "Đưng tiêm ",
+        "bbox": [
+            226,
+            364,
+            421,
+            428
+        ],
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "Đưng ung ",
+        "bbox": [
+            569,
+            357,
+            778,
+            430
+        ],
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "Insulin ",
+        "bbox": [
+            298,
+            544,
+            351,
+            576
+        ],
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "Cht tương t amylin ",
+        "bbox": [
+            243,
+            691,
+            406,
+            730
+        ],
+        "page_idx": 7
+    },
+    {
+        "type": "table",
+        "img_path": "images/c18ac4ccf618014fa81e7a46780ac20ca8e247fc409ef2c40204253f76e093c7.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<table><tr><td rowspan=1 colspan=1>Biguanid</td></tr><tr><td rowspan=1 colspan=1>Chát úc ché α-glucosidase</td></tr><tr><td rowspan=1 colspan=1>Cht c ch DPP-4</td></tr><tr><td rowspan=1 colspan=1>Cht c ch SGLT-2</td></tr><tr><td rowspan=1 colspan=1>Sulfonylurea</td></tr><tr><td rowspan=1 colspan=1>Cht tương t meglitinid</td></tr><tr><td rowspan=1 colspan=1>Thiazolidinedion</td></tr><tr><td rowspan=1 colspan=1>Cht to phc vi acid mt</td></tr><tr><td rowspan=1 colspan=1>Cht ch vn dopamin</td></tr></table>",
+        "bbox": [
+            542,
+            495,
+            805,
+            928
+        ],
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "Cht ch vn GLP-1 receptor ",
+        "bbox": [
+            215,
+            840,
+            435,
+            880
+        ],
+        "page_idx": 7
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 7
+    },
+    {
+        "type": "text",
+        "text": "I. INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            131,
+            250,
+            212
+        ],
+        "page_idx": 8
+    },
+    {
+        "type": "text",
+        "text": "1. Ngưn gc, cu trúc ",
+        "bbox": [
+            92,
+            272,
+            366,
+            331
+        ],
+        "page_idx": 8
+    },
+    {
+        "type": "text",
+        "text": "Insulinnguòi",
+        "bbox": [
+            256,
+            501,
+            458,
+            734
+        ],
+        "page_idx": 8
+    },
+    {
+        "type": "text",
+        "text": "Insulin analog ",
+        "bbox": [
+            561,
+            501,
+            764,
+            734
+        ],
+        "page_idx": 8
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 8
+    },
+    {
+        "type": "table",
+        "img_path": "images/3aeb97eaa90920ead04568b4dd2d76887a444f83437d11546649468660837a18.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<table><tr><td rowspan=1 colspan=1>Loi insulin</td><td rowspan=1 colspan=1>Tên</td><td rowspan=1 colspan=1>T xut hintác dng (h)</td><td rowspan=1 colspan=1>Đinh (h)</td><td rowspan=1 colspan=1>T kéo dài tácdng (h)</td><td rowspan=1 colspan=1>Dngbào ch</td><td rowspan=1 colspan=1>Ngun gc</td><td rowspan=1 colspan=1>pH</td></tr><tr><td rowspan=1 colspan=1>Insulin tác dng nhanh</td><td rowspan=1 colspan=1>- Insulin aspart- Insulin lispro- Insulin glulisin</td><td rowspan=1 colspan=1>&lt; 0,25</td><td rowspan=1 colspan=1>0,5-1,5</td><td rowspan=1 colspan=1>3-4</td><td rowspan=1 colspan=1>Dung dch</td><td rowspan=1 colspan=1>Humananalog</td><td rowspan=1 colspan=1>7-8</td></tr><tr><td rowspan=1 colspan=1>Insulin tác dng ngn</td><td rowspan=1 colspan=1>- Insulin regular</td><td rowspan=1 colspan=1>0,5-1</td><td rowspan=1 colspan=1>2-3</td><td rowspan=1 colspan=1>4-6</td><td rowspan=1 colspan=1>Dung dch</td><td rowspan=1 colspan=1>Human</td><td rowspan=1 colspan=1>7-8</td></tr><tr><td rowspan=1 colspan=1>Insulin tác dngtrung gian</td><td rowspan=1 colspan=1>- Insulin NPH (neutralprotamin Hagedorn)</td><td rowspan=1 colspan=1>1-2</td><td rowspan=1 colspan=1>6-10</td><td rowspan=1 colspan=1>10-16</td><td rowspan=1 colspan=1>Hn dch</td><td rowspan=1 colspan=1>Human</td><td rowspan=1 colspan=1>7-8</td></tr><tr><td rowspan=1 colspan=1>Insulin tác dng dài</td><td rowspan=1 colspan=1>- Insulin glargin- Insulin determir- Insulin degludec</td><td rowspan=1 colspan=1>1-4</td><td rowspan=1 colspan=1>-</td><td rowspan=1 colspan=1>12-2012-2424-42</td><td rowspan=1 colspan=1>Dung dch</td><td rowspan=1 colspan=1>Humananalog</td><td rowspan=1 colspan=1>47-87-8</td></tr><tr><td rowspan=1 colspan=1>Insulin hn hp(mixture)</td><td rowspan=1 colspan=1>- Insulin trung gian +insulin ngn/ insulinnhanh/ insulin dài</td><td rowspan=1 colspan=1>&lt; 0,25-1</td><td rowspan=1 colspan=1>1,5</td><td rowspan=1 colspan=1>10-16</td><td rowspan=1 colspan=1>Hn dch</td><td rowspan=1 colspan=1>Human/Humananalog</td><td rowspan=1 colspan=1>7-8</td></tr><tr><td rowspan=1 colspan=1>Insulin hít</td><td rowspan=1 colspan=1></td><td rowspan=1 colspan=1>&lt; 0,25</td><td rowspan=1 colspan=1>0,5-1,5</td><td rowspan=1 colspan=1>2-3</td><td rowspan=1 colspan=1>Hít</td><td rowspan=1 colspan=1>Human</td><td rowspan=1 colspan=1>10</td></tr></table>",
+        "bbox": [
+            15,
+            1,
+            991,
+            1000
+        ],
+        "page_idx": 9
+    },
+    {
+        "type": "text",
+        "text": "INSULIN REGULAR ",
+        "text_level": 1,
+        "bbox": [
+            370,
+            145,
+            628,
+            218
+        ],
+        "page_idx": 10
+    },
+    {
+        "type": "image",
+        "img_path": "images/a94ed4e003f9240817add0f4c9babce166ca0eab9bdac5a5373960e9cae8c615.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            135,
+            308,
+            861,
+            832
+        ],
+        "page_idx": 10
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 10
+    },
+    {
+        "type": "text",
+        "text": "INSULIN TÁC DUNG TRUNG GIAN ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            132,
+            821,
+            231
+        ],
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "Insulin NPH $=$ insulin regular + protamin ",
+        "bbox": [
+            93,
+            334,
+            576,
+            387
+        ],
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "Insulin NPL $=$ insulin lispro + protamin ",
+        "bbox": [
+            98,
+            437,
+            551,
+            490
+        ],
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "Insulin NPA $=$ insulin aspart + protamin ",
+        "bbox": [
+            94,
+            541,
+            560,
+            593
+        ],
+        "page_idx": 11
+    },
+    {
+        "type": "discarded",
+        "text": "1 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 11
+    },
+    {
+        "type": "text",
+        "text": "INSULIN DEGLUDEC ",
+        "text_level": 1,
+        "bbox": [
+            363,
+            112,
+            635,
+            185
+        ],
+        "page_idx": 12
+    },
+    {
+        "type": "text",
+        "text": "Acid hexadecanedioic ",
+        "text_level": 1,
+        "bbox": [
+            105,
+            254,
+            300,
+            290
+        ],
+        "page_idx": 12
+    },
+    {
+        "type": "text",
+        "text": "Engineering insulin analogues ",
+        "text_level": 1,
+        "bbox": [
+            326,
+            370,
+            661,
+            414
+        ],
+        "page_idx": 12
+    },
+    {
+        "type": "image",
+        "img_path": "images/479a641e312a1c40b478acae1454e6a7d7d2dee065d1caf7ce6bdc88f584302e.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            247,
+            453,
+            748,
+            935
+        ],
+        "page_idx": 12
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 12
+    },
+    {
+        "type": "table",
+        "img_path": "images/f680daa28ca1dfe37bb40c5ff864ddd72e72aa5a3b1f9e2abf787b5e732462a6.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<table><tr><td rowspan=1 colspan=3>INSULIN HÖN HP (Premixed insulins)</td></tr><tr><td rowspan=1 colspan=1>Dng phi hp</td><td rowspan=1 colspan=1>T l phi hp</td><td rowspan=1 colspan=1>Bn cht</td></tr><tr><td rowspan=1 colspan=1>NPL/lispro</td><td rowspan=1 colspan=1>75/25, 50/50</td><td rowspan=1 colspan=1>Analog</td></tr><tr><td rowspan=1 colspan=1>NPA/aspart</td><td rowspan=1 colspan=1>70/30</td><td rowspan=1 colspan=1>Analog</td></tr><tr><td rowspan=1 colspan=1>NPH/regular</td><td rowspan=1 colspan=1>70/30</td><td rowspan=1 colspan=1>Human</td></tr><tr><td rowspan=1 colspan=1>Degludec/aspart</td><td rowspan=1 colspan=1>70/30</td><td rowspan=1 colspan=1>Analog</td></tr><tr><td rowspan=1 colspan=3>NPL - neutral protamine lisproNPA- neutral protamine aspart</td></tr></table>",
+        "bbox": [
+            118,
+            214,
+            880,
+            864
+        ],
+        "page_idx": 13
+    },
+    {
+        "type": "discarded",
+        "text": "4 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 13
+    },
+    {
+        "type": "text",
+        "text": "S BÀI TIT INSULIN T T BÀO BETA TY ",
+        "text_level": 1,
+        "bbox": [
+            135,
+            82,
+            850,
+            171
+        ],
+        "page_idx": 14
+    },
+    {
+        "type": "image",
+        "img_path": "images/31d972809576bab19aa0b0e6a1d176dc01d47183f1d9076a9f614def23f9fb17.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            227,
+            291,
+            765,
+            947
+        ],
+        "page_idx": 14
+    },
+    {
+        "type": "discarded",
+        "text": "15 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 14
+    },
+    {
+        "type": "text",
+        "text": "I. INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            83,
+            236,
+            154
+        ],
+        "page_idx": 15
+    },
+    {
+        "type": "text",
+        "text": "3. Cơ ch tác dng và tác dng ",
+        "text_level": 1,
+        "bbox": [
+            90,
+            188,
+            410,
+            240
+        ],
+        "page_idx": 15
+    },
+    {
+        "type": "image",
+        "img_path": "images/623dcb1c11ae4b56561af1edb96ab817aa27820716a87baa78249fe9f90817b0.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            155,
+            272,
+            776,
+            890
+        ],
+        "page_idx": 15
+    },
+    {
+        "type": "discarded",
+        "text": "16 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 15
+    },
+    {
+        "type": "table",
+        "img_path": "images/cc173e2658eb8d256277ad2aa5fa981a6c4d279a25103e363a1a973383af7c4a.jpg",
+        "table_caption": [
+            "GLUCOSE TRANSPORTER "
+        ],
+        "table_footnote": [],
+        "table_body": "<table><tr><td>GLUT</td><td>V trí</td></tr><tr><td>GLUT 1</td><td>Hng cu, não, thn, đi tràng, ty, gan, cơ vân..</td></tr><tr><td>GLUT 2</td><td>TB Beta ty, gan, thn, rut...</td></tr><tr><td>GLUT 3</td><td>Não, ty...</td></tr><tr><td>GLUT 4</td><td>Cơ vân, m, co tim...</td></tr><tr><td>GLUT 5</td><td>Thn, m, cơ vn, não...</td></tr></table>",
+        "bbox": [
+            133,
+            165,
+            862,
+            900
+        ],
+        "page_idx": 16
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 16
+    },
+    {
+        "type": "text",
+        "text": "I. INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            92,
+            132,
+            250,
+            211
+        ],
+        "page_idx": 17
+    },
+    {
+        "type": "text",
+        "text": "3. Cơ ch tác dng và tác dng ",
+        "bbox": [
+            91,
+            272,
+            466,
+            331
+        ],
+        "page_idx": 17
+    },
+    {
+        "type": "table",
+        "img_path": "images/93f55bae74799367a86321605d3c717b37042e298e8c1c7e3ae8d0f69c07ae1e.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<table><tr><td>Té bào gan</td><td>Té bào co vân</td><td>Té bào mõ</td></tr><tr><td>- c ch hy glycogen - c ch tng hp glucose tù acid amin - ↑ tng hp glycogen</td><td>- ↑ tng hp protein - ↑ vn chuyn glucose - ↓ to acid béo vào t bào - ↑ tng hp glycogen</td><td>- ↑ d tr triglycerid</td></tr></table>",
+        "bbox": [
+            176,
+            383,
+            861,
+            842
+        ],
+        "page_idx": 17
+    },
+    {
+        "type": "discarded",
+        "text": "18 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 17
+    },
+    {
+        "type": "text",
+        "text": "I. INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            132,
+            250,
+            211
+        ],
+        "page_idx": 18
+    },
+    {
+        "type": "text",
+        "text": "4. Đưng dùng và dng bào ch ",
+        "bbox": [
+            91,
+            273,
+            484,
+            332
+        ],
+        "page_idx": 18
+    },
+    {
+        "type": "image",
+        "img_path": "images/4a5e76532074ef807e380354ab5b85a7e41b6cb89b68fedfa8529cb332bfe9b6.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            134,
+            380,
+            806,
+            883
+        ],
+        "page_idx": 18
+    },
+    {
+        "type": "discarded",
+        "text": "1 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 18
+    },
+    {
+        "type": "text",
+        "text": "Insulin Pen ",
+        "text_level": 1,
+        "bbox": [
+            681,
+            41,
+            748,
+            65
+        ],
+        "page_idx": 19
+    },
+    {
+        "type": "image",
+        "img_path": "images/e3cd2a68b9b6fa03eadce486aa82b2a4ad891f2bb4bc2cce65dfccd22ad7de7b.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            130,
+            51,
+            865,
+            995
+        ],
+        "page_idx": 19
+    },
+    {
+        "type": "discarded",
+        "text": "20 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 19
+    },
+    {
+        "type": "image",
+        "img_path": "images/c7be30b017a99fc5cd42f790dcc625354e174e2274353e7b831bf39ad602d49f.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            118,
+            62,
+            336,
+            947
+        ],
+        "page_idx": 20
+    },
+    {
+        "type": "image",
+        "img_path": "images/ead342a71bbbacc31cde33934e3bfe6fabb1192735f351b86dd464c2c4aceeee.jpg",
+        "image_caption": [
+            "35\\$/năm "
+        ],
+        "image_footnote": [],
+        "bbox": [
+            353,
+            125,
+            868,
+            970
+        ],
+        "page_idx": 20
+    },
+    {
+        "type": "discarded",
+        "text": "21 ",
+        "bbox": [
+            933,
+            904,
+            974,
+            976
+        ],
+        "page_idx": 20
+    },
+    {
+        "type": "image",
+        "img_path": "images/3167d67c57e2bc184d3ecf951a37bc8a0a53bdcc27ba936508e454bcb6875142.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            131,
+            67,
+            503,
+            443
+        ],
+        "page_idx": 21
+    },
+    {
+        "type": "image",
+        "img_path": "images/ae022cb9b4c88fb0d67a07e7e9fad2866abb679f5d7037c5d7e1121770a3cca2.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            518,
+            98,
+            793,
+            486
+        ],
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "3 INHALE AFREZZA Not actual patient J ",
+        "bbox": [
+            218,
+            443,
+            470,
+            971
+        ],
+        "page_idx": 21
+    },
+    {
+        "type": "table",
+        "img_path": "images/41b76872055c78d648690ba47443ef2c75a40266ed3f746cb3e8206ec7e61b73.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<table><tr><td rowspan=\"2\">INJECTED MEALTIME INSULIN DOSE</td><td rowspan=\"2\">AFREZZA DOSE</td><td colspan=\"3\"># OF CARTRIDGES NEEDED</td></tr><tr><td>4 UNIT (BLU)</td><td>8 UNIT (GREEN)</td><td>12 UNIT (YELDO)</td></tr><tr><td>UP TO 4 UNITS</td><td>4 UNITS</td><td colspan=\"3\"></td></tr><tr><td>5-8 UNITS</td><td colspan=\"3\">8 UNITS</td><td>S</td></tr><tr><td>9-12 UNITS</td><td colspan=\"3\">12 UNITS</td><td>OR</td></tr><tr><td>13-16 UNITS</td><td colspan=\"3\">16 UNITS</td></tr><tr><td>17-20 UNITS</td><td colspan=\"3\">20 UNITS</td></tr><tr><td>21-24 UNITS</td><td colspan=\"3\">24 UNITS</td></tr></table>",
+        "bbox": [
+            511,
+            604,
+            801,
+            894
+        ],
+        "page_idx": 21
+    },
+    {
+        "type": "discarded",
+        "text": "22 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 21
+    },
+    {
+        "type": "text",
+        "text": "I. INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            111,
+            250,
+            188
+        ],
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "5. Chi đnh ",
+        "bbox": [
+            93,
+            230,
+            216,
+            281
+        ],
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "T typ 1 ",
+        "bbox": [
+            120,
+            292,
+            210,
+            333
+        ],
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "ĐTĐ typ 2 trong trưng hp ",
+        "text_level": 1,
+        "bbox": [
+            115,
+            345,
+            370,
+            387
+        ],
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "· Có th chi đnh insulin sm khi có các triu chng tăng glucose máu, HbA1C>10,0% hoc glucose máu lúc đói trên 16,7 mmol/I (ADA 2020). Đang mc mt bnh cp tính khác (nhim trùng nng, nhi máu co tim, đt quy ..) Có chng ch đnh dùng thuc điu tr ĐTĐ khác (d ng, suy thn, tn thương gan…)   \nSau khi đã thay đi ch đ ăn, sinh hot và dùng các thuc điu tr ĐTĐ khác không hiu quá. ",
+        "bbox": [
+            130,
+            396,
+            901,
+            703
+        ],
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "Ngưi ĐTĐ mang thai hoc đái tháo đưng thai k. ",
+        "bbox": [
+            116,
+            716,
+            566,
+            760
+        ],
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "ĐTĐ sau ct b ty ",
+        "bbox": [
+            112,
+            770,
+            288,
+            812
+        ],
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "Hôn mê ĐTĐ ",
+        "bbox": [
+            118,
+            825,
+            235,
+            864
+        ],
+        "page_idx": 22
+    },
+    {
+        "type": "discarded",
+        "text": "23 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 22
+    },
+    {
+        "type": "text",
+        "text": "I. INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            92,
+            111,
+            250,
+            188
+        ],
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "6. Cách dùng ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            230,
+            253,
+            284
+        ],
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "Dùng đưng tiêm, không dng đưng ung ",
+        "bbox": [
+            104,
+            316,
+            530,
+            365
+        ],
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "Chú ý khi tiêm dưi da: ",
+        "bbox": [
+            94,
+            391,
+            341,
+            434
+        ],
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "- Mũi tiêm dưi da cn phi đ đ sâu (chc kim vung góc vi mt da) ",
+        "bbox": [
+            97,
+            462,
+            763,
+            511
+        ],
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "· Phi luân chuyn v trí tiêm; ti nơi tiêm, các mũi tiêm phi cách xa nhau. ",
+        "bbox": [
+            99,
+            536,
+            789,
+            583
+        ],
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "- Tiêm bp hoc tiêm tĩnh mch ch đưc dùng trong đu tr cp cu. ",
+        "bbox": [
+            97,
+            610,
+            746,
+            657
+        ],
+        "page_idx": 23
+    },
+    {
+        "type": "discarded",
+        "text": "24 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 23
+    },
+    {
+        "type": "text",
+        "text": "I. INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            110,
+            250,
+            188
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "7. ADR ",
+        "bbox": [
+            93,
+            231,
+            180,
+            280
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "Dng: ",
+        "bbox": [
+            120,
+            298,
+            201,
+            345
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "Có th xut hin sau khi tiêm ln đu hoc sau nhiu ln tiêm, t l thp X lý bng: thay loi insulin khác ",
+        "bbox": [
+            128,
+            357,
+            880,
+            474
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "Tt glucose máu: ",
+        "text_level": 1,
+        "bbox": [
+            116,
+            491,
+            300,
+            537
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "Thưng gp khi tiêm insulin quá liu hoc ngưi bnh b ba ",
+        "bbox": [
+            135,
+            551,
+            791,
+            603
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "- Triu chng: toát m hôi, h thân nhit, co git, có th hôn mê. ",
+        "bbox": [
+            129,
+            616,
+            798,
+            666
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "=> D phng: không b ba, dùng đúng liu. ",
+        "bbox": [
+            120,
+            680,
+            590,
+            731
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "X trí cp cu: ung hoc truyn ngay glucose. ",
+        "bbox": [
+            161,
+            743,
+            662,
+            796
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "discarded",
+        "text": "25 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 24
+    },
+    {
+        "type": "text",
+        "text": "I. INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            110,
+            250,
+            188
+        ],
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "7. ADR ",
+        "bbox": [
+            93,
+            231,
+            180,
+            281
+        ],
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "Phn ng ti ch tiêm: ",
+        "bbox": [
+            116,
+            304,
+            360,
+            357
+        ],
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "Ngúa, đau ",
+        "bbox": [
+            131,
+            373,
+            265,
+            421
+        ],
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "□ Ri lon phân b m dưi da (teo m dưi da hoc u m vùng tiêm) $= >$ thay đi v trí tiêm thưng xuyên. ",
+        "bbox": [
+            115,
+            433,
+            860,
+            551
+        ],
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "Tăng cân ",
+        "bbox": [
+            120,
+            565,
+            216,
+            612
+        ],
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "Tăng glucose máu hi ng (rebound): ",
+        "bbox": [
+            109,
+            626,
+            510,
+            678
+        ],
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "Gp khi ngng thuc  ngưi bnh dùng insulin liu cao ",
+        "bbox": [
+            130,
+            690,
+            723,
+            743
+        ],
+        "page_idx": 25
+    },
+    {
+        "type": "discarded",
+        "text": "26 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 25
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            107,
+            680,
+            192
+        ],
+        "page_idx": 26
+    },
+    {
+        "type": "text",
+        "text": "1. Sulfonylure ",
+        "bbox": [
+            53,
+            274,
+            238,
+            337
+        ],
+        "page_idx": 26
+    },
+    {
+        "type": "text",
+        "text": "1.1. Th h: ",
+        "text_level": 1,
+        "bbox": [
+            53,
+            383,
+            177,
+            431
+        ],
+        "page_idx": 26
+    },
+    {
+        "type": "text",
+        "text": "$^ +$ TH1: tác dng yu, nhiu tác dng ph $^ +$ TH2: tác dng dài, ít tác dng ph hơn ",
+        "bbox": [
+            72,
+            456,
+            351,
+            731
+        ],
+        "page_idx": 26
+    },
+    {
+        "type": "table",
+        "img_path": "images/332f3270143efea574315ce52e5e5223255b5367d0663cbf7e594669d876ff7e.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<table><tr><td rowspan=1 colspan=1>Th h</td><td rowspan=1 colspan=1>Thuc</td><td rowspan=1 colspan=1>Thi gian tác dng</td></tr><tr><td rowspan=4 colspan=1>|</td><td rowspan=1 colspan=1>Tolbutamid</td><td rowspan=1 colspan=1>6-10h</td></tr><tr><td rowspan=1 colspan=1>Chlorpropamid</td><td rowspan=1 colspan=1>&gt; 48h</td></tr><tr><td rowspan=1 colspan=1>Tolazamid</td><td rowspan=1 colspan=1>&gt; 14h</td></tr><tr><td rowspan=1 colspan=1>Acetohexamid</td><td rowspan=1 colspan=1>8-24h</td></tr><tr><td rowspan=4 colspan=1>Il</td><td rowspan=1 colspan=1>Gliclazid</td><td rowspan=1 colspan=1>24</td></tr><tr><td rowspan=1 colspan=1>Glimepirid</td><td rowspan=1 colspan=1>24</td></tr><tr><td rowspan=1 colspan=1>Glyburid(glibenclamid)</td><td rowspan=1 colspan=1>16-24</td></tr><tr><td rowspan=1 colspan=1>Glipizid</td><td rowspan=1 colspan=1>12-18</td></tr></table>",
+        "bbox": [
+            400,
+            260,
+            936,
+            826
+        ],
+        "page_idx": 26
+    },
+    {
+        "type": "discarded",
+        "text": "27 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 26
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TĂNG TIT INSULIN - SULFONYLURE ",
+        "text_level": 1,
+        "bbox": [
+            88,
+            102,
+            870,
+            181
+        ],
+        "page_idx": 27
+    },
+    {
+        "type": "text",
+        "text": "1.2. Co ch tác dng ",
+        "text_level": 1,
+        "bbox": [
+            96,
+            223,
+            313,
+            273
+        ],
+        "page_idx": 27
+    },
+    {
+        "type": "image",
+        "img_path": "images/af44b02ec0b5b1af8887c8e6c4ec62e5a509e304f3bb2a154b30897aa2095cd8.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            101,
+            307,
+            463,
+            926
+        ],
+        "page_idx": 27
+    },
+    {
+        "type": "text",
+        "text": "S nhy cm insulin   \n- Gii phóng glucagon - Tác dng insulinase - Kháng th kháng insulin ",
+        "bbox": [
+            550,
+            347,
+            882,
+            890
+        ],
+        "page_idx": 27
+    },
+    {
+        "type": "discarded",
+        "text": "28 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 27
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TĂNG TIT INSULIN - SULFONYLURE ",
+        "text_level": 1,
+        "bbox": [
+            90,
+            103,
+            871,
+            182
+        ],
+        "page_idx": 28
+    },
+    {
+        "type": "text",
+        "text": "1.3. Chi đnh: ",
+        "text_level": 1,
+        "bbox": [
+            95,
+            233,
+            245,
+            284
+        ],
+        "page_idx": 28
+    },
+    {
+        "type": "text",
+        "text": "ĐTĐ typ 2 (dùng riêng r hoc phi hp) ",
+        "bbox": [
+            132,
+            301,
+            600,
+            356
+        ],
+        "page_idx": 28
+    },
+    {
+        "type": "text",
+        "text": "1.4. Chng chi đnh: ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            371,
+            320,
+            425
+        ],
+        "page_idx": 28
+    },
+    {
+        "type": "text",
+        "text": "Quá mn vi thuc   \nT typ 1   \nPh n có thai, cho con bú   \nSuy gan/thn nng   \nNhim toan ceton   \nTin hôn mê hoc hôn mê ĐTĐ ",
+        "bbox": [
+            130,
+            440,
+            498,
+            908
+        ],
+        "page_idx": 28
+    },
+    {
+        "type": "text",
+        "text": "Dùng cùng miconazol (CYP2C9, tăng nguy co tt glucose máu) ",
+        "bbox": [
+            139,
+            857,
+            831,
+            913
+        ],
+        "page_idx": 28
+    },
+    {
+        "type": "discarded",
+        "text": "29 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 28
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN - SULFONYLURE ",
+        "text_level": 1,
+        "bbox": [
+            90,
+            138,
+            870,
+            218
+        ],
+        "page_idx": 29
+    },
+    {
+        "type": "text",
+        "text": "1.5. TDKMM ",
+        "bbox": [
+            94,
+            274,
+            271,
+            332
+        ],
+        "page_idx": 29
+    },
+    {
+        "type": "text",
+        "text": "Tt glucose máu   \nTăng cân   \nDng   \nNhìn m   \nTiêu hóa: bun nôn, nôn, RL tiêu hóa, vàng da tc mt, viêm gan   \nHuyt hc: tan máu, thoái hóa bch cu ht ",
+        "bbox": [
+            124,
+            356,
+            847,
+            754
+        ],
+        "page_idx": 29
+    },
+    {
+        "type": "text",
+        "text": "Phn ng ging disulfiram khi dùng vi rưu H natri máu ",
+        "bbox": [
+            131,
+            838,
+            571,
+            943
+        ],
+        "page_idx": 29
+    },
+    {
+        "type": "discarded",
+        "text": "30 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            977
+        ],
+        "page_idx": 29
+    },
+    {
+        "type": "discarded",
+        "text": "• • • O • ",
+        "bbox": [
+            91,
+            346,
+            112,
+            837
+        ],
+        "page_idx": 29
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            120,
+            622,
+            195
+        ],
+        "page_idx": 30
+    },
+    {
+        "type": "text",
+        "text": "2. Nhóm glinid ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            261,
+            273,
+            316
+        ],
+        "page_idx": 30
+    },
+    {
+        "type": "text",
+        "text": "Co ch tác dng ging dn xut sulfonylure ",
+        "bbox": [
+            99,
+            340,
+            608,
+            401
+        ],
+        "page_idx": 30
+    },
+    {
+        "type": "text",
+        "text": "Gn nhanh vào receptor => Ch yu h glucose máu sau ăn ",
+        "bbox": [
+            92,
+            410,
+            507,
+            532
+        ],
+        "page_idx": 30
+    },
+    {
+        "type": "text",
+        "text": "Tách nhanh khi receptor ",
+        "bbox": [
+            97,
+            544,
+            410,
+            595
+        ],
+        "page_idx": 30
+    },
+    {
+        "type": "text",
+        "text": "Nhưc đim: dng nhiu ln, giá đt, tăng cân, phi dng kèm ba ăn, tt glucose máu. ",
+        "bbox": [
+            91,
+            606,
+            876,
+            715
+        ],
+        "page_idx": 30
+    },
+    {
+        "type": "text",
+        "text": "Các thuc: nateglinid, repaglinid, mitiglinid ",
+        "bbox": [
+            100,
+            728,
+            637,
+            785
+        ],
+        "page_idx": 30
+    },
+    {
+        "type": "discarded",
+        "text": "31 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 30
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            120,
+            622,
+            195
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "text",
+        "text": "GLP-1 và GIP: ",
+        "bbox": [
+            130,
+            240,
+            296,
+            291
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "text",
+        "text": "Glucagon like peptide - 1 ",
+        "bbox": [
+            132,
+            308,
+            456,
+            363
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "text",
+        "text": "Glucose dependent Insulinotropic polypeptide ",
+        "bbox": [
+            132,
+            381,
+            703,
+            434
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "text",
+        "text": "Do niêm mc rut bài tit, t/2 khong 2 phút ",
+        "bbox": [
+            130,
+            448,
+            682,
+            506
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "text",
+        "text": "Tác dng ",
+        "bbox": [
+            131,
+            521,
+            243,
+            574
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "text",
+        "text": "Tăng tit insulin ph thuc glucose => điu hòa glucose máu sau ăn ",
+        "bbox": [
+            133,
+            586,
+            569,
+            713
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "text",
+        "text": "- Làm chm s tháo rng d dày, tăng cm giác no, đy bng, gim thc ăn đưa vào. ",
+        "bbox": [
+            131,
+            723,
+            872,
+            835
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "discarded",
+        "text": "32 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "discarded",
+        "text": ":: ",
+        "bbox": [
+            96,
+            242,
+            121,
+            283
+        ],
+        "page_idx": 31
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            77,
+            97,
+            605,
+            176
+        ],
+        "page_idx": 32
+    },
+    {
+        "type": "text",
+        "text": "3. GLP-1 agonist/incretin mimetic ",
+        "text_level": 1,
+        "bbox": [
+            80,
+            231,
+            493,
+            290
+        ],
+        "page_idx": 32
+    },
+    {
+        "type": "text",
+        "text": "- Tiêm dưói da: Exenetid, liraglutid, albiglutid, dulaglutid, lixisenatid, semaglutid ",
+        "bbox": [
+            75,
+            342,
+            903,
+            394
+        ],
+        "page_idx": 32
+    },
+    {
+        "type": "text",
+        "text": "Đưng ung: semaglutid ",
+        "bbox": [
+            83,
+            444,
+            354,
+            495
+        ],
+        "page_idx": 32
+    },
+    {
+        "type": "text",
+        "text": "3.1. Cơ ch: ",
+        "bbox": [
+            83,
+            551,
+            230,
+            606
+        ],
+        "page_idx": 32
+    },
+    {
+        "type": "image",
+        "img_path": "images/bd74e65fa72cf003d2d66282e60410fceb96d6aabd8155d924b8c1b68c175c6e.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            385,
+            486,
+            883,
+            907
+        ],
+        "page_idx": 32
+    },
+    {
+        "type": "discarded",
+        "text": "33 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 32
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            140,
+            623,
+            218
+        ],
+        "page_idx": 33
+    },
+    {
+        "type": "text",
+        "text": "3. GLP-1 agonist (glucagon like peptide 1)/incretin mimetic ",
+        "bbox": [
+            105,
+            256,
+            675,
+            308
+        ],
+        "page_idx": 33
+    },
+    {
+        "type": "text",
+        "text": "3.2. Tác dng: ",
+        "text_level": 1,
+        "bbox": [
+            107,
+            361,
+            254,
+            410
+        ],
+        "page_idx": 33
+    },
+    {
+        "type": "text",
+        "text": "+ H glucose máu, gim dao đng glucose máu sau ăn, giåm HbA1c 0,5 - 1%,   \ngiåm glucagon   \n$^ +$ Gim ngon ming, chm tháo rng d dày, gim cân   \n$^ +$ Gim t vong do bnh lý tim mch  BN ĐTĐ typ 2 có nguy co cao   \n+ Ít nguy co tt glucose máu ",
+        "bbox": [
+            120,
+            452,
+            917,
+            900
+        ],
+        "page_idx": 33
+    },
+    {
+        "type": "discarded",
+        "text": "34 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 33
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            73,
+            100,
+            601,
+            177
+        ],
+        "page_idx": 34
+    },
+    {
+        "type": "text",
+        "text": "3. GLP-1 agonist (glucagon like peptide 1)/incretin mimetic ",
+        "bbox": [
+            83,
+            227,
+            700,
+            282
+        ],
+        "page_idx": 34
+    },
+    {
+        "type": "text",
+        "text": "3.3. ADR ",
+        "text_level": 1,
+        "bbox": [
+            82,
+            328,
+            170,
+            371
+        ],
+        "page_idx": 34
+    },
+    {
+        "type": "text",
+        "text": "$^ +$ Tt glucose máu (phi hp sulfonylure) $^ +$ Phn ng ti v trí tiêm $^ +$ RLTH: nôn, bun nôn, tiêu chy, đau bng $^ +$ TKTW: chóng mt, đau đu $^ +$ Nguy cơ viêm ty, tn thương thn (exenatid), không dùng trên BN có tin s bn thân hoc gia đình có ung thư nang giáp. ",
+        "bbox": [
+            78,
+            401,
+            881,
+            898
+        ],
+        "page_idx": 34
+    },
+    {
+        "type": "discarded",
+        "text": "35 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 34
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "bbox": [
+            92,
+            138,
+            621,
+            218
+        ],
+        "page_idx": 35
+    },
+    {
+        "type": "text",
+        "text": "3. GLP-1 agonist / incretin mimetic ",
+        "bbox": [
+            91,
+            283,
+            515,
+            341
+        ],
+        "page_idx": 35
+    },
+    {
+        "type": "text",
+        "text": "3.4. Ch đnh: ĐTĐ typ 2 ",
+        "bbox": [
+            92,
+            388,
+            340,
+            438
+        ],
+        "page_idx": 35
+    },
+    {
+        "type": "text",
+        "text": "3.5. CCD: ",
+        "bbox": [
+            92,
+            486,
+            191,
+            533
+        ],
+        "page_idx": 35
+    },
+    {
+        "type": "text",
+        "text": "+ Quá mn   \n+ Suy thn   \n$^ +$ Viêm ty   \n$^ +$ ĐTĐ typ 1, ĐTĐ nhim toan ceton, (tin) hôn mê ĐTĐ ",
+        "bbox": [
+            104,
+            565,
+            676,
+            925
+        ],
+        "page_idx": 35
+    },
+    {
+        "type": "discarded",
+        "text": "36 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 35
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            105,
+            621,
+            183
+        ],
+        "page_idx": 36
+    },
+    {
+        "type": "text",
+        "text": "4. Thuc c ch DPP IV (các gliptin) ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            265,
+            519,
+            325
+        ],
+        "page_idx": 36
+    },
+    {
+        "type": "text",
+        "text": "Sitagliptin, saxagliptin, linagliptin, vildagliptin, alogliptin ",
+        "bbox": [
+            96,
+            380,
+            676,
+            432
+        ],
+        "page_idx": 36
+    },
+    {
+        "type": "text",
+        "text": "4.1. Co ch: ",
+        "bbox": [
+            93,
+            482,
+            219,
+            530
+        ],
+        "page_idx": 36
+    },
+    {
+        "type": "image",
+        "img_path": "images/cd8bb67368c6629a791beaae7c4ed4a746e98a58a9886ffe4a09adb9c89fcf3c.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            230,
+            486,
+            821,
+            945
+        ],
+        "page_idx": 36
+    },
+    {
+        "type": "discarded",
+        "text": "37 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 36
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "bbox": [
+            91,
+            97,
+            622,
+            177
+        ],
+        "page_idx": 37
+    },
+    {
+        "type": "text",
+        "text": "4Thuc c ch DPP IV (các gliptin) ",
+        "bbox": [
+            83,
+            225,
+            520,
+            287
+        ],
+        "page_idx": 37
+    },
+    {
+        "type": "text",
+        "text": "4.2. Tác dng: $^ +$ Tương t incretin ",
+        "bbox": [
+            83,
+            341,
+            287,
+            490
+        ],
+        "page_idx": 37
+    },
+    {
+        "type": "text",
+        "text": "4.3. ADR ",
+        "text_level": 1,
+        "bbox": [
+            84,
+            538,
+            171,
+            581
+        ],
+        "page_idx": 37
+    },
+    {
+        "type": "text",
+        "text": "+ Quá mn   \n+ Viêm tuy cp, nhim khun hô hp trên, nhim khun tit niu   \n+ Đau đu   \n$^ +$ Tt glucose máu ",
+        "bbox": [
+            101,
+            622,
+            708,
+            967
+        ],
+        "page_idx": 37
+    },
+    {
+        "type": "discarded",
+        "text": "38 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 37
+    },
+    {
+        "type": "text",
+        "text": "II. THUC LÀM TNG TIT INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            94,
+            621,
+            173
+        ],
+        "page_idx": 38
+    },
+    {
+        "type": "text",
+        "text": "4. Thuc c ch DPP IV (các gliptin) ",
+        "text_level": 1,
+        "bbox": [
+            113,
+            227,
+            571,
+            294
+        ],
+        "page_idx": 38
+    },
+    {
+        "type": "text",
+        "text": "4.4. Chi đnh:Đái tháo đưng typ 2 ",
+        "bbox": [
+            112,
+            345,
+            463,
+            397
+        ],
+        "page_idx": 38
+    },
+    {
+        "type": "text",
+        "text": "4.5. Chng ch đnh:   \n+ Quá mn + ĐTĐ typ 1, ĐTĐ nhim toan ceton, (tin) hôn mê ĐTĐ ",
+        "bbox": [
+            114,
+            447,
+            648,
+            687
+        ],
+        "page_idx": 38
+    },
+    {
+        "type": "text",
+        "text": "4.6. Thành phm: ",
+        "text_level": 1,
+        "bbox": [
+            113,
+            735,
+            298,
+            785
+        ],
+        "page_idx": 38
+    },
+    {
+        "type": "text",
+        "text": "$^ +$ Đơn đc $^ +$ Phi hp metformin ",
+        "bbox": [
+            131,
+            835,
+            341,
+            981
+        ],
+        "page_idx": 38
+    },
+    {
+        "type": "discarded",
+        "text": "39 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 38
+    },
+    {
+        "type": "text",
+        "text": "III. THUC LÀM TNG NHY CM INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            95,
+            733,
+            174
+        ],
+        "page_idx": 39
+    },
+    {
+        "type": "text",
+        "text": "1. Nhóm biguanid - Metformin ",
+        "text_level": 1,
+        "bbox": [
+            114,
+            225,
+            486,
+            282
+        ],
+        "page_idx": 39
+    },
+    {
+        "type": "text",
+        "text": "1.1. Cơ ch tác dng ",
+        "text_level": 1,
+        "bbox": [
+            114,
+            325,
+            294,
+            370
+        ],
+        "page_idx": 39
+    },
+    {
+        "type": "text",
+        "text": "Hot hóa AMPK (AMP - dependent protein kinase) kích thích OXH acid béo  gan, tăng s nhy cm ca t bào vi insulin, tăng dung np glucose vào t bào, gim tng hp lipid, gim tân to glucose   \nCh có tác dng  bnh nhân có ty còn kh năng bài tit insulin ",
+        "bbox": [
+            143,
+            394,
+            969,
+            641
+        ],
+        "page_idx": 39
+    },
+    {
+        "type": "text",
+        "text": "1.2. Đc đim tác dng ",
+        "text_level": 1,
+        "bbox": [
+            115,
+            681,
+            315,
+            725
+        ],
+        "page_idx": 39
+    },
+    {
+        "type": "text",
+        "text": "H glucose máu rõ rt  ngưi tăng glucose máu, không gây tt glucose máu   \nGiåm HbA1C 1 -2 % (3%)   \nKhông gây tăng cân, giá thành r ",
+        "bbox": [
+            141,
+            750,
+            826,
+            944
+        ],
+        "page_idx": 39
+    },
+    {
+        "type": "discarded",
+        "text": "40 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            977
+        ],
+        "page_idx": 39
+    },
+    {
+        "type": "text",
+        "text": "III. THUC LÀM TNG NHY CM INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            95,
+            734,
+            173
+        ],
+        "page_idx": 40
+    },
+    {
+        "type": "text",
+        "text": "1. Nhóm biguanid - Metformin ",
+        "bbox": [
+            93,
+            206,
+            466,
+            263
+        ],
+        "page_idx": 40
+    },
+    {
+        "type": "text",
+        "text": "1.3. Ch đnh ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            305,
+            227,
+            355
+        ],
+        "page_idx": 40
+    },
+    {
+        "type": "text",
+        "text": "ĐTĐ typ 2 (riêng r hoc phi hp) ",
+        "bbox": [
+            106,
+            397,
+            476,
+            451
+        ],
+        "page_idx": 40
+    },
+    {
+        "type": "text",
+        "text": "Gim nguy cơ hoc trì hon s khi phát ĐTĐ typ 2  ngưi ln, bnh nhân tha cân có ri lon dung np glucose và/hoc ri lon glucose máu lúc đói và/hoc tăng HbA1c có các điu kin sau: ",
+        "bbox": [
+            108,
+            488,
+            946,
+            681
+        ],
+        "page_idx": 40
+    },
+    {
+        "type": "text",
+        "text": "Nguy cơ cao tin trin thành ĐTĐ typ 2 ",
+        "bbox": [
+            138,
+            705,
+            553,
+            757
+        ],
+        "page_idx": 40
+    },
+    {
+        "type": "text",
+        "text": "· Tin trin thành ĐTĐ typ 2 dù đ thay đ l sng 3-6 tháng ",
+        "bbox": [
+            136,
+            785,
+            769,
+            838
+        ],
+        "page_idx": 40
+    },
+    {
+        "type": "text",
+        "text": "Bung trng đa nang (PCOS) (off label) ",
+        "bbox": [
+            115,
+            882,
+            522,
+            935
+        ],
+        "page_idx": 40
+    },
+    {
+        "type": "discarded",
+        "text": "4 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 40
+    },
+    {
+        "type": "text",
+        "text": "III. THUC LÀM TNG NHY CM INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            96,
+            734,
+            173
+        ],
+        "page_idx": 41
+    },
+    {
+        "type": "text",
+        "text": "1. Nhóm biguanid - Metformin ",
+        "text_level": 1,
+        "bbox": [
+            94,
+            197,
+            466,
+            252
+        ],
+        "page_idx": 41
+    },
+    {
+        "type": "text",
+        "text": "1.4. Chng ch đnh ",
+        "text_level": 1,
+        "bbox": [
+            95,
+            271,
+            295,
+            321
+        ],
+        "page_idx": 41
+    },
+    {
+        "type": "text",
+        "text": "Quá mn   \n· T typ 1 Nhim toan chuyn hóa cp tính (như nhim toan acid lactin, nhim toan ceton ĐTĐ) Tin hôn mê ĐTĐ Suy thn nng (GFR < 30 ml/phút)   \n· Các tnh trng cp tính có nguy c thay đi chc năng thn như mt nưc, nhim trng nng, sc   \nCác bnh lý có th gây thiu oxy  mô như suy tim mt bù, suy hô hp, nhi máu cơ tim gn đây, sc   \nSuy gan, ng đc rưu cp tính, nghin rưu ",
+        "bbox": [
+            98,
+            346,
+            932,
+            921
+        ],
+        "page_idx": 41
+    },
+    {
+        "type": "discarded",
+        "text": "42 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            977
+        ],
+        "page_idx": 41
+    },
+    {
+        "type": "text",
+        "text": "III. THUC LÀM TNG NHY CM INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            95,
+            735,
+            174
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "1. Nhóm biguanid - Metformin ",
+        "bbox": [
+            93,
+            210,
+            520,
+            273
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "1.6. ADR ",
+        "bbox": [
+            93,
+            301,
+            203,
+            351
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "Điu tr đơn đc bng metformin không gây tt glucose máu. ",
+        "bbox": [
+            123,
+            371,
+            770,
+            422
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "Dng ",
+        "bbox": [
+            130,
+            437,
+            203,
+            485
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "Tăng nhy cm ánh sáng ",
+        "bbox": [
+            128,
+            500,
+            382,
+            550
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "Tiêu hóa: bun nôn, nôn, RL tiêu hóa, vàng da tc mt ",
+        "bbox": [
+            123,
+            563,
+            688,
+            613
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "Huyt hc: tan máu, thoái hóa bch cu ht ",
+        "bbox": [
+            119,
+            626,
+            580,
+            676
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "Nhim toan máu do tăng acid lactic ",
+        "bbox": [
+            104,
+            691,
+            494,
+            741
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "Thiu máu do thiu vitamin $\\mathsf { B } _ { 1 2 }$ ",
+        "bbox": [
+            111,
+            755,
+            450,
+            806
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "text",
+        "text": "Đau đu, suy nhưc ",
+        "bbox": [
+            125,
+            820,
+            339,
+            868
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "discarded",
+        "text": "43 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 42
+    },
+    {
+        "type": "image",
+        "img_path": "images/29eebd66e622751d6fb3531a4b38f5e85da3a2c476431abfe0b502703b0c90d4.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            282,
+            111,
+            710,
+            932
+        ],
+        "page_idx": 43
+    },
+    {
+        "type": "discarded",
+        "text": "44 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 43
+    },
+    {
+        "type": "text",
+        "text": "III. THUC LÀM TNG NHY CM INSULIN ",
+        "bbox": [
+            92,
+            94,
+            735,
+            174
+        ],
+        "page_idx": 44
+    },
+    {
+        "type": "text",
+        "text": "1. Nhóm biguanid - Metformin ",
+        "bbox": [
+            93,
+            210,
+            520,
+            273
+        ],
+        "page_idx": 44
+    },
+    {
+        "type": "text",
+        "text": "1.6. Dng kt hp ",
+        "bbox": [
+            93,
+            311,
+            314,
+            371
+        ],
+        "page_idx": 44
+    },
+    {
+        "type": "text",
+        "text": "- Vi sulfonylurea: glipizid, glibenclamid ",
+        "bbox": [
+            94,
+            406,
+            564,
+            464
+        ],
+        "page_idx": 44
+    },
+    {
+        "type": "text",
+        "text": "- Vói thiazolidindion ",
+        "bbox": [
+            93,
+            500,
+            333,
+            554
+        ],
+        "page_idx": 44
+    },
+    {
+        "type": "text",
+        "text": "V các gliptin: saxaglipti, sitagliptin, linagliptin, alogliptin ",
+        "bbox": [
+            93,
+            593,
+            790,
+            652
+        ],
+        "page_idx": 44
+    },
+    {
+        "type": "text",
+        "text": "- Vi các thuc c ch chn lc SGLτ2: dapagliflozin, canagliflozin, empagliflozin ",
+        "bbox": [
+            90,
+            684,
+            876,
+            837
+        ],
+        "page_idx": 44
+    },
+    {
+        "type": "discarded",
+        "text": "45 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 44
+    },
+    {
+        "type": "text",
+        "text": "III. THUC LÀM TNG NHY CM INSULIN ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            95,
+            733,
+            173
+        ],
+        "page_idx": 45
+    },
+    {
+        "type": "text",
+        "text": "2Thiazolidindion (glitazon) ",
+        "text_level": 1,
+        "bbox": [
+            66,
+            210,
+            455,
+            274
+        ],
+        "page_idx": 45
+    },
+    {
+        "type": "text",
+        "text": "Hot hóa th th PPARγ, tăng biu hin GLUT1, GLUT4 ",
+        "bbox": [
+            86,
+            308,
+            695,
+            367
+        ],
+        "page_idx": 45
+    },
+    {
+        "type": "text",
+        "text": "Tác dng: gim nng đ acid béo trong máu, gim sn xut glucose ti gan, tăng adiponectin và gim s phóng thích resistin t t bào m, tăng chuyn hóa t bào m kém bit hóa (preadipocytes) thành t bào m trưng thành ",
+        "bbox": [
+            78,
+            396,
+            969,
+            606
+        ],
+        "page_idx": 45
+    },
+    {
+        "type": "text",
+        "text": "Thuc: pioglitazon, rosiglitazone ",
+        "bbox": [
+            73,
+            636,
+            453,
+            691
+        ],
+        "page_idx": 45
+    },
+    {
+        "type": "text",
+        "text": "Không gây tt glucose khi dùng đơn đc ",
+        "bbox": [
+            80,
+            721,
+            538,
+            777
+        ],
+        "page_idx": 45
+    },
+    {
+        "type": "text",
+        "text": "ADR: phù, tăng cân, tăng nguy cơ suy tim, tăng nguy co gãy xương, thiu máu, tăng nguy cơ ung thư bang quang. ",
+        "bbox": [
+            82,
+            807,
+            968,
+            940
+        ],
+        "page_idx": 45
+    },
+    {
+        "type": "discarded",
+        "text": "A 46 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            977
+        ],
+        "page_idx": 45
+    },
+    {
+        "type": "text",
+        "text": "IV. THUC C CH ALPHA GLUCOSIDASE ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            114,
+            711,
+            191
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "text",
+        "text": "Acarbose, miglitol, voglibose ",
+        "bbox": [
+            94,
+            257,
+            395,
+            307
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "text",
+        "text": "1. Co ch tác dng ",
+        "bbox": [
+            95,
+            340,
+            288,
+            391
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "text",
+        "text": "Enzym glucosidase: ",
+        "bbox": [
+            118,
+            426,
+            322,
+            475
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "text",
+        "text": "Là các enzym oligosaccharidase và disaccharidase ",
+        "bbox": [
+            136,
+            510,
+            667,
+            562
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "text",
+        "text": "rim bàn chi niêm mc rut non ",
+        "bbox": [
+            131,
+            593,
+            518,
+            645
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "text",
+        "text": "Ct các cu ni glucosidic α-1,6 và α-1,4 đ gii phóng glucose. ",
+        "bbox": [
+            133,
+            681,
+            790,
+            735
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "text",
+        "text": "Thuc gn enzym trên $= >$ cnh tranh c ch ",
+        "bbox": [
+            103,
+            767,
+            570,
+            818
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "text",
+        "text": "Gim s hp thu ca rut vi tinh bt, dextrin và các disaccharid ",
+        "bbox": [
+            106,
+            855,
+            775,
+            906
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 46
+    },
+    {
+        "type": "text",
+        "text": "IV. THUC C CH ALPHA GLUCOSIDASE ",
+        "text_level": 1,
+        "bbox": [
+            92,
+            114,
+            710,
+            192
+        ],
+        "page_idx": 47
+    },
+    {
+        "type": "text",
+        "text": "2. Tác dng ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            258,
+            214,
+            307
+        ],
+        "page_idx": 47
+    },
+    {
+        "type": "text",
+        "text": "Gim đưng huyt sau ăn Gim HbA1C 0,5% - ít nh hưng cân nng - Ít gây tt glucose máu ",
+        "bbox": [
+            115,
+            337,
+            398,
+            648
+        ],
+        "page_idx": 47
+    },
+    {
+        "type": "text",
+        "text": "3. ADR ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            693,
+            167,
+            735
+        ],
+        "page_idx": 47
+    },
+    {
+        "type": "text",
+        "text": "RLTH: đy hơi, đau bng, tiêu chy, nôn và bun nôn Tăng enzym gan ",
+        "bbox": [
+            110,
+            773,
+            667,
+            913
+        ],
+        "page_idx": 47
+    },
+    {
+        "type": "discarded",
+        "text": "48 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 47
+    },
+    {
+        "type": "text",
+        "text": "IV. THUC C CH ALPHA GLUCOSIDASE ",
+        "text_level": 1,
+        "bbox": [
+            92,
+            114,
+            711,
+            193
+        ],
+        "page_idx": 48
+    },
+    {
+        "type": "text",
+        "text": "4.C: ĐT typ 2 ",
+        "bbox": [
+            92,
+            254,
+            275,
+            307
+        ],
+        "page_idx": 48
+    },
+    {
+        "type": "text",
+        "text": "5. CCD: ",
+        "bbox": [
+            92,
+            350,
+            183,
+            402
+        ],
+        "page_idx": 48
+    },
+    {
+        "type": "text",
+        "text": "- D ng, ĐTĐ typ 1, ĐTĐ nhim toan ceton, (tin) hôn mê ĐTĐ ",
+        "bbox": [
+            97,
+            438,
+            729,
+            494
+        ],
+        "page_idx": 48
+    },
+    {
+        "type": "text",
+        "text": "Suy gan, suy thn nng ",
+        "bbox": [
+            93,
+            531,
+            346,
+            581
+        ],
+        "page_idx": 48
+    },
+    {
+        "type": "text",
+        "text": "- PNCT và CCB, ngưi dưi 18 tui ",
+        "bbox": [
+            93,
+            614,
+            445,
+            665
+        ],
+        "page_idx": 48
+    },
+    {
+        "type": "text",
+        "text": "Ngưi viêm rut, viêm loét đi tràng, tc rut ",
+        "bbox": [
+            95,
+            700,
+            575,
+            752
+        ],
+        "page_idx": 48
+    },
+    {
+        "type": "text",
+        "text": "Chú ý: không dùng cùng các sn phm cha enzym tiêu hóa (amylase, pancreatin), cht hp ph  rut (than hot)  gim tác dng acarbose ",
+        "bbox": [
+            103,
+            785,
+            950,
+            905
+        ],
+        "page_idx": 48
+    },
+    {
+        "type": "discarded",
+        "text": "49 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            977
+        ],
+        "page_idx": 48
+    },
+    {
+        "type": "text",
+        "text": "V. CHT TUNG T AMYLIN ",
+        "text_level": 1,
+        "bbox": [
+            92,
+            116,
+            524,
+            192
+        ],
+        "page_idx": 49
+    },
+    {
+        "type": "text",
+        "text": "Il Amylin là mt peptid có 37 acid amin ",
+        "bbox": [
+            101,
+            260,
+            505,
+            312
+        ],
+        "page_idx": 49
+    },
+    {
+        "type": "text",
+        "text": "Bài tit cùng vi insulin t t bào beta ",
+        "bbox": [
+            131,
+            338,
+            544,
+            392
+        ],
+        "page_idx": 49
+    },
+    {
+        "type": "text",
+        "text": "□ Cùng cha trong mt nang tit  t bào beta ",
+        "bbox": [
+            131,
+            418,
+            612,
+            473
+        ],
+        "page_idx": 49
+    },
+    {
+        "type": "text",
+        "text": "Tác dng: Làm chm tiêu hoá thc ăn  d dày, làm chm hp thu glucose  rut, c ch bài tit glucagon sau ăn mà không làm thay đi lưng insulin. ",
+        "bbox": [
+            109,
+            498,
+            955,
+            634
+        ],
+        "page_idx": 49
+    },
+    {
+        "type": "text",
+        "text": "Nhưc đim: đt, tiêm, tác dng yu, không gim cân. ",
+        "bbox": [
+            111,
+            657,
+            676,
+            714
+        ],
+        "page_idx": 49
+    },
+    {
+        "type": "text",
+        "text": "Pramlintid ",
+        "bbox": [
+            113,
+            744,
+            234,
+            790
+        ],
+        "page_idx": 49
+    },
+    {
+        "type": "discarded",
+        "text": "50 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 49
+    },
+    {
+        "type": "text",
+        "text": "VI. THUC C CH CHN LC SGLT2 ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            113,
+            650,
+            194
+        ],
+        "page_idx": 50
+    },
+    {
+        "type": "text",
+        "text": "Protein vn chuyn glucose qua màng t bào   \nSGLT GLUT   \n(Sodiuum glucose (Glucose transporter)   \nVn chuyn Vn chuyn   \nchđng th đngg ",
+        "bbox": [
+            158,
+            264,
+            833,
+            983
+        ],
+        "page_idx": 50
+    },
+    {
+        "type": "discarded",
+        "text": "51 ",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 50
+    },
+    {
+        "type": "text",
+        "text": "VI. THUC C CH CHN LC SGLT2 ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            114,
+            650,
+            194
+        ],
+        "page_idx": 51
+    },
+    {
+        "type": "image",
+        "img_path": "images/93fb97e8486a7fac3557486f21abbf699ffd896805ef9e1d604391090fe115e5.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            119,
+            304,
+            826,
+            893
+        ],
+        "page_idx": 51
+    },
+    {
+        "type": "discarded",
+        "text": "52 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 51
+    },
+    {
+        "type": "text",
+        "text": "VI. THUC C CH CHN LC SGLT2 ",
+        "text_level": 1,
+        "bbox": [
+            61,
+            51,
+            558,
+            123
+        ],
+        "page_idx": 52
+    },
+    {
+        "type": "image",
+        "img_path": "images/ee1bd050d687566aed5659db28054551f29e6c8d47c7808260dd9f1faaf268da.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            126,
+            178,
+            795,
+            732
+        ],
+        "page_idx": 52
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            904,
+            974,
+            976
+        ],
+        "page_idx": 52
+    },
+    {
+        "type": "discarded",
+        "text": "a \\* ",
+        "bbox": [
+            698,
+            781,
+            853,
+            977
+        ],
+        "page_idx": 52
+    },
+    {
+        "type": "text",
+        "text": "VI. THUC C CH CHN LC SGLT2 ",
+        "text_level": 1,
+        "bbox": [
+            93,
+            90,
+            774,
+            183
+        ],
+        "page_idx": 53
+    },
+    {
+        "type": "text",
+        "text": "Canagliflozin, dapagliflozin, empagliflozin, ertugliflozin ",
+        "bbox": [
+            226,
+            225,
+            753,
+            272
+        ],
+        "page_idx": 53
+    },
+    {
+        "type": "table",
+        "img_path": "images/90672d7a5109537355ce33fd7a2add9b01ab27d25bbd4125986a2ecf9750afe8.jpg",
+        "table_caption": [],
+        "table_footnote": [],
+        "table_body": "<table><tr><td rowspan=1 colspan=1>Uu đim/Tác dng</td><td rowspan=1 colspan=1>Nhưc đim/TDκMM</td></tr><tr><td rowspan=1 colspan=1>1 ln/ngày</td><td rowspan=1 colspan=1>Đa niu</td></tr><tr><td rowspan=1 colspan=1>Gim c FPG và PPG</td><td rowspan=1 colspan=1>Mt nưc/H HA</td></tr><tr><td rowspan=1 colspan=1>Gim AC ≥ 0,8%</td><td rowspan=1 colspan=1>Ri lon đin gii (him)</td></tr><tr><td rowspan=1 colspan=1>Đơn tr hoc ph hp thuc ĐTĐ khác</td><td rowspan=1 colspan=1>NKTN/Nhim khun sinh dc</td></tr><tr><td rowspan=1 colspan=1>Không ph thuc tit INS hoc kháng INS</td><td rowspan=1 colspan=1>Ri lon m máu</td></tr><tr><td rowspan=1 colspan=1>Gim cân</td><td rowspan=1 colspan=1>Yêu cu chc nng thn bình thưng</td></tr><tr><td rowspan=1 colspan=1>Nguy c h đưng huyt thp</td><td rowspan=1 colspan=1>Hiu qu kéo dài chưa rõ</td></tr><tr><td rowspan=1 colspan=1>Ít TD ph trên tiêu hóa</td><td rowspan=1 colspan=1>TD khác: K bàng quang, K vú</td></tr></table>",
+        "bbox": [
+            165,
+            326,
+            833,
+            938
+        ],
+        "page_idx": 53
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 53
+    },
+    {
+        "type": "text",
+        "text": "VI. THUC C CH CHN LC SGLT2 ",
+        "text_level": 1,
+        "bbox": [
+            91,
+            88,
+            773,
+            183
+        ],
+        "page_idx": 54
+    },
+    {
+        "type": "text",
+        "text": "Canagliflozin, dapagliflozin, empagliflozin, ertugliflozin ",
+        "bbox": [
+            225,
+            225,
+            753,
+            272
+        ],
+        "page_idx": 54
+    },
+    {
+        "type": "text",
+        "text": "Ch đnh Chng ch đnh Quá mn - T typ 2   \nGim nguy co bin ĐTĐ typ 1/hôn mê ĐTĐ   \nc TM  BN ngưi   \nln ĐTĐ typ 2 có Suy thn bnh lý TM   \n(Canagliflozin, (MLCT < 30ml/phút)   \nempagliflozin) Bnh thn giai đon cui Lc máu ",
+        "bbox": [
+            243,
+            338,
+            752,
+            938
+        ],
+        "page_idx": 54
+    },
+    {
+        "type": "discarded",
+        "text": "",
+        "bbox": [
+            933,
+            905,
+            974,
+            976
+        ],
+        "page_idx": 54
+    },
+    {
+        "type": "text",
+        "text": "THANK YOU & HAPPY NEW YEAR ",
+        "text_level": 1,
+        "bbox": [
+            46,
+            90,
+            953,
+            231
+        ],
+        "page_idx": 55
+    },
+    {
+        "type": "image",
+        "img_path": "images/9eef8647dffdb2d9a08d0c610f4a76d71154b9f937d459cb302bc3a433810715.jpg",
+        "image_caption": [],
+        "image_footnote": [],
+        "bbox": [
+            193,
+            297,
+            785,
+            891
+        ],
+        "page_idx": 55
+    },
+    {
+        "type": "discarded",
+        "text": "56 ",
+        "bbox": [
+            933,
+            905,
+            973,
+            976
+        ],
+        "page_idx": 55
+    }
+]

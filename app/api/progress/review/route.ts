@@ -1,0 +1,19 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
+import { verifySessionUseCase, reviewCardUseCase } from '@/infrastructure/di';
+import { withApiLogging } from '@/lib/middlewares/with-api-logging';
+
+async function handler(req: NextRequest) {
+  const cookieStore = await cookies();
+  const session = cookieStore.get('session')?.value;
+  const user = await verifySessionUseCase.execute(session);
+
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { cardId, rating, question, answer } = await req.json();
+  const nextProgress = await reviewCardUseCase.execute(user.id, cardId, rating, question, answer);
+  
+  return NextResponse.json(nextProgress);
+}
+
+export const POST = withApiLogging('ReviewCard', handler);

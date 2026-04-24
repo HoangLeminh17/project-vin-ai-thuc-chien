@@ -25,3 +25,5 @@ node_modules/
 # MinerU extracted output (debug)
 .mineru-output/
 me
+_bmad/
+_bmad_output/

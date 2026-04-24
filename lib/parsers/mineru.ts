@@ -3,6 +3,7 @@ import { getBucket } from '@/lib/firebase-admin'
 import type { ParsePDF, ParsePDFResult } from './index'
 import fs from 'fs/promises'
 import path from 'path'
+import { contentListToMarkdown } from '@/infrastructure/adapters/content-list-converter'
 
 const BASE_URL = process.env.PDF_MINERU_BASE_URL!
 const API_KEY = process.env.PDF_MINERU_API_KEY!
@@ -116,19 +117,17 @@ async function downloadAndSave(zipUrl: string, safeName: string): Promise<ParseP
 
     await fs.writeFile(dest, data, typeof data === 'string' ? 'utf-8' : undefined)
 
-    // Extract relevant fields
-    if (zipPath.endsWith('full.md')) {
-      markdown = data as string
-    } else if (zipPath.endsWith('content_list.json') || zipPath.endsWith('_content_list_v2.json')) {
+    if (zipPath.endsWith('content_list.json') || zipPath.endsWith('_content_list_v2.json')) {
       try {
         contentList = JSON.parse(data as string)
+        markdown = contentListToMarkdown(contentList ?? [])
       } catch {
         console.warn(`[parse-pdf] Failed to parse content_list JSON from ${zipPath}`)
       }
     }
   }
 
-  if (!markdown) throw new Error('full.md not found in zip archive')
+  if (!markdown) throw new Error('content_list.json not found or empty in zip archive')
   console.log(`[parse-pdf] Saved to ${outDir}`)
   return { markdown, contentList }
 }
