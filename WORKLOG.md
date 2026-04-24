@@ -15,9 +15,35 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Refactor DI: centralize adapter initialization | Lê Kim Dũng | 22/04 | #22 |
 | Course Player (`/course/[id]`) + Instant Load cache | Lê Kim Dũng | 22/04 | #22 |
 | Nâng cấp UI/UX trang Study & Edit (phím tắt, nguồn) | Nguyễn Bình Thành | 23/04 | #26, #27 |
-| Bổ sung Gamification (Streak, Heatmap, Mastery ring) | Nguyễn Bình Thành | 23/04 | #28, #31, #32 |
+| Bổ sung Gamification (Streak, Heatmap, Mastery ring) | Nguyễn Bình Thành | 23/04 | #28, #36, #37 |
 | Giao diện Tracker tiến độ AI tạo bài | Nguyễn Bình Thành | 23/04 | #29 |
 | Nâng cấp trang Browse & Refactor Clean Architecture | Nguyễn Bình Thành | 23/04 | #30 |
+| Fix log hook UTF-8 encoding (Windows) | Nguyễn Bình Thành | 24/04 | #35 |
+| Chọn AI provider (Gemini / OpenAI fallback) | Nguyễn Bình Thành | 24/04 | #34 |
+| Merge Sprint 4 PRs + chuẩn hóa quy trình PR | Nguyễn Bình Thành | 24/04 | — |
+
+---
+
+### [ADR-23] Chuẩn hóa quy trình PR — 24/04/2026
+
+**Người làm:** Nguyễn Bình Thành
+
+**Bối cảnh:** Các PR Sprint 4 bị đánh giá điểm thấp (~52/100) do: nhồi nhét nhiều tính năng vào một PR, mô tả thiếu lý do và bằng chứng, không có unit test, dùng ID số dễ bị trùng.
+
+Thêm vào đó, khi merge PR #30 (`feat/browse-progress-driven` → `main`), branch bị xóa khiến PR #31 và #32 đang target vào branch đó bị GitHub tự động đóng (auto-close) mà không merge. Phải tạo lại thành PR #36, #37.
+
+**Quyết định:**
+
+1. **Atomic PR — chia 3 lớp:** Mỗi tính năng tách thành tối đa 3 PR: (1) Structure/Types, (2) UI/Component, (3) Logic/Error handling. Không nhồi cả 3 vào một PR.
+2. **Mô tả chuẩn What/Why/Evidence:** Mọi PR phải có 3 mục: What (làm gì), Why (lý do kỹ thuật/kiến trúc), Evidence (ảnh màn hình hoặc test output).
+3. **Luôn target `main` trực tiếp:** Không chain PR lên feature branch của PR khác — khi branch bị xóa sau merge, GitHub auto-close toàn bộ PR phụ thuộc.
+4. **Unit test tối thiểu:** 3 test case cho mỗi hàm logic quan trọng (success, lỗi mạng, input rỗng).
+
+**Hệ quả:**
+- (+) PR dễ review hơn, điểm đánh giá dự kiến tăng lên ~90+.
+- (+) Không còn rủi ro mất PR do auto-close khi xóa branch.
+- (+) Code có test → bắt lỗi sớm trước khi merge.
+- (-) Mỗi tính năng cần mở nhiều PR hơn trước — tốn thêm thời gian setup.
 
 ---
 
