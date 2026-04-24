@@ -88,14 +88,6 @@ interface FlatCard {
   concept: ConceptCard;
 }
 
-// Stable pseudo source page derived from card id. Placeholder until the
-// generator emits real PDF page numbers. TODO(generator): replace with real value.
-function derivePseudoPage(cardId: string): number {
-  let h = 0;
-  for (let i = 0; i < cardId.length; i++) h = (h * 31 + cardId.charCodeAt(i)) >>> 0;
-  return (h % 148) + 1;
-}
-
 function flattenCards(course: Course, courseContent: { chapters: ChapterContent[] } | null): FlatCard[] {
   if (!courseContent) return [];
   const cards: FlatCard[] = [];
