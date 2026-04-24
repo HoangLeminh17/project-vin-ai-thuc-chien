@@ -35,6 +35,40 @@ function useSRSStats() {
   return { stats, loading }
 }
 
+// ── Progress map (per-card SRS state) ────────────────────────────────────────
+
+interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; isDue: boolean }
+type ProgressMap = Record<string, ProgressMapEntry>
+
+function useProgressMap(userId: string | null) {
+  const [map, setMap] = useState<ProgressMap>({})
+  useEffect(() => {
+    if (!userId) return
+    fetch('/api/progress/map')
+      .then(r => r.ok ? r.json() : {})
+      .then((m: ProgressMap | { error?: string }) => { if (!('error' in m)) setMap(m as ProgressMap) })
+      .catch(() => {})
+  }, [userId])
+  return map
+}
+
+// Collapses a course's flattened cards against the progress map into the
+// three numbers the library card needs to render: total / due / masteryPct.
+function courseStats(saved: SavedCourse, map: ProgressMap): { total: number; due: number; masteryPct: number } {
+  const chapters = saved.courseContent?.chapters ?? []
+  let total = 0, due = 0, mature = 0
+  chapters.forEach((ch, ci) => {
+    ch.lessons.forEach((_, li) => {
+      total++
+      const e = map[`${ci}-${li}`]
+      if (!e) return
+      if (e.isDue) due++
+      else if (e.status === 'REVIEW') mature++
+    })
+  })
+  return { total, due, masteryPct: total === 0 ? 0 : Math.round((mature / total) * 100) }
+}
+
 function SRSHero({ stats, loading }: { stats: SRSStats | null; loading: boolean }) {
   if (loading) {
     return (
@@ -79,28 +113,50 @@ function SRSHero({ stats, loading }: { stats: SRSStats | null; loading: boolean 
 
 // ── Course card ───────────────────────────────────────────────────────────────
 
-function CourseCard({ course, onOpen, onDelete }: { course: SavedCourse; onOpen: () => void; onDelete: () => void }) {
+function MasteryRing({ pct, size = 28 }: { pct: number; size?: number }) {
+  const strokeWidth = 2.5
+  const r = (size - strokeWidth) / 2
+  const c = 2 * Math.PI * r
+  const off = c * (1 - Math.max(0, Math.min(100, pct)) / 100)
+  return (
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--sy-ink-10)" strokeWidth={strokeWidth} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--sy-accent)" strokeWidth={strokeWidth}
+        strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{ transition: 'stroke-dashoffset .4s ease' }} />
+    </svg>
+  )
+}
+
+function CourseCard({ course, stats, onOpen, onDelete }: { course: SavedCourse; stats: { total: number; due: number; masteryPct: number }; onOpen: () => void; onDelete: () => void }) {
   const chapterCount = course.course.chapters.length
   const lessonCount = course.course.chapters.reduce((n, ch) => n + (ch.lessons?.length ?? 0), 0)
   const date = new Date(course.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' })
   return (
     <div
-      className="flex flex-col gap-3 p-4 rounded-xl cursor-pointer transition-shadow hover:shadow-sm"
+      className="flex flex-col gap-2.5 p-4 rounded-xl cursor-pointer transition-shadow hover:shadow-sm"
       style={{ background: 'var(--sy-bg-solid)', border: '1px solid var(--sy-ink-10)' }}
       onClick={onOpen}
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="sy-serif line-clamp-2 flex-1" style={{ fontSize: '14px', fontWeight: 500, margin: 0, lineHeight: 1.35, color: 'var(--sy-ink)' }}>{course.title}</h3>
-        <button
-          onClick={e => { e.stopPropagation(); onDelete() }}
-          className="shrink-0 p-1 rounded transition-colors hover:text-red-500"
-          style={{ color: 'var(--sy-ink-20)' }}
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <MasteryRing pct={stats.masteryPct} />
+        <div className="flex items-start gap-2 shrink-0">
+          {stats.due > 0 && (
+            <span style={{ fontSize: 10, fontWeight: 600, background: 'var(--sy-warm-soft)', color: 'var(--sy-warm)', padding: '2px 7px', borderRadius: 10, whiteSpace: 'nowrap' }}>
+              {stats.due} cần ôn
+            </span>
+          )}
+          <button
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            className="p-1 rounded transition-colors hover:text-red-500"
+            style={{ color: 'var(--sy-ink-20)' }}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
+      <h3 className="sy-serif line-clamp-2" style={{ fontSize: '14px', fontWeight: 500, margin: 0, lineHeight: 1.35, color: 'var(--sy-ink)' }}>{course.title}</h3>
       <div className="sy-mono flex gap-1.5 items-center" style={{ fontSize: '11px', color: 'var(--sy-ink-40)' }}>
         <span>{chapterCount} chương</span><span>·</span><span>{lessonCount} bài</span>
       </div>
@@ -328,6 +384,7 @@ export default function Home() {
   const { user, loading: authLoading, login, logout } = useAuth()
   const { courses, loading: coursesLoading, saveCourse, deleteCourse } = useCourses(user?.uid ?? null)
   const { stats: srsStats, loading: srsLoading } = useSRSStats()
+  const progressMap = useProgressMap(user?.uid ?? null)
 
   const reset = useCallback(() => {
     setFile(null)
@@ -552,6 +609,7 @@ export default function Home() {
               <CourseCard
                 key={c.id}
                 course={c}
+                stats={courseStats(c, progressMap)}
                 onOpen={() => router.push(`/course/${c.id}`)}
                 onDelete={() => { if (confirm('Xóa khóa học này?')) deleteCourse(c.id) }}
               />
