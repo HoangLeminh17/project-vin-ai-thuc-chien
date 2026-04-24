@@ -12,6 +12,71 @@ const localAdapter = isLocal ? new LocalCourseAdapter() : null;
 
 type Mode = 'browse' | 'study' | 'edit';
 
+// ── SRS progress map (server-fetched) ────────────────────────────────────────
+
+type BrowseStatus = 'new' | 'learning' | 'due' | 'mature';
+interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; lastReviewedAt?: string; isDue: boolean }
+type ProgressMap = Record<string, ProgressMapEntry>;
+
+// Map a raw progress entry (plus absence) to the four UI states shown in the mock.
+function statusOf(entry: ProgressMapEntry | undefined): BrowseStatus {
+  if (!entry) return 'new';
+  if (entry.isDue) return 'due';
+  if (entry.status === 'LEARNING') return 'learning';
+  return 'mature';
+}
+
+// Human "Kế tiếp" label for the Browse column.
+function formatNextReview(entry: ProgressMapEntry | undefined): string {
+  if (!entry) return 'chưa học';
+  const now = Date.now();
+  const next = new Date(entry.nextReviewDate).getTime();
+  const diffMs = next - now;
+  if (diffMs <= 0) return 'hôm nay';
+  const mins = Math.round(diffMs / 60000);
+  if (mins < 60) return `${mins} phút`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours} giờ`;
+  const days = Math.round(hours / 24);
+  return `${days} ngày`;
+}
+
+// Stable pseudo source page derived from card id. Placeholder until the
+// generator emits real PDF page numbers. TODO(generator): replace with real value.
+function derivePseudoPage(cardId: string): number {
+  let h = 0;
+  for (let i = 0; i < cardId.length; i++) h = (h * 31 + cardId.charCodeAt(i)) >>> 0;
+  return (h % 148) + 1;
+}
+
+// ── MiniRing ─────────────────────────────────────────────────────────────────
+
+function MiniRing({ pct, size = 14, strokeWidth = 2 }: { pct: number; size?: number; strokeWidth?: number }) {
+  const r = (size - strokeWidth) / 2;
+  const c = 2 * Math.PI * r;
+  const off = c * (1 - Math.max(0, Math.min(100, pct)) / 100);
+  return (
+    <svg width={size} height={size} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--sy-ink-10)" strokeWidth={strokeWidth} />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--sy-accent)" strokeWidth={strokeWidth}
+        strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{ transition: 'stroke-dashoffset .4s ease' }} />
+    </svg>
+  );
+}
+
+// ── StateChip ────────────────────────────────────────────────────────────────
+
+function StateChip({ state }: { state: BrowseStatus }) {
+  const map: Record<BrowseStatus, { label: string; bg: string; fg: string }> = {
+    new:      { label: 'Mới',      bg: 'var(--sy-bg-sunken)',   fg: 'var(--sy-ink-60)' },
+    learning: { label: 'Đang học', bg: '#fdf3e6',               fg: 'var(--sy-hard)'   },
+    due:      { label: 'Cần ôn',   bg: 'var(--sy-warm-soft)',   fg: 'var(--sy-warm)'   },
+    mature:   { label: 'Đã thuộc', bg: 'var(--sy-accent-soft)', fg: 'var(--sy-accent)' },
+  };
+  const m = map[state];
+  return <span style={{ fontSize: 10, fontWeight: 500, color: m.fg, background: m.bg, padding: '2px 7px', borderRadius: 8, whiteSpace: 'nowrap' }}>{m.label}</span>;
+}
+
 // ── Flat card model ───────────────────────────────────────────────────────────
 
 interface FlatCard {
@@ -99,11 +164,13 @@ function ModeSwitcher({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => v
 // ── Chapter rail ──────────────────────────────────────────────────────────────
 
 function ChapterRail({
-  course, filterCi, onFilterCi,
+  course, cards, filterCi, onFilterCi, progressMap,
 }: {
   course: Course;
+  cards: FlatCard[];
   filterCi: number | null;
   onFilterCi: (ci: number | null) => void;
+  progressMap: ProgressMap;
 }) {
   return (
     <aside style={{ width: 240, flexShrink: 0, background: 'var(--sy-bg-sunken)', borderRight: '1px solid var(--sy-ink-10)', overflowY: 'auto', padding: '12px 0' }}>
@@ -119,18 +186,49 @@ function ChapterRail({
       >
         Tất cả chương
       </button>
-      {course.chapters.map((ch, ci) => (
-        <button key={ci} onClick={() => onFilterCi(ci)} style={{
-          width: '100%', textAlign: 'left', padding: '8px 16px', fontSize: 13, cursor: 'pointer', border: 'none',
-          background: filterCi === ci ? 'var(--sy-bg-solid)' : 'transparent',
-          color: filterCi === ci ? 'var(--sy-ink)' : 'var(--sy-ink-60)',
-          borderLeft: `2px solid ${filterCi === ci ? 'var(--sy-warm)' : 'transparent'}`,
-          fontFamily: 'var(--sy-font-serif)',
-        }}>
-          <span style={{ fontSize: 11, color: 'var(--sy-ink-40)', fontFamily: 'var(--sy-font-mono)', marginRight: 6 }}>0{ci + 1}</span>
-          {ch.title}
-        </button>
-      ))}
+      {course.chapters.map((ch, ci) => {
+        const chapterCards = cards.filter(c => c.ci === ci);
+        const chapterDue = chapterCards.filter(c => statusOf(progressMap[c.id]) === 'due').length;
+        const active = filterCi === ci;
+        return (
+          <div key={ci} style={{ marginTop: 6 }}>
+            <button onClick={() => onFilterCi(ci)} style={{
+              width: '100%', textAlign: 'left', padding: '7px 16px 3px', cursor: 'pointer', border: 'none',
+              background: active ? 'var(--sy-bg-solid)' : 'transparent',
+              borderLeft: `2px solid ${active ? 'var(--sy-warm)' : 'transparent'}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+              fontFamily: 'var(--sy-font-sans)',
+            }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)', flexShrink: 0 }}>0{ci + 1}</span>
+                <span className="sy-serif" style={{ fontSize: 13, fontWeight: 500, color: active ? 'var(--sy-ink)' : 'var(--sy-ink-80)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{ch.title}</span>
+              </span>
+              {chapterDue > 0 && (
+                <span style={{ fontSize: 9, color: 'var(--sy-warm)', background: 'var(--sy-warm-soft)', padding: '1px 6px', borderRadius: 8, fontWeight: 600, flexShrink: 0 }}>{chapterDue}</span>
+              )}
+            </button>
+            {(ch.lessons ?? []).map((lesson, li) => {
+              const lessonCards = chapterCards.filter(c => c.li === li);
+              if (lessonCards.length === 0) return null;
+              const matureCount = lessonCards.filter(c => statusOf(progressMap[c.id]) === 'mature').length;
+              const masteryPct = Math.round((matureCount / lessonCards.length) * 100);
+              return (
+                <div key={li} style={{
+                  padding: '3px 16px 3px 32px',
+                  fontSize: 12, color: 'var(--sy-ink-60)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                }}>
+                  <span className="sy-serif" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>{lesson.title}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
+                    <MiniRing pct={masteryPct} />
+                    <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)' }}>{lessonCards.length}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
     </aside>
   );
 }
@@ -138,7 +236,7 @@ function ChapterRail({
 // ── Browse mode ───────────────────────────────────────────────────────────────
 
 function BrowseMode({
-  cards, filterCi, onOpenCard, onOpenQuiz, course, courseContent,
+  cards, filterCi, onOpenCard, onOpenQuiz, course, courseContent, progressMap,
 }: {
   cards: FlatCard[];
   filterCi: number | null;
@@ -146,17 +244,32 @@ function BrowseMode({
   onOpenQuiz: (ci: number) => void;
   course: Course;
   courseContent: { chapters: ChapterContent[] } | null;
+  progressMap: ProgressMap;
 }) {
   const [query, setQuery] = useState('');
-  const shown = cards
-    .filter(c => filterCi === null || c.ci === filterCi)
+  const [statusFilter, setStatusFilter] = useState<'all' | BrowseStatus>('all');
+
+  const scoped = cards.filter(c => filterCi === null || c.ci === filterCi);
+  const counts: Record<'all' | BrowseStatus, number> = { all: scoped.length, new: 0, learning: 0, due: 0, mature: 0 };
+  for (const c of scoped) counts[statusOf(progressMap[c.id])]++;
+
+  const filters: { id: 'all' | BrowseStatus; label: string }[] = [
+    { id: 'all',      label: 'Tất cả'   },
+    { id: 'due',      label: 'Cần ôn'   },
+    { id: 'learning', label: 'Đang học' },
+    { id: 'new',      label: 'Mới'      },
+    { id: 'mature',   label: 'Đã thuộc' },
+  ];
+
+  const shown = scoped
+    .filter(c => statusFilter === 'all' || statusOf(progressMap[c.id]) === statusFilter)
     .filter(c => !query || c.concept.question.toLowerCase().includes(query.toLowerCase()));
 
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       {/* Toolbar */}
-      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-solid)', display: 'flex', alignItems: 'center', gap: 12 }}>
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, background: 'var(--sy-bg-sunken)', padding: '7px 12px', borderRadius: 7, maxWidth: 360 }}>
+      <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-solid)', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 220px', display: 'flex', alignItems: 'center', gap: 8, background: 'var(--sy-bg-sunken)', padding: '7px 12px', borderRadius: 7, maxWidth: 340 }}>
           <span style={{ color: 'var(--sy-ink-40)', fontSize: 14 }}>⌕</span>
           <input
             value={query} onChange={e => setQuery(e.target.value)}
@@ -164,7 +277,21 @@ function BrowseMode({
             style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', fontSize: 13, fontFamily: 'var(--sy-font-sans)', color: 'var(--sy-ink)' }}
           />
         </div>
-        <span className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-40)' }}>{shown.length} thẻ</span>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {filters.map(f => {
+            const active = statusFilter === f.id;
+            return (
+              <button key={f.id} onClick={() => setStatusFilter(f.id)} style={{
+                padding: '6px 10px', fontSize: 12, borderRadius: 6, fontWeight: 500, cursor: 'pointer', border: 'none',
+                background: active ? 'var(--sy-ink)' : 'transparent',
+                color: active ? 'var(--sy-bg)' : 'var(--sy-ink-60)',
+                fontFamily: 'var(--sy-font-sans)',
+              }}>
+                {f.label} <span className="sy-mono" style={{ opacity: 0.6, marginLeft: 3 }}>{counts[f.id]}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Table */}
@@ -177,38 +304,54 @@ function BrowseMode({
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: 'var(--sy-bg-soft)', position: 'sticky', top: 0, zIndex: 1 }}>
-                {['Câu hỏi', 'Chương', 'Bài học'].map(h => (
-                  <th key={h} style={{ textAlign: 'left', padding: '9px 16px', fontSize: 10, fontWeight: 600, color: 'var(--sy-ink-40)', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--sy-ink-10)', fontFamily: 'var(--sy-font-mono)' }}>{h}</th>
+                {[
+                  { label: 'Câu hỏi',    width: undefined },
+                  { label: 'Chương',     width: 140 },
+                  { label: 'Trạng thái', width: 90  },
+                  { label: 'Kế tiếp',    width: 90  },
+                  { label: 'Nguồn',      width: 70  },
+                ].map(h => (
+                  <th key={h.label} style={{ textAlign: 'left', padding: '9px 16px', fontSize: 10, fontWeight: 600, color: 'var(--sy-ink-40)', textTransform: 'uppercase', letterSpacing: '0.08em', borderBottom: '1px solid var(--sy-ink-10)', fontFamily: 'var(--sy-font-mono)', width: h.width }}>{h.label}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {shown.map((card, i) => (
-                <tr key={card.id} onClick={() => onOpenCard(card)}
-                  style={{ cursor: 'pointer', background: i % 2 ? 'var(--sy-bg-soft)' : 'var(--sy-bg-solid)', borderBottom: '1px solid var(--sy-ink-10)' }}>
-                  <td className="sy-serif" style={{ padding: '12px 16px', color: 'var(--sy-ink)', lineHeight: 1.4, maxWidth: 480 }}>{card.concept.question}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)', whiteSpace: 'nowrap' }}>{card.chapterTitle}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)' }}>{card.lessonTitle}</td>
-                </tr>
-              ))}
+              {shown.map((card, i) => {
+                const entry = progressMap[card.id];
+                return (
+                  <tr key={card.id} onClick={() => onOpenCard(card)}
+                    style={{ cursor: 'pointer', background: i % 2 ? 'var(--sy-bg-soft)' : 'var(--sy-bg-solid)', borderBottom: '1px solid var(--sy-ink-10)' }}>
+                    <td className="sy-serif" style={{ padding: '12px 16px', color: 'var(--sy-ink)', lineHeight: 1.4, maxWidth: 480 }}>{card.concept.question}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)', whiteSpace: 'nowrap' }}>{card.chapterTitle}</td>
+                    <td style={{ padding: '12px 16px' }}><StateChip state={statusOf(entry)} /></td>
+                    <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)' }}>{formatNextReview(entry)}</td>
+                    <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 11, color: 'var(--sy-ink-40)' }}>tr. {derivePseudoPage(card.id)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
 
-        {/* Quiz entries */}
-        {courseContent && (filterCi !== null ? [filterCi] : course.chapters.map((_, i) => i)).map(ci => {
-          const quiz = courseContent.chapters[ci]?.quiz;
-          if (!quiz || quiz.questions.length === 0) return null;
-          return (
-            <div key={ci} style={{ padding: '10px 20px', borderBottom: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-solid)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span className="sy-mono" style={{ fontSize: 12, color: 'var(--sy-ink-60)' }}>Quiz — {course.chapters[ci]?.title}</span>
-              <button onClick={() => onOpenQuiz(ci)} style={{ fontSize: 12, fontWeight: 500, color: 'var(--sy-warm)', padding: '4px 10px', borderRadius: 5, border: '1px solid rgba(201,100,66,0.25)', background: 'none', cursor: 'pointer', fontFamily: 'var(--sy-font-sans)' }}>
-                Làm quiz →
-              </button>
-            </div>
-          );
-        })}
       </div>
+
+      {/* Quiz strip — kept out of the card table so the list reads like Anki */}
+      {courseContent && (() => {
+        const scope = filterCi !== null ? [filterCi] : course.chapters.map((_, i) => i);
+        const withQuiz = scope.filter(ci => (courseContent.chapters[ci]?.quiz?.questions.length ?? 0) > 0);
+        if (withQuiz.length === 0) return null;
+        return (
+          <div style={{ padding: '8px 20px', borderTop: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-soft)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 }}>Quiz</span>
+            {withQuiz.map(ci => (
+              <button key={ci} onClick={() => onOpenQuiz(ci)}
+                style={{ fontSize: 12, fontWeight: 500, color: 'var(--sy-warm)', padding: '4px 10px', borderRadius: 5, border: '1px solid rgba(201,100,66,0.25)', background: 'none', cursor: 'pointer', fontFamily: 'var(--sy-font-sans)' }}>
+                {course.chapters[ci]?.title} →
+              </button>
+            ))}
+          </div>
+        );
+      })()}
     </div>
   );
 }
@@ -621,6 +764,15 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [filterCi, setFilterCi] = useState<number | null>(null);
   const [openCard, setOpenCard] = useState<FlatCard | null>(null);
   const [quizCi, setQuizCi] = useState<number | null>(null);
+  const [progressMap, setProgressMap] = useState<ProgressMap>({});
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    fetch('/api/progress/map')
+      .then(r => r.ok ? r.json() : {})
+      .then((m: ProgressMap | { error?: string }) => { if (!('error' in m)) setProgressMap(m as ProgressMap); })
+      .catch(() => {});
+  }, [user, authLoading]);
   const [editInitialCardId, setEditInitialCardId] = useState<string | null>(null);
   const [editFocusAi, setEditFocusAi] = useState(false);
 
@@ -673,7 +825,13 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
         {/* Chapter rail (hidden in Study) */}
         {mode !== 'study' && (
-          <ChapterRail course={course} filterCi={filterCi} onFilterCi={ci => { setFilterCi(ci); setQuizCi(null); }} />
+          <ChapterRail
+            course={course}
+            cards={cards}
+            filterCi={filterCi}
+            onFilterCi={ci => { setFilterCi(ci); setQuizCi(null); }}
+            progressMap={progressMap}
+          />
         )}
 
         {/* Content area */}
@@ -685,6 +843,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
             onOpenQuiz={setQuizCi}
             course={course}
             courseContent={courseContent}
+            progressMap={progressMap}
           />
         )}
 

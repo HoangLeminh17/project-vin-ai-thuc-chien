@@ -60,6 +60,14 @@ export class FirebaseProgressRepository implements IProgressRepository {
     return snapshot.docs.map(doc => this.mapToEntity(doc.id, doc.data()));
   }
 
+  async getAllForUser(userId: string): Promise<CardProgress[]> {
+    const snapshot = await getDb()
+      .collection(this.collectionName)
+      .where('userId', '==', userId)
+      .get();
+    return snapshot.docs.map(doc => this.mapToEntity(doc.id, doc.data()));
+  }
+
   async getStats(userId: string): Promise<{ new: number; learning: number; due: number; streak: number }> {
     const now = new Date();
     const snapshot = await getDb()
