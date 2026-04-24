@@ -37,8 +37,26 @@ function useSRSStats() {
 
 // ── Progress map (per-card SRS state) ────────────────────────────────────────
 
-interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; isDue: boolean }
+interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; lastReviewedAt?: string; isDue: boolean }
 type ProgressMap = Record<string, ProgressMapEntry>
+
+// Buckets each card's lastReviewedAt into a 30-day array, oldest → today.
+// Because we only keep the most recent review per card, each card can
+// contribute at most one day — directionally correct but a lower bound.
+function buildHeatmap(map: ProgressMap, days = 30): number[] {
+  const buckets = Array<number>(days).fill(0)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  for (const entry of Object.values(map)) {
+    if (!entry.lastReviewedAt) continue
+    const d = new Date(entry.lastReviewedAt)
+    d.setHours(0, 0, 0, 0)
+    const diffDays = Math.floor((today.getTime() - d.getTime()) / 86_400_000)
+    if (diffDays < 0 || diffDays >= days) continue
+    buckets[days - 1 - diffDays]++
+  }
+  return buckets
+}
 
 function useProgressMap(userId: string | null) {
   const [map, setMap] = useState<ProgressMap>({})
@@ -67,6 +85,36 @@ function courseStats(saved: SavedCourse, map: ProgressMap): { total: number; due
     })
   })
   return { total, due, masteryPct: total === 0 ? 0 : Math.round((mature / total) * 100) }
+}
+
+function Heatmap({ buckets }: { buckets: number[] }) {
+  const total = buckets.reduce((a, b) => a + b, 0)
+  const max = Math.max(1, ...buckets)
+  return (
+    <div className="rounded-xl" style={{ background: 'var(--sy-bg-solid)', border: '1px solid var(--sy-ink-10)', padding: '20px 24px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <div className="flex items-baseline justify-between" style={{ marginBottom: 14 }}>
+        <p style={{ fontSize: '11px', fontWeight: 600, color: 'var(--sy-ink-40)', textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>30 ngày gần đây</p>
+        <span className="sy-mono" style={{ fontSize: '11px', color: 'var(--sy-ink-40)' }}>{total} thẻ</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(15, 1fr)', gap: 4 }}>
+        {buckets.map((count, i) => {
+          const opacity = count === 0 ? 0 : Math.min(1, 0.25 + count / max)
+          return (
+            <div key={i} style={{
+              aspectRatio: '1',
+              borderRadius: 3,
+              background: count === 0 ? 'var(--sy-ink-10)' : `rgba(45, 106, 90, ${opacity})`,
+              border: count === 0 ? 'none' : '1px solid rgba(45, 106, 90, 0.1)',
+            }} title={count === 0 ? '0 thẻ' : `${count} thẻ`} />
+          )
+        })}
+      </div>
+      <div className="sy-mono flex justify-between" style={{ marginTop: 10, fontSize: '10px', color: 'var(--sy-ink-40)' }}>
+        <span>4 tuần trước</span>
+        <span>Hôm nay</span>
+      </div>
+    </div>
+  )
 }
 
 function SRSHero({ stats, loading }: { stats: SRSStats | null; loading: boolean }) {
@@ -574,10 +622,13 @@ export default function Home() {
 
       <div style={{ maxWidth: 960, margin: '0 auto', padding: '40px 28px 80px' }}>
 
-        {/* ── SRS Hero ───────────────────────────────────────────────────────── */}
+        {/* ── SRS Hero + 30-day heatmap ──────────────────────────────────────── */}
         {user && (
           <section style={{ marginBottom: 40 }}>
-            <SRSHero stats={srsStats} loading={srsLoading} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 20, alignItems: 'stretch' }}>
+              <SRSHero stats={srsStats} loading={srsLoading} />
+              <Heatmap buckets={buildHeatmap(progressMap)} />
+            </div>
           </section>
         )}
 
