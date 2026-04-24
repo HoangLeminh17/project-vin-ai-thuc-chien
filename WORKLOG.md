@@ -19,7 +19,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Giao diện Tracker tiến độ AI tạo bài | Nguyễn Bình Thành | 23/04 | #29 |
 | Nâng cấp trang Browse & Refactor Clean Architecture | Nguyễn Bình Thành | 23/04 | #30 |
 | Fix log hook UTF-8 encoding (Windows) | Nguyễn Bình Thành | 24/04 | #35 |
-| Chọn AI provider (Gemini / OpenAI fallback) | Nguyễn Bình Thành | 24/04 | #34 |
+| Chọn AI provider (Gemini / OpenAI fallback) | Lê Minh Hoàng | 24/04 | #34 |
 | Merge Sprint 4 PRs + chuẩn hóa quy trình PR | Nguyễn Bình Thành | 24/04 | — |
 
 ---
