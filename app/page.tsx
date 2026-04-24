@@ -21,7 +21,7 @@ function SynapsyLogo({ size = 20, color = 'var(--sy-ink)' }: { size?: number; co
 
 // ── SRS stats ─────────────────────────────────────────────────────────────────
 
-interface SRSStats { new: number; learning: number; due: number }
+interface SRSStats { new: number; learning: number; due: number; streak: number }
 
 function useSRSStats() {
   const [stats, setStats] = useState<SRSStats | null>(null)
@@ -52,9 +52,12 @@ function SRSHero({ stats, loading }: { stats: SRSStats | null; loading: boolean 
       </div>
     )
   }
+  // Rough session-length estimate: ~24s per due card, ~36s per new card.
+  const estMinutes = Math.max(1, Math.round(stats.due * 0.4 + stats.new * 0.6))
   const metaText = [
     stats.learning > 0 && `${stats.learning} đang học`,
-    stats.new > 0 && `${stats.new} thẻ mới`,
+    stats.new > 0 && `+ ${stats.new} thẻ mới`,
+    `ước tính ${estMinutes} phút`,
   ].filter(Boolean).join(' · ')
   return (
     <div className="rounded-xl px-7 py-6 flex items-start justify-between gap-4" style={{ background: 'var(--sy-bg-solid)', border: '1px solid var(--sy-ink-10)' }}>
@@ -135,6 +138,37 @@ function UploadTile({
       <div className="flex items-center justify-center w-8 h-8 rounded-full text-lg" style={{ background: 'var(--sy-bg-solid)', border: '1px solid var(--sy-ink-10)', color: 'var(--sy-ink-40)' }}>+</div>
       <p style={{ fontSize: '12px', margin: 0 }}>Thả PDF vào đây</p>
       <p className="sy-mono" style={{ fontSize: '10px', margin: 0, color: 'var(--sy-ink-40)' }}>hoặc click để chọn</p>
+    </div>
+  )
+}
+
+// ── Pipeline tracker ──────────────────────────────────────────────────────────
+
+function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal }: {
+  parsed: boolean
+  outlined: boolean
+  chaptersDone: number
+  chaptersTotal: number
+}) {
+  const allChaptersDone = chaptersDone === chaptersTotal
+  const stages: { label: string; state: 'done' | 'active' | 'pending' }[] = [
+    { label: 'Đọc PDF',             state: parsed  ? 'done' : 'active' },
+    { label: 'Phân tích cấu trúc',  state: parsed ? (outlined ? 'done' : 'active') : 'pending' },
+    { label: `Tạo concept cards · ${chaptersDone}/${chaptersTotal}`, state: !outlined ? 'pending' : (allChaptersDone ? 'done' : 'active') },
+  ]
+  return (
+    <div style={{ padding: '14px 16px', background: 'var(--sy-bg-sunken)', borderRadius: 8, fontSize: 11, color: 'var(--sy-ink-60)', lineHeight: 1.55 }}>
+      <p className="sy-mono" style={{ margin: 0, fontWeight: 600, color: 'var(--sy-ink-80)', textTransform: 'uppercase', letterSpacing: '0.1em', fontSize: 10, marginBottom: 8 }}>Pipeline</p>
+      <div className="sy-mono" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        {stages.map(s => (
+          <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {s.state === 'done'    && <span style={{ color: 'var(--sy-accent)' }}>✓</span>}
+            {s.state === 'active'  && <span className="sy-animate-pulse" style={{ color: 'var(--sy-warm)' }}>◉</span>}
+            {s.state === 'pending' && <span style={{ color: 'var(--sy-ink-20)' }}>○</span>}
+            <span style={{ color: s.state === 'pending' ? 'var(--sy-ink-40)' : 'var(--sy-ink-60)' }}>{s.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -255,12 +289,21 @@ function GenerationScreen({
           )}
         </div>
 
-        {/* Right: Flash Facts companion */}
-        <div style={{ padding: '28px', background: 'var(--sy-bg-soft)' }}>
-          <p className="sy-mono" style={{ fontSize: '10px', color: 'var(--sy-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, margin: '0 0 14px' }}>
-            💡 Flash Facts
-          </p>
-          <FlashFactGallery markdown={rawMarkdown} />
+        {/* Right: Flash Facts + pipeline tracker */}
+        <div style={{ padding: '28px', background: 'var(--sy-bg-soft)', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <div>
+            <p className="sy-mono" style={{ fontSize: '10px', color: 'var(--sy-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, margin: '0 0 14px' }}>
+              💡 Flash Facts
+            </p>
+            <FlashFactGallery markdown={rawMarkdown} />
+          </div>
+
+          <PipelineTracker
+            parsed={Boolean(rawMarkdown)}
+            outlined={true}
+            chaptersDone={doneCount}
+            chaptersTotal={course.chapters.length}
+          />
         </div>
       </div>
     </main>
@@ -451,6 +494,11 @@ export default function Home() {
         <div className="flex items-center gap-4">
           {user ? (
             <>
+              {srsStats && srsStats.streak > 0 && (
+                <span style={{ fontSize: '13px', color: 'var(--sy-ink-60)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                  🔥 <span style={{ fontWeight: 500, color: 'var(--sy-ink)' }}>{srsStats.streak}</span> ngày liên tiếp
+                </span>
+              )}
               <span style={{ fontSize: '13px', color: 'var(--sy-ink-60)' }}>{user.displayName || user.email}</span>
               {user.photoURL && <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full" style={{ border: '1px solid var(--sy-ink-10)' }} />}
               <button onClick={logout} style={{ fontSize: '12px', color: 'var(--sy-ink-40)' }}>Đăng xuất</button>
