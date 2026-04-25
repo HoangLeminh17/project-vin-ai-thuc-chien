@@ -1,0 +1,39 @@
+services:
+  # UKT Knowledge Tracing Microservice (Python)
+  ukt-service:
+    build:
+      context: ./UKT
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8000
+      - UKT_CHECKPOINT_PATH=/app/model/checkpoints/latest.ckpt
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./UKT/model/checkpoints:/app/model/checkpoints
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Synapsy Web App (Next.js)
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - UKT_SERVICE_URL=http://ukt-service:8000
+      - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
+      - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+      - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+      - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
+      - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PDF_MINERU_BASE_URL=${PDF_MINERU_BASE_URL}
+      - PDF_MINERU_API_KEY=${PDF_MINERU_API_KEY}
+    ports:
+      - "3000:3000"
+    depends_on:
+      ukt-service:
+        condition: service_healthy

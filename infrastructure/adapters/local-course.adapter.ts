@@ -52,4 +52,12 @@ export class LocalCourseAdapter implements ICourseRepository {
     if (course.userId !== userId) throw new BusinessRuleError('Access denied');
     persist(courses.filter(c => c.id !== id));
   }
+
+  // --- Caching Methods (Not really used for local persistence but required by interface) ---
+
+  async saveCourse(): Promise<void> { /* no-op */ }
+  async getCourse(): Promise<null> { return null; }
+  async saveChapter(): Promise<void> { /* no-op */ }
+  async getChapter(): Promise<null> { return null; }
+  async getFullCachedCourse(): Promise<null> { return null; }
 }

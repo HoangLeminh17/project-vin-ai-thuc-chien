@@ -19,6 +19,7 @@ import { ConsoleMonitoringAdapter } from './adapters/console-monitoring.adapter'
 import { FirebaseAuthAdapter } from './adapters/firebase-auth.adapter';
 import { FirebaseProgressRepository } from './adapters/firebase-progress-repository.adapter';
 import { FirestoreCourseAdapter } from './adapters/firestore-course.adapter';
+import { UKTServiceAdapter } from './adapters/ukt-service.adapter';
 import { SaveCourseUseCase } from '@/core/use-cases/courses/save-course.usecase';
 import { ListCoursesUseCase } from '@/core/use-cases/courses/list-courses.usecase';
 import { getDb, getBucket, getFirebaseAdminAuth } from '@/lib/firebase-admin';
@@ -39,6 +40,7 @@ const aiAdapter = new OpenAiAdapter({
 const authAdapter = new FirebaseAuthAdapter(getFirebaseAdminAuth());
 const progressRepository = new FirebaseProgressRepository();
 export const courseRepository = new FirestoreCourseAdapter(getDb());
+export const uktService = new UKTServiceAdapter(process.env.UKT_SERVICE_URL || 'http://localhost:8000');
 
 // Instantiate Use Cases
 const rawParseDocumentUseCase = new ParseDocumentUseCase(storageAdapter, parserAdapter);
