@@ -15,17 +15,19 @@ Cung cấp một pipeline ổn định để trích xuất nội dung văn bản
 5. Dữ liệu trích xuất (Markdown + ContentList JSON) được trả về để lưu trữ tạm thời trong session.
 
 ## 4. Yêu cầu chức năng (Functional Requirements)
-- [ ] Hỗ trợ upload tệp PDF dung lượng lên đến 20MB.
+- [ ] Hỗ trợ upload tệp PDF dung lượng lên đến 50MB và số lượng trang > 200.
+- [ ] Tích hợp mô hình OCR nâng cao để xử lý tiếng Việt chính xác (đặc biệt là các ký tự có dấu phức tạp).
 - [ ] Trích xuất văn bản có giữ nguyên định dạng (Bold, Italic, Bullet points).
 - [ ] Trích xuất bảng biểu (Tables) sang định dạng HTML/Markdown.
-- [ ] Trích xuất danh sách nội dung có phân cấp (`text_level`).
+- [ ] **Traceability:** Lưu trữ mapping giữa các chunk văn bản và metadata (số trang, vị trí) để phục vụ việc tra cứu gốc.
 
 ## 5. Yêu cầu kỹ thuật (Technical Requirements)
 - **Adapter**: `MinerUParserAdapter` implement `IParserPort`.
-- **Infrastructure**: Sử dụng Firebase Admin SDK để quản lý quyền truy cập file.
-- **Error Handling**: Xử lý các trường hợp MinerU API timeout hoặc file lỗi cấu trúc.
+- **Infrastructure**: Sử dụng Firebase Admin SDK.
+- **Polling:** Tăng timeout xử lý lên 15 phút (900s) cho các tài liệu dài.
+- **Error Handling**: Xử lý UI/UX khi gặp lỗi MinerU timeout, hiển thị thông báo lỗi tường minh thay vì màn hình trống.
 
 ---
 ## 6. Success Metrics
-- Tỷ lệ trích xuất thành công: >95% với các tệp PDF không bị scan mờ.
-- Thời gian xử lý trung bình: < 30 giây cho mỗi tài liệu 20 trang.
+- Tỷ lệ trích xuất thành công: >95% với các tệp PDF tiếng Việt.
+- Thời gian xử lý: Tỷ lệ thuận với số trang, hỗ trợ tốt các tài liệu chuyên ngành y khoa/kỹ thuật.
