@@ -57,6 +57,9 @@ FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 FIREBASE_STORAGE_BUCKET=
 # Get at: Firebase Console → Project Settings → Service Accounts → Generate new private key
+
+# UKT Service Configuration
+UKT_SERVICE_URL=http://ukt-service:8000
 ```
 
 Set either `OPENAI_API_KEY` or `GEMINI_API_KEY` depending on the provider you want to use. `AI_LOG_SERVER` and `AI_LOG_API_KEY` are pre-filled in `.env.example`.
@@ -97,13 +100,37 @@ Firebase Console → Project Settings → Service Accounts → Generate new priv
 
 Firebase Console → Storage → Get started → choose test mode.
 
-### 5. Run
+### 5. Run (Recommended: Docker)
 
+Hệ thống hiện tại bao gồm Web App (Next.js) và UKT Microservice (Python). Cách tốt nhất để chạy toàn bộ là sử dụng Docker Compose:
+
+```bash
+# Đồng bộ lockfile trước khi build
+npm install
+
+# Khởi chạy toàn bộ hệ thống
+docker-compose up --build
+```
+
+- **Web App**: http://localhost:3000
+- **UKT API**: http://localhost:8000
+- **Health Check**: http://localhost:8000/health
+
+### 6. Run (Development: Manual)
+
+Nếu muốn chạy riêng lẻ để phát triển:
+
+**Web App:**
 ```bash
 npm run dev
 ```
 
-Open http://localhost:3000. Sign in with Google, upload a PDF, and the generated course will be saved to your dashboard at `/dashboard`.
+**UKT Service:**
+```bash
+cd UKT
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
 
 ## AI Logging
 
