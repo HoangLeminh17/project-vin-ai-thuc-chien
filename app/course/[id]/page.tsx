@@ -632,9 +632,10 @@ function EditMode({ cards, filterCi, initialCardId, focusAi, onFocusHandled }: {
           <button key={c.id} onClick={() => setSelectedId(c.id)} style={{
             width: '100%', textAlign: 'left', padding: '12px 16px',
             background: c.id === selectedId ? 'var(--sy-bg-sunken)' : 'transparent',
+            borderTop: 'none', borderRight: 'none',
             borderBottom: '1px solid var(--sy-ink-10)',
             borderLeft: `3px solid ${c.id === selectedId ? 'var(--sy-warm)' : 'transparent'}`,
-            cursor: 'pointer', border: 'none', borderLeftWidth: 3,
+            cursor: 'pointer',
             display: 'flex', flexDirection: 'column', gap: 4, fontFamily: 'var(--sy-font-sans)',
           }}>
             <p className="sy-serif" style={{ fontSize: 13, color: 'var(--sy-ink)', margin: 0, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
