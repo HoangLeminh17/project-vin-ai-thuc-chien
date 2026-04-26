@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useRef, useCallback, useEffect, type DragEvent } from 'react'
+import { useState, useRef, useCallback, useEffect, useMemo, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { FlashFactGallery, Spinner } from '@/app/components'
 import { useCourses } from '@/lib/hooks/use-courses'
 import { SavedCourse } from '@/core/models/saved-course'
 import { Course, CourseContent, ChapterContent } from '@/core/models/learning-model'
+import { useGeneration } from '@/lib/contexts/generation-context'
 
 // ── Logo ──────────────────────────────────────────────────────────────────────
 
@@ -40,7 +41,7 @@ function useSRSStats() {
 interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; lastReviewedAt?: string; isDue: boolean }
 type ProgressMap = Record<string, ProgressMapEntry>
 
-// Buckets each card's lastReviewedAt into a 30-day array, oldest → today.
+// Buckets each card's lastReviewedAt into a 30-day array, oldest <- today.
 // Because we only keep the most recent review per card, each card can
 // contribute at most one day — directionally correct but a lower bound.
 function buildHeatmap(map: ProgressMap, days = 30): number[] {
@@ -248,17 +249,19 @@ function UploadTile({
 
 // ── Pipeline tracker ──────────────────────────────────────────────────────────
 
-function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal }: {
+function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal, allDone }: {
   parsed: boolean
   outlined: boolean
   chaptersDone: number
   chaptersTotal: number
+  allDone: boolean
 }) {
-  const allChaptersDone = chaptersDone === chaptersTotal
+  const chaptersTotalSafe = chaptersTotal || 0
+  const allChaptersDone = chaptersTotalSafe > 0 && chaptersDone === chaptersTotalSafe
   const stages: { label: string; state: 'done' | 'active' | 'pending' }[] = [
     { label: 'Đọc PDF',             state: parsed  ? 'done' : 'active' },
     { label: 'Phân tích cấu trúc',  state: parsed ? (outlined ? 'done' : 'active') : 'pending' },
-    { label: `Tạo concept cards · ${chaptersDone}/${chaptersTotal}`, state: !outlined ? 'pending' : (allChaptersDone ? 'done' : 'active') },
+    { label: `Tạo concept cards · ${chaptersDone}/${chaptersTotal}`, state: !outlined ? 'pending' : (allDone ? 'done' : 'active') },
   ]
   return (
     <div style={{ padding: '14px 16px', background: 'var(--sy-bg-sunken)', borderRadius: 8, fontSize: 11, color: 'var(--sy-ink-60)', lineHeight: 1.55 }}>
@@ -281,37 +284,40 @@ function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal }: {
 
 function GenerationScreen({
   course, stage2Loading, courseContentMap, rawMarkdown, savedCourseId,
+  stage2Errors, onRetryChapter, onReset,
 }: {
   course: Course
   stage2Loading: Record<number, boolean>
   courseContentMap: Record<number, ChapterContent>
   rawMarkdown: string
   savedCourseId: string | null
+  stage2Errors: Record<number, string>
+  onRetryChapter: (i: number) => void
+  onReset: () => void
 }) {
   const router = useRouter()
-  const doneCount = Object.keys(courseContentMap).length
-  const allDone = course.chapters.every((_, i) => courseContentMap[i] !== undefined)
-
-  useEffect(() => {
-    if (allDone && savedCourseId) {
-      const t = setTimeout(() => router.push(`/course/${savedCourseId}`), 900)
-      return () => clearTimeout(t)
-    }
-  }, [allDone, savedCourseId, router])
+  const doneCount = courseContentMap ? Object.keys(courseContentMap).length : 0
+  const allDone = course?.chapters?.every((_, i) => courseContentMap?.[i] !== undefined) ?? false
 
   return (
     <main className="min-h-screen" style={{ background: 'var(--sy-bg)', fontFamily: 'var(--sy-font-sans)' }}>
       {/* Top bar */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 28px', borderBottom: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-solid)' }}>
-        <div className="flex items-center gap-2.5">
-          <SynapsyLogo size={18} />
-          <span className="sy-serif" style={{ fontSize: '15px', fontWeight: 500, color: 'var(--sy-ink)' }}>Synapsy</span>
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2.5">
+            <SynapsyLogo size={18} />
+            <span className="sy-serif" style={{ fontSize: '15px', fontWeight: 500, color: 'var(--sy-ink)' }}>Synapsy</span>
+          </div>
+          <div style={{ height: 16, width: 1, background: 'var(--sy-ink-10)' }} />
+          <button 
+            className="flex items-center gap-2 text-xs font-medium text-gray-500 hover:text-gray-900 transition-colors"
+            onClick={onReset}
+          >
+            <span>&larr; Quay về Thư viện</span>
+          </button>
         </div>
         <div className="flex items-center gap-2 sy-mono" style={{ fontSize: '12px', color: 'var(--sy-ink-60)' }}>
-          {!allDone && (
-            <span className="sy-animate-pulse rounded-full inline-block" style={{ width: 7, height: 7, background: 'var(--sy-warm)', marginRight: 4 }} />
-          )}
-          {allDone ? '✓ Hoàn thành!' : `Đang soạn thảo · ${doneCount}/${course.chapters.length} chương`}
+          {allDone ? '✓ Hoàn thành!' : (savedCourseId ? '⚠ Hoàn thành một phần' : `Đang soạn thảo · ${doneCount}/${course.chapters.length} chương`)}
         </div>
       </div>
 
@@ -352,18 +358,19 @@ function GenerationScreen({
                         <p className="sy-mono" style={{ fontSize: '11px', color: 'var(--sy-ink-60)', margin: '3px 0 0' }}>
                           {isDone
                             ? `${ch.lessons?.length ?? 0} bài · sẵn sàng đọc`
+                            : stage2Errors[ci] ? `Lỗi: ${stage2Errors[ci]}`
                             : isLoading ? 'Đang tạo nội dung...'
                             : 'Đang chờ...'}
                         </p>
                       </div>
                     </div>
                     <div className="shrink-0">
-                      {isDone && savedCourseId && (
+                      {stage2Errors[ci] && (
                         <button
-                          onClick={() => router.push(`/course/${savedCourseId}`)}
-                          style={{ fontSize: '12px', fontWeight: 500, color: 'var(--sy-warm)', padding: '5px 11px', borderRadius: '6px', border: '1px solid rgba(201,100,66,0.25)' }}
+                          onClick={() => onRetryChapter(ci)}
+                          style={{ fontSize: '11px', color: 'var(--sy-accent)', background: 'var(--sy-bg-sunken)', padding: '4px 8px', borderRadius: 6 }}
                         >
-                          Đọc ngay →
+                          Thử lại
                         </button>
                       )}
                       {isLoading && (
@@ -379,16 +386,29 @@ function GenerationScreen({
             })}
           </div>
 
-          {allDone && savedCourseId && (
-            <div className="mt-6 flex items-center gap-3">
-              <button
-                onClick={() => router.push(`/course/${savedCourseId}`)}
-                className="px-5 py-2.5 rounded-lg text-sm font-medium text-white"
-                style={{ background: 'var(--sy-warm)' }}
-              >
-                Xem khóa học →
-              </button>
-              <span className="sy-mono" style={{ fontSize: '11px', color: 'var(--sy-ink-40)' }}>Đang chuyển trang...</span>
+          {savedCourseId && (
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-900">Sẵn sàng học tập!</p>
+                    <p className="text-xs text-gray-500">Bạn có thể học các chương đã hoàn thành ngay bây giờ.</p>
+                  </div>
+                  <button
+                    onClick={() => router.push(`/course/${savedCourseId}`)}
+                    className="px-6 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-orange-100 transition-all hover:scale-[1.02] active:scale-95"
+                    style={{ background: 'linear-gradient(135deg, var(--sy-warm), #f59e0b)' }}
+                  >
+                    {allDone ? 'Bắt đầu học ngay →' : 'Học các chương đã xong →'}
+                  </button>
+                </div>
+                {!allDone && (
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-50 text-[11px] text-orange-700 border border-orange-100">
+                    <span className="flex h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+                    Các chương còn lại vẫn đang được tạo tự động...
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -407,6 +427,7 @@ function GenerationScreen({
             outlined={true}
             chaptersDone={doneCount}
             chaptersTotal={course.chapters.length}
+            allDone={allDone}
           />
         </div>
       </div>
@@ -417,125 +438,64 @@ function GenerationScreen({
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const { 
+    status, course, courseContentMap, stage2Loading, stage2Errors, 
+    error, rawMarkdown, savedCourseId, isFromCache,
+    startGeneration, resetGeneration, fetchChapter 
+  } = useGeneration();
+
   const [file, setFile] = useState<File | null>(null)
-  const [status, setStatus] = useState<'idle' | 'parsing' | 'generating' | 'done'>('idle')
-  const [course, setCourse] = useState<Course | null>(null)
-  const [courseContentMap, setCourseContentMap] = useState<Record<number, ChapterContent>>({})
-  const [stage2Loading, setStage2Loading] = useState<Record<number, boolean>>({})
-  const [error, setError] = useState('')
-  const [currentHash, setCurrentHash] = useState('')
   const [dragOver, setDragOver] = useState(false)
-  const [rawMarkdown, setRawMarkdown] = useState('')
-  const [savedCourseId, setSavedCourseId] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { user, loading: authLoading, login, logout } = useAuth()
-  const { courses, loading: coursesLoading, saveCourse, deleteCourse } = useCourses(user?.uid ?? null)
+  const { courses, loading: coursesLoading, deleteCourse } = useCourses(user?.uid ?? null)
+
+  const uniqueCourses = useMemo(() => {
+    if (!Array.isArray(courses)) return [];
+    const seenHashes = new Set<string>();
+    const seenTitles = new Set<string>();
+    return courses.filter(c => {
+      if (!c) return false;
+      // If we have a hash, it's our primary unique identifier
+      if (c.contentHash) {
+        if (seenHashes.has(c.contentHash)) return false;
+        seenHashes.add(c.contentHash);
+        // We also "claim" this title so older versions without hashes are hidden
+        seenTitles.add(c.title);
+        return true;
+      }
+      // If no hash, we fall back to title (common for older courses)
+      if (seenTitles.has(c.title)) return false;
+      seenTitles.add(c.title);
+      return true;
+    });
+  }, [courses]);
   const { stats: srsStats, loading: srsLoading } = useSRSStats()
   const progressMap = useProgressMap(user?.uid ?? null)
 
   const reset = useCallback(() => {
     setFile(null)
-    setStatus('idle')
-    setCourse(null)
-    setCourseContentMap({})
-    setStage2Loading({})
-    setError('')
-    setRawMarkdown('')
-    setSavedCourseId('')
+    resetGeneration()
     if (inputRef.current) inputRef.current.value = ''
-  }, [])
+  }, [resetGeneration])
+
+  // Auto-redirect when done
+  useEffect(() => {
+    if (status === 'done' && savedCourseId) {
+      router.push(`/course/${savedCourseId}`)
+      resetGeneration()
+    }
+  }, [status, savedCourseId, router, resetGeneration])
 
   function handleFile(f: File | null) {
-    if (f && f.type === 'application/pdf') { setFile(f); setError('') }
+    if (f && f.type === 'application/pdf') { setFile(f); }
   }
   function handleDrop(e: DragEvent<HTMLDivElement>) { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null) }
-
+  
   async function handleStart() {
     if (!file) return
-    setError('')
-    setCourse(null)
-    setCourseContentMap({})
-
-    setStatus('parsing')
-    const form = new FormData()
-    form.append('file', file)
-
-    let markdown = ''
-    try {
-      const res = await fetch('/api/parse-pdf', { method: 'POST', body: form })
-      const data = await res.json()
-      if (!data.success) { setError(data.error || 'Parse failed'); setStatus('idle'); return }
-      markdown = data.markdown ?? ''
-      setRawMarkdown(markdown)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Network error'); setStatus('idle'); return
-    }
-
-    setStatus('generating')
-    let resolvedCourse: Course | null = null
-    let hash = ''
-    try {
-      const res = await fetch('/api/generate-course', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown }),
-      })
-      const data = await res.json()
-      if (!data.success) { setError(data.error || 'Generation failed'); setStatus('idle'); return }
-      resolvedCourse = data.course
-      hash = data.hash ?? ''
-      setCurrentHash(hash)
-      setCourse(data.course)
-      setStatus('done')
-
-      if (resolvedCourse && data.courseContent && data.fromCache && data.courseContent.chapters.length === resolvedCourse.chapters.length) {
-        const contentMap: Record<number, ChapterContent> = {}
-        data.courseContent.chapters.forEach((ch: ChapterContent, i: number) => { contentMap[i] = ch })
-        setCourseContentMap(contentMap)
-        if (user && resolvedCourse) {
-          saveCourse(resolvedCourse.title, resolvedCourse, data.courseContent).then(saved => { if (saved) setSavedCourseId(saved.id) })
-        }
-        return
-      }
-
-      if (!resolvedCourse) return
-
-      const fromCache = data.fromCache
-      const chapters = resolvedCourse.chapters.map((_, i) => i)
-
-      const fetchChapter = async (i: number): Promise<ChapterContent | null> => {
-        setStage2Loading(prev => ({ ...prev, [i]: true }))
-        try {
-          const res = await fetch('/api/generate-content', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ course: resolvedCourse, chapterIndex: i, hash: hash || currentHash }),
-          })
-          if (res.ok) {
-            const d = await res.json()
-            if (d.success) { setCourseContentMap(prev => ({ ...prev, [i]: d.chapter })); return d.chapter }
-          }
-        } catch (e) { console.error(`Chapter ${i} failed`, e) }
-        finally { setStage2Loading(prev => ({ ...prev, [i]: false })) }
-        return null
-      }
-
-      let allChapterContents: (ChapterContent | null)[] = []
-      if (fromCache) {
-        allChapterContents = await Promise.all(chapters.map(i => fetchChapter(i)))
-      } else {
-        for (const i of chapters) allChapterContents.push(await fetchChapter(i))
-      }
-
-      if (user && resolvedCourse) {
-        const content: CourseContent = { chapters: allChapterContents.filter(Boolean) as ChapterContent[] }
-        const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content)
-        if (saved) setSavedCourseId(saved.id)
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Network error'); setStatus('idle')
-    }
+    startGeneration(file);
   }
 
   // ── Loading screen (parsing / generating before outline) ───────────────────
@@ -561,7 +521,7 @@ export default function Home() {
   }
 
   // ── Progressive gen (outline ready, chapters building) + done ──────────────
-  if ((status === 'generating' && course) || status === 'done') {
+  if (course && (status === 'generating' || (status === 'done' && !isFromCache))) {
     return (
       <GenerationScreen
         course={course!}
@@ -569,6 +529,16 @@ export default function Home() {
         courseContentMap={courseContentMap}
         rawMarkdown={rawMarkdown}
         savedCourseId={savedCourseId}
+        stage2Errors={stage2Errors}
+        onReset={resetGeneration}
+        onRetryChapter={async (i) => {
+          if (!course) return
+          const ch = await fetchChapter(i)
+          if (ch && user && savedCourseId) {
+            // Update the existing saved course if possible, or just rely on the next full save
+            // For now, let's just trigger a full save at the end or wait for allDone
+          }
+        }}
       />
     )
   }
@@ -656,14 +626,16 @@ export default function Home() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
-            {courses.map(c => (
-              <CourseCard
-                key={c.id}
-                course={c}
-                stats={courseStats(c, progressMap)}
-                onOpen={() => router.push(`/course/${c.id}`)}
-                onDelete={() => { if (confirm('Xóa khóa học này?')) deleteCourse(c.id) }}
-              />
+            {uniqueCourses.map(c => (
+              c && c.id && (
+                <CourseCard
+                  key={c.id}
+                  course={c}
+                  stats={courseStats(c, progressMap)}
+                  onOpen={() => router.push(`/course/${c.id}`)}
+                  onDelete={() => { if (confirm('Xóa khóa học này?')) deleteCourse(c.id) }}
+                />
+              )
             ))}
             <UploadTile
               dragOver={dragOver}

@@ -18,12 +18,18 @@ async function postHandler(req: NextRequest) {
   if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
 
   const body = await req.json();
-  const { title, course, courseContent } = body;
+  const { title, course, courseContent, contentHash } = body;
   if (!title || !course) {
     return NextResponse.json({ success: false, error: 'Missing title or course' }, { status: 400 });
   }
 
-  const saved = await saveCourseUseCase.execute({ userId: user.id, title, course, courseContent: courseContent ?? null });
+  const saved = await saveCourseUseCase.execute({ 
+    userId: user.id, 
+    title, 
+    course, 
+    courseContent: courseContent ?? null,
+    contentHash 
+  });
   return NextResponse.json({ success: true, course: saved });
 }
 

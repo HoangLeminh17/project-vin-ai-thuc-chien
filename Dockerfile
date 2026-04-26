@@ -14,6 +14,7 @@ COPY . .
 # Environment variables cho quá trình build (nếu cần)
 ENV NEXT_TELEMETRY_DISABLED 1
 
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN npm run build
 
 # ── Stage 3: Runner ─────────────────────────────────────────────────────────

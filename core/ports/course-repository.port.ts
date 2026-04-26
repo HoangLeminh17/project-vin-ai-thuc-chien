@@ -6,14 +6,18 @@ export interface CreateCourseInput {
   title: string;
   course: Course;
   courseContent: CourseContent | null;
+  contentHash?: string;
 }
 
 export interface ICourseRepository {
   // Persistence methods (User-based)
   save(input: CreateCourseInput): Promise<SavedCourse>;
+  update(id: string, userId: string, content: CourseContent): Promise<void>;
   listByUser(userId: string): Promise<SavedCourse[]>;
   getById(id: string, userId: string): Promise<SavedCourse>;
   delete(id: string, userId: string): Promise<void>;
+  findByHash(userId: string, hash: string): Promise<SavedCourse | null>;
+  findByTitle(userId: string, title: string): Promise<SavedCourse | null>;
 
   // Caching methods (Hash-based)
   saveCourse(hash: string, course: Course): Promise<void>;

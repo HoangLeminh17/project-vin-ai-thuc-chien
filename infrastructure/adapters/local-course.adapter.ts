@@ -1,6 +1,7 @@
 import { ICourseRepository, CreateCourseInput } from '@/core/ports/course-repository.port';
 import { SavedCourse } from '@/core/models/saved-course';
 import { NotFoundError, BusinessRuleError } from '@/core/errors/domain-error';
+import { CourseContent } from '@/core/models/learning-model';
 
 const KEY = 'local_courses';
 
@@ -27,9 +28,20 @@ export class LocalCourseAdapter implements ICourseRepository {
       createdAt: new Date().toISOString(),
       course: input.course,
       courseContent: input.courseContent,
+      contentHash: input.contentHash,
     };
     persist([saved, ...courses]);
     return saved;
+  }
+
+  async update(id: string, userId: string, content: CourseContent): Promise<void> {
+    const courses = load();
+    const index = courses.findIndex(c => c.id === id);
+    if (index === -1) throw new NotFoundError(`Course ${id} not found`);
+    if (courses[index].userId !== userId) throw new BusinessRuleError('Access denied');
+    
+    courses[index].courseContent = content;
+    persist(courses);
   }
 
   async listByUser(userId: string): Promise<SavedCourse[]> {
@@ -51,6 +63,14 @@ export class LocalCourseAdapter implements ICourseRepository {
     if (!course) throw new NotFoundError(`Course ${id} not found`);
     if (course.userId !== userId) throw new BusinessRuleError('Access denied');
     persist(courses.filter(c => c.id !== id));
+  }
+
+  async findByHash(userId: string, hash: string): Promise<SavedCourse | null> {
+    return load().find(c => c.userId === userId && c.contentHash === hash) ?? null;
+  }
+
+  async findByTitle(userId: string, title: string): Promise<SavedCourse | null> {
+    return load().find(c => c.userId === userId && c.title === title) ?? null;
   }
 
   // --- Caching Methods (Not really used for local persistence but required by interface) ---

@@ -19,11 +19,26 @@ export class FirestoreCourseAdapter implements ICourseRepository {
         createdAt: new Date().toISOString(),
         course: input.course,
         courseContent: input.courseContent,
+        contentHash: input.contentHash,
       };
       await docRef.set(saved);
       return saved;
     } catch (e) {
       throw new InfrastructureError('Failed to save course to Firestore', e);
+    }
+  }
+
+  async update(id: string, userId: string, content: CourseContent): Promise<void> {
+    try {
+      const docRef = this.db.collection(COLLECTION).doc(id);
+      const doc = await docRef.get();
+      if (!doc.exists) throw new NotFoundError(`Course ${id} not found`);
+      if (doc.data()?.userId !== userId) throw new BusinessRuleError('Access denied');
+      
+      await docRef.update({ courseContent: content });
+    } catch (e) {
+      if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
+      throw new InfrastructureError('Failed to update course in Firestore', e);
     }
   }
 
@@ -63,6 +78,36 @@ export class FirestoreCourseAdapter implements ICourseRepository {
     } catch (e) {
       if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
       throw new InfrastructureError('Failed to delete course from Firestore', e);
+    }
+  }
+
+  async findByHash(userId: string, hash: string): Promise<SavedCourse | null> {
+    try {
+      const snapshot = await this.db
+        .collection(COLLECTION)
+        .where('userId', '==', userId)
+        .where('contentHash', '==', hash)
+        .limit(1)
+        .get();
+      if (snapshot.empty) return null;
+      return snapshot.docs[0].data() as SavedCourse;
+    } catch (e) {
+      throw new InfrastructureError('Failed to find course by hash', e);
+    }
+  }
+
+  async findByTitle(userId: string, title: string): Promise<SavedCourse | null> {
+    try {
+      const snapshot = await this.db
+        .collection(COLLECTION)
+        .where('userId', '==', userId)
+        .where('title', '==', title)
+        .limit(1)
+        .get();
+      if (snapshot.empty) return null;
+      return snapshot.docs[0].data() as SavedCourse;
+    } catch (e) {
+      throw new InfrastructureError('Failed to find course by title', e);
     }
   }
 
