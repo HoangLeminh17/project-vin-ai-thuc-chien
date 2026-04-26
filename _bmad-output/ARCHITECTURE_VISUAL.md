@@ -7,67 +7,66 @@ Tài liệu này cung cấp cái nhìn trực quan về cách mã nguồn của 
 ```mermaid
 graph TD
     subgraph "1. Presentation Layer (Next.js 15)"
-        UI["UI (React Components)"]
-        API["API Routes (Server Handlers)"]
-        Middleware["Auth Middleware (Cookies)"]
+        UI["UI (Dashboard, Diagnostic Mode)"]
+        API["API Routes (Next.js Handlers)"]
     end
 
-    subgraph "2. Core Layer (Pure Logic)"
+    subgraph "2. Core Layer (Clean Architecture)"
         UC_Parse["ParsePDF UseCase"]
-        UC_Plan["PlanCourse UseCase"]
-        UC_GenContent["GenerateContent UseCase"]
-        UC_SR["ReviewCard (Spaced Repetition) UseCase"]
+        UC_Diagnostic["Diagnostic Quiz UseCase"]
+        UC_SR["SRS & Priority Map UseCase"]
         Ports["Interfaces (Ports)"]
-        Entities["Entities (Course, CardProgress, User)"]
+        Entities["Entities (Course, CardProgress)"]
     end
 
-    subgraph "3. Infrastructure Layer (Tech Adapters)"
-        Parser["MinerU Parser Adapter"]
+    subgraph "3. Infrastructure Layer (Adapters)"
+        Parser["MinerU Adapter (OCR)"]
         LLM["OpenAI / Gemini Adapter"]
-        Storage["Firebase Storage Adapter"]
-        Auth["Firebase Auth Adapter"]
-        DB["Supabase / Firestore Adapter (Sắp tới)"]
+        UKT_Adp["UKT Service Adapter"]
+        Storage["Firebase Storage"]
+        DB["Firestore Database"]
     end
 
-    %% Flow
+    subgraph "4. External Services"
+        UKT_Service["Python UKT Microservice (FastAPI)"]
+    end
+
+    %% Interaction Flow
     UI --> API
     API --> UC_Parse
-    API --> UC_Plan
-    API --> UC_GenContent
+    API --> UC_Diagnostic
     API --> UC_SR
 
-    UC_Parse -.-> Ports
-    UC_Plan -.-> Ports
-    UC_GenContent -.-> Ports
+    UC_Diagnostic -.-> Ports
     UC_SR -.-> Ports
 
-    %% Implementation Flow
+    %% Implementation
     Parser -- "Implements" --> Ports
     LLM -- "Implements" --> Ports
-    Storage -- "Implements" --> Ports
-    Auth -- "Implements" --> Ports
+    UKT_Adp -- "Implements" --> Ports
     DB -- "Implements" --> Ports
 
-    style UC_SR fill:#f96,stroke:#333,stroke-width:2px
-    style DB fill:#f96,stroke:#333,stroke-width:2px
+    %% Service Communication
+    UKT_Adp <== "REST API" ==> UKT_Service
+
+    style UKT_Service fill:#f9f,stroke:#333,stroke-width:2px
+    style UC_Diagnostic fill:#bbf,stroke:#333,stroke-width:2px
 ```
 
 ---
 
 ## 2. Luồng dữ liệu (Data Flow)
 
-### A. Pipeline Tạo Bài Học:
-1. **Request**: UI gửi PDF -> API Route.
-2. **Logic**: UseCase điều phối:
-   - Gọi **Storage Adapter** để lưu file tạm.
-   - Gọi **Parser Adapter** (MinerU) để lấy dữ liệu Markdown.
-   - Gọi **LLM Adapter** (Stage 1) để tạo Course Outline.
-3. **Response**: Trả về dữ liệu structured cho UI.
+### A. Pipeline Chẩn đoán (Diagnostic Loop):
+1. **Upload**: UI gửi PDF -> MinerU Parser trích xuất Markdown.
+2. **Diagnostic**: `DiagnosticUseCase` gọi LLM để sinh 15-20 câu hỏi chẩn đoán dựa trên nội dung đã parse.
+3. **UKT Inference**: Kết quả làm bài (Đúng/Sai + Độ tự tin) được gửi sang **UKT Microservice**.
+4. **Priority Map**: UKT trả về trạng thái kiến thức $(\mu, \sigma)$ -> UI hiển thị bản đồ ưu tiên học tập.
 
-### B. Pipeline Spaced Repetition:
-1. **Request**: UI gửi đánh giá người dùng (Dễ/Khó) -> API Route.
-2. **Logic**: `ReviewCardUseCase` tính toán `nextReviewDate` dựa trên thuật toán SM-2.
-3. **Persistence**: Gọi **DB Adapter** để lưu trạng thái mới vào Database.
+### B. Pipeline Lặp lại ngắt quãng (SRS):
+1. **Study**: Người dùng học thẻ bài -> Gửi đánh giá (Hard/Ok/Easy).
+2. **UKT Update**: Dữ liệu gửi sang **UKT Microservice** để cập nhật trạng thái kiến thức tức thời.
+3. **Schedule**: Hệ thống tính toán ngày ôn tập tiếp theo dựa trên kết quả từ UKT.
 
 ## 3. Lợi ích của kiến trúc này
 - **Testability**: Có thể test toàn bộ logic nghiệp vụ (Core) mà không cần mạng hay database thực tế bằng cách dùng Mock Adapters.
