@@ -26,7 +26,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const unsubscribe = onAuthStateChanged(auth, (user: FirebaseUser | null) => {
       setUser(user);
-      setLoading(false);
+      
+      const syncSession = async () => {
+        if (user) {
+          try {
+            const idToken = await user.getIdToken();
+            await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ idToken }),
+            });
+          } catch (error) {
+            console.error('Failed to sync session cookie:', error);
+          }
+        } else {
+          // Clear session on server
+          await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+        }
+        setLoading(false);
+      };
+      
+      syncSession();
     });
 
     return () => unsubscribe();

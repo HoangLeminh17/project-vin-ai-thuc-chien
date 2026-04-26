@@ -24,7 +24,7 @@ export function useCourses(userId: string | null) {
         const res = await fetch('/api/courses');
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
-        setCourses(data.courses);
+        setCourses(data.courses || []);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load courses');
@@ -38,19 +38,20 @@ export function useCourses(userId: string | null) {
   const saveCourse = useCallback(async (
     title: string,
     course: Course,
-    courseContent: CourseContent | null
+    courseContent: CourseContent | null,
+    contentHash?: string
   ): Promise<SavedCourse | null> => {
     if (!userId) return null;
     try {
       if (localAdapter) {
-        const saved = await localAdapter.save({ userId, title, course, courseContent });
+        const saved = await localAdapter.save({ userId, title, course, courseContent, contentHash });
         await refresh();
         return saved;
       } else {
         const res = await fetch('/api/courses', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, course, courseContent }),
+          body: JSON.stringify({ title, course, courseContent, contentHash }),
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);

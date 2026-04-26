@@ -19,6 +19,7 @@ export class FirestoreCourseAdapter implements ICourseRepository {
         createdAt: new Date().toISOString(),
         course: input.course,
         courseContent: input.courseContent,
+        contentHash: input.contentHash,
       };
       await docRef.set(saved);
       return saved;
@@ -63,6 +64,36 @@ export class FirestoreCourseAdapter implements ICourseRepository {
     } catch (e) {
       if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
       throw new InfrastructureError('Failed to delete course from Firestore', e);
+    }
+  }
+
+  async findByHash(userId: string, hash: string): Promise<SavedCourse | null> {
+    try {
+      const snapshot = await this.db
+        .collection(COLLECTION)
+        .where('userId', '==', userId)
+        .where('contentHash', '==', hash)
+        .limit(1)
+        .get();
+      if (snapshot.empty) return null;
+      return snapshot.docs[0].data() as SavedCourse;
+    } catch (e) {
+      throw new InfrastructureError('Failed to find course by hash', e);
+    }
+  }
+
+  async findByTitle(userId: string, title: string): Promise<SavedCourse | null> {
+    try {
+      const snapshot = await this.db
+        .collection(COLLECTION)
+        .where('userId', '==', userId)
+        .where('title', '==', title)
+        .limit(1)
+        .get();
+      if (snapshot.empty) return null;
+      return snapshot.docs[0].data() as SavedCourse;
+    } catch (e) {
+      throw new InfrastructureError('Failed to find course by title', e);
     }
   }
 

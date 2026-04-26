@@ -7,4 +7,5 @@ export type SavedCourse = {
   createdAt: string; // ISO 8601
   course: Course;
   courseContent: CourseContent | null;
+  contentHash?: string;
 };

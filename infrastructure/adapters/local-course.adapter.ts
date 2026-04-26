@@ -27,6 +27,7 @@ export class LocalCourseAdapter implements ICourseRepository {
       createdAt: new Date().toISOString(),
       course: input.course,
       courseContent: input.courseContent,
+      contentHash: input.contentHash,
     };
     persist([saved, ...courses]);
     return saved;
@@ -51,6 +52,14 @@ export class LocalCourseAdapter implements ICourseRepository {
     if (!course) throw new NotFoundError(`Course ${id} not found`);
     if (course.userId !== userId) throw new BusinessRuleError('Access denied');
     persist(courses.filter(c => c.id !== id));
+  }
+
+  async findByHash(userId: string, hash: string): Promise<SavedCourse | null> {
+    return load().find(c => c.userId === userId && c.contentHash === hash) ?? null;
+  }
+
+  async findByTitle(userId: string, title: string): Promise<SavedCourse | null> {
+    return load().find(c => c.userId === userId && c.title === title) ?? null;
   }
 
   // --- Caching Methods (Not really used for local persistence but required by interface) ---
