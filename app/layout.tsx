@@ -1,4 +1,5 @@
 import { AuthProvider } from '@/lib/contexts/auth-context'
+import { GenerationProvider } from '@/lib/contexts/generation-context'
 import './globals.css'
 
 export const metadata = {
@@ -19,7 +20,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <AuthProvider>
-          {children}
+          <GenerationProvider>
+            {children}
+          </GenerationProvider>
         </AuthProvider>
         {/* defer ensures the script loads after HTML is parsed */}
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}

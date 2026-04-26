@@ -63,6 +63,27 @@ export function useCourses(userId: string | null) {
     }
   }, [userId, refresh]);
 
+  const updateCourse = useCallback(async (id: string, content: CourseContent): Promise<boolean> => {
+    if (!userId) return false;
+    try {
+      if (localAdapter) {
+        await localAdapter.update(id, userId, content);
+      } else {
+        const res = await fetch(`/api/courses/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content }),
+        });
+        const data = await res.json();
+        if (!data.success) throw new Error(data.error);
+      }
+      await refresh();
+      return true;
+    } catch {
+      return false;
+    }
+  }, [userId, refresh]);
+
   const deleteCourse = useCallback(async (id: string): Promise<boolean> => {
     if (!userId) return false;
     try {
@@ -80,5 +101,5 @@ export function useCourses(userId: string | null) {
     }
   }, [userId, refresh]);
 
-  return { courses, loading, error, refresh, saveCourse, deleteCourse };
+  return { courses, loading, error, refresh, saveCourse, updateCourse, deleteCourse };
 }

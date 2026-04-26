@@ -7,11 +7,20 @@ import { getFirebaseAdminFirestore } from '@/lib/firebase-admin';
 import { withUseCaseLogging } from '@/core/utils/use-case-logger';
 import { logger, monitoring } from './logger.di';
 
+import { UpdateCourseUseCase } from '@/core/use-cases/courses/update-course.usecase';
+
 const courseRepo = new FirestoreCourseAdapter(getFirebaseAdminFirestore());
 
 export const saveCourseUseCase = withUseCaseLogging(
   new SaveCourseUseCase(courseRepo),
   'SaveCourseUseCase',
+  logger,
+  monitoring
+);
+
+export const updateCourseUseCase = withUseCaseLogging(
+  new UpdateCourseUseCase(courseRepo),
+  'UpdateCourseUseCase',
   logger,
   monitoring
 );

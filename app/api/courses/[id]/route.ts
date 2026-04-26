@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySessionUseCase, getCourseUseCase, deleteCourseUseCase } from '@/infrastructure/registry';
+import { verifySessionUseCase, getCourseUseCase, deleteCourseUseCase, updateCourseUseCase } from '@/infrastructure/registry';
 import { handleApiError } from '@/lib/api-utils';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 
@@ -25,8 +25,23 @@ async function deleteHandler(req: NextRequest, ctx: Context) {
   return NextResponse.json({ success: true });
 }
 
+async function patchHandler(req: NextRequest, ctx: Context) {
+  const { id } = await ctx.params;
+  const session = req.cookies.get('session')?.value;
+  const user = await verifySessionUseCase.execute(session);
+  if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+
+  const { content } = await req.json();
+  await updateCourseUseCase.execute(id, user.id, content);
+  return NextResponse.json({ success: true });
+}
+
 export const GET = withApiLogging('/api/courses/[id]', (req, ctx) =>
   getHandler(req, ctx).catch((e: unknown) => handleApiError(e, 'GET /api/courses/[id]'))
+);
+
+export const PATCH = withApiLogging('/api/courses/[id]', (req, ctx) =>
+  patchHandler(req, ctx).catch((e: unknown) => handleApiError(e, 'PATCH /api/courses/[id]'))
 );
 
 export const DELETE = withApiLogging('/api/courses/[id]', (req, ctx) =>

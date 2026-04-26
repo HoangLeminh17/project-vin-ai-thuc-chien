@@ -28,6 +28,20 @@ export class FirestoreCourseAdapter implements ICourseRepository {
     }
   }
 
+  async update(id: string, userId: string, content: CourseContent): Promise<void> {
+    try {
+      const docRef = this.db.collection(COLLECTION).doc(id);
+      const doc = await docRef.get();
+      if (!doc.exists) throw new NotFoundError(`Course ${id} not found`);
+      if (doc.data()?.userId !== userId) throw new BusinessRuleError('Access denied');
+      
+      await docRef.update({ courseContent: content });
+    } catch (e) {
+      if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
+      throw new InfrastructureError('Failed to update course in Firestore', e);
+    }
+  }
+
   async listByUser(userId: string): Promise<SavedCourse[]> {
     try {
       const snapshot = await this.db

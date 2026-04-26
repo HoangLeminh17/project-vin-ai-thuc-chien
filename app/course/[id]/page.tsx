@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, use, useCallback, useRef } from 'react';
+import { useState, useEffect, use, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { SavedCourse } from '@/core/models/saved-course';
 import { Course, ChapterContent, LessonContent, ConceptCard } from '@/core/models/learning-model';
@@ -746,18 +747,38 @@ function EditMode({ cards, filterCi, initialCardId, focusAi, onFocusHandled }: {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
+import { useGeneration } from '@/lib/contexts/generation-context';
+
+function SynapsyLogo({ size = 20, color = 'var(--sy-ink)' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" style={{ display: 'block', flexShrink: 0 }}>
+      <rect x="3" y="3" width="18" height="18" rx="2" stroke={color} strokeWidth="1.5" />
+      <path d="M8 7V17M12 7V17M16 7V17M6 12H18" stroke={color} strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
+  const { 
+    savedCourseId: generatingId, 
+    status: genStatus, 
+    courseContentMap: genContentMap,
+    course: genCourse
+  } = useGeneration();
 
   const [saved, setSaved] = useState<SavedCourse | null>(null);
+  const isGenerating = generatingId === id && genStatus === 'generating';
   const [fetchError, setFetchError] = useState('');
   const [mode, setMode] = useState<Mode>('browse');
   const [filterCi, setFilterCi] = useState<number | null>(null);
   const [openCard, setOpenCard] = useState<FlatCard | null>(null);
   const [quizCi, setQuizCi] = useState<number | null>(null);
   const [progressMap, setProgressMap] = useState<ProgressMap>({});
+  const [editInitialCardId, setEditInitialCardId] = useState<string | null>(null);
+  const [editFocusAi, setEditFocusAi] = useState(false);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -766,8 +787,6 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       .then((m: ProgressMap | { error?: string }) => { if (!('error' in m)) setProgressMap(m as ProgressMap); })
       .catch(() => {});
   }, [user, authLoading]);
-  const [editInitialCardId, setEditInitialCardId] = useState<string | null>(null);
-  const [editFocusAi, setEditFocusAi] = useState(false);
 
   useEffect(() => {
     if (authLoading || !user) return;
@@ -789,26 +808,71 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     load();
   }, [id, user, authLoading]);
 
+  // Derived state (hooks must be before any returns)
+  const effectiveCourse = (isGenerating && genCourse) ? genCourse : saved?.course;
+  const effectiveContent = useMemo(() => {
+    if (!saved) return null;
+    if (!isGenerating) return saved.courseContent;
+    const chapters = [...(saved.courseContent?.chapters || [])];
+    Object.entries(genContentMap).forEach(([idx, ch]) => {
+      chapters[parseInt(idx)] = ch;
+    });
+    return { chapters };
+  }, [isGenerating, saved, genContentMap]);
+
+  const cards = useMemo(() => {
+    if (!effectiveCourse || !effectiveContent) return [];
+    return flattenCards(effectiveCourse, effectiveContent);
+  }, [effectiveCourse, effectiveContent]);
+
+  const totalChapters = effectiveCourse?.chapters?.length || 0;
+  const doneChapters = isGenerating ? Object.keys(genContentMap).length : (saved?.courseContent?.chapters?.length || 0);
+  const progressPct = totalChapters > 0 ? Math.round((doneChapters / totalChapters) * 100) : 0;
+
+  // Early returns (AFTER all hooks)
   if (authLoading) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sy-bg)', color: 'var(--sy-ink-40)', fontSize: 13 }}>Loading...</div>;
   if (!user) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sy-bg)', color: 'var(--sy-ink-60)', fontSize: 13 }}>Bạn cần đăng nhập</div>;
   if (fetchError) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sy-bg)', color: 'var(--sy-again)', fontSize: 13 }}>{fetchError}</div>;
-  if (!saved) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sy-bg)', color: 'var(--sy-ink-40)', fontSize: 13 }}>Đang tải khóa học...</div>;
-
-  const { course, courseContent } = saved;
-  const cards = flattenCards(course, courseContent);
+  if (!saved || !effectiveCourse || !effectiveContent) return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sy-bg)', color: 'var(--sy-ink-40)', fontSize: 13 }}>Đang tải khóa học...</div>;
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--sy-bg)', fontFamily: 'var(--sy-font-sans)', color: 'var(--sy-ink)' }}>
       {/* ── Course header ──────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', borderBottom: '1px solid var(--sy-ink-10)', background: 'var(--sy-bg-solid)', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-          <button onClick={() => router.push('/')} style={{ color: 'var(--sy-ink-60)', fontSize: 13, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--sy-font-sans)' }}>← Thư viện</button>
-          <div style={{ minWidth: 0 }}>
-            <p className="sy-serif" style={{ fontSize: 15, fontWeight: 500, margin: 0, letterSpacing: '-0.005em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--sy-ink)' }}>{course.title}</p>
-            <p className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-40)', margin: 0 }}>{cards.length} thẻ · {course.chapters.length} chương</p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 20, minWidth: 0 }}>
+          <Link 
+            href="/"
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, paddingRight: 20, borderRight: '1px solid var(--sy-ink-10)', textDecoration: 'none' }}
+          >
+            <SynapsyLogo size={24} color="var(--sy-accent)" />
+            <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--sy-ink)' }}>Synapsy</span>
+          </Link>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, minWidth: 0 }}>
+            <Link 
+              href="/" 
+              className="group flex items-center gap-2 px-3 py-1.5 rounded-full transition-all hover:bg-gray-100"
+              style={{ color: 'var(--sy-ink-60)', fontSize: 13, textDecoration: 'none', fontFamily: 'var(--sy-font-sans)' }}
+            >
+              <span className="text-lg leading-none transition-transform group-hover:-translate-x-1">←</span>
+              <span className="font-medium">Dashboard</span>
+            </Link>
+            <div style={{ height: 20, width: 1, background: 'var(--sy-ink-10)' }} />
+            <div style={{ minWidth: 0 }}>
+              <p className="sy-serif" style={{ fontSize: 15, fontWeight: 600, margin: 0, letterSpacing: '-0.005em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--sy-ink)' }}>{effectiveCourse.title}</p>
+              <p className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)', margin: 0 }}>{cards.length} thẻ · {effectiveCourse.chapters.length} chương</p>
+            </div>
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          {isGenerating && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--sy-bg-sunken)', padding: '4px 10px', borderRadius: 8, border: '1px solid var(--sy-ink-10)' }}>
+              <div style={{ width: 100, height: 4, background: 'var(--sy-ink-10)', borderRadius: 2, overflow: 'hidden' }}>
+                <div style={{ width: `${progressPct}%`, height: '100%', background: 'var(--sy-accent)', transition: 'width 0.4s ease' }} />
+              </div>
+              <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-60)', whiteSpace: 'nowrap' }}>Đang tạo chương {doneChapters}/{totalChapters}</span>
+            </div>
+          )}
           <ModeSwitcher mode={mode} onChange={m => { setMode(m); setQuizCi(null); }} />
           {user.photoURL && <img src={user.photoURL} alt="" style={{ width: 28, height: 28, borderRadius: '50%', border: '1px solid var(--sy-ink-10)' }} />}
         </div>
@@ -819,7 +883,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
         {/* Chapter rail (hidden in Study) */}
         {mode !== 'study' && (
           <ChapterRail
-            course={course}
+            course={effectiveCourse}
             cards={cards}
             filterCi={filterCi}
             onFilterCi={ci => { setFilterCi(ci); setQuizCi(null); }}
@@ -834,14 +898,14 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
             filterCi={filterCi}
             onOpenCard={setOpenCard}
             onOpenQuiz={setQuizCi}
-            course={course}
-            courseContent={courseContent}
+            course={effectiveCourse}
+            courseContent={effectiveContent}
             progressMap={progressMap}
           />
         )}
 
-        {mode === 'browse' && quizCi !== null && courseContent && (
-          <QuizView quiz={courseContent.chapters[quizCi]?.quiz ?? { topic: '', questions: [] }} onBack={() => setQuizCi(null)} />
+        {mode === 'browse' && quizCi !== null && effectiveContent && (
+          <QuizView quiz={effectiveContent.chapters[quizCi]?.quiz ?? { topic: '', questions: [] }} onBack={() => setQuizCi(null)} />
         )}
 
         {mode === 'study' && (
