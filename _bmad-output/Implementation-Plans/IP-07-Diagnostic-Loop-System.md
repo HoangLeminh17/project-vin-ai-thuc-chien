@@ -27,14 +27,20 @@ Bản kế hoạch này mô tả các bước kỹ thuật để triển khai h�
     - Sinh 15-20 câu hỏi đa dạng chủ đề.
     - Mỗi câu hỏi có schema: `{ question, options, answer, explanation, source_chunk_id, topic }`.
 
-### 2.2. Confidence Capture & Priority Map
+### 2.2. Confidence Capture & UKT Integration
 - **UI:** Thêm bước chọn mức độ tự tin (Confident, Unsure, Guess) trước khi hiện đáp án.
 - **Logic:** 
-    - Tính toán điểm ưu tiên (Priority Score) dựa trên: `is_correct` AND `confidence_level`.
-    - `Guess + Correct` -> High Priority (May mắn, cần học lại).
-    - `Unsure + Incorrect` -> High Priority.
-    - `Confident + Correct` -> Low Priority.
-- **Output:** Trả về `StudyPriorityMap` (Topics grouped by priority).
+    - Truyền kết quả `is_correct` và `confidence_level` qua API `/update` của UKT Microservice.
+    - UKT sẽ tính toán lại mức độ thành thạo ($\mu$) và độ không chắc chắn ($\sigma$) cho từng chủ đề (Knowledge Component - KC).
+- **Output:** Trả về danh sách chủ đề được sắp xếp theo `Priority Score` (thường là $\mu - \sigma$) từ yếu nhất đến vững nhất (Study Priority Map).
+
+### 2.3. Tích hợp UKT với SM2 (Synergy)
+- **Use Case bổ sung:** `GetPrioritizedDueCardsUseCase`.
+- **Logic:**
+    1. Lấy `StudyPriorityMap` từ UKT để biết danh sách các Chủ đề ưu tiên.
+    2. Gọi `IProgressRepository.getDueCards()` (do SM2 quản lý) để lấy danh sách các thẻ bài đang đến hạn ôn tập (Due).
+    3. Trộn dữ liệu: Lọc và sắp xếp các thẻ đến hạn theo thứ tự ưu tiên của Chủ đề từ UKT.
+    4. Cập nhật `ReviewCardUseCase`: Sau khi lưu `nextReviewDate` của SM2, tự động trigger gọi API UKT để liên tục cập nhật sự thành thạo của Chủ đề tương ứng.
 
 ## 🛠 Milestone 3: UI/UX Refinement
 

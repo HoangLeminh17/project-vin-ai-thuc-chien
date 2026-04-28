@@ -13,6 +13,11 @@ Sinh viên hoặc người học cần ôn tập nhanh các tài liệu dài (>2
 
 ## 4. Các tính năng chính (Key Features)
 
+### 4.0. Sự kết hợp giữa UKT và SM2 (Synergy)
+- **UKT (Uncertainty Knowledge Tracing):** Đóng vai trò "Nhạc trưởng" chiến lược. Phân tích kết quả Diagnostic Quiz và các tương tác học tập để xác định **CÁI GÌ (What)** cần học. UKT tính toán mức độ thành thạo ($\mu$) và độ không chắc chắn ($\sigma$) ở cấp độ *Chủ đề (Knowledge Component)*, từ đó tạo ra *Study Priority Map*.
+- **SM2 (Spaced Repetition):** Đóng vai trò thực thi chiến thuật. Quản lý việc **KHI NÀO (When)** một thẻ bài (Card) cụ thể cần được ôn tập lại dựa trên đường cong lãng quên.
+- **Luồng kết hợp:** UKT chọn Chủ đề ưu tiên cao nhất -> Hệ thống lấy các thẻ bài thuộc Chủ đề đó mà SM2 đã đánh dấu là "đến hạn" (Due) để hiển thị -> Người dùng đánh giá thẻ bài (Hard/Good/Easy) -> Cập nhật ngày ôn tập tiếp theo cho SM2 **VÀ** cập nhật lại điểm số $\mu, \sigma$ cho UKT thông qua API `/update`.
+
 ### 4.1. Diagnostic Quiz Generator
 - **Input:** `content_list_parsed.md` từ output của MinerU.
 - **Logic:** AI phân tích các chunk dữ liệu, trích xuất 15-20 câu hỏi trắc nghiệm.
