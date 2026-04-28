@@ -1,6 +1,6 @@
 import { IAiService, TokenUsage } from '@/core/ports/ai.port'
-import { PLANNER_PROMPT } from '@/lib/prompts'
-import type { Course } from '@/core/models/learning-model'
+import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
+import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
 
 export interface OpenAiConfig {
@@ -88,5 +88,61 @@ export class OpenAiAdapter implements IAiService {
     }))
 
     return { course, tokens }
+  }
+
+  async generateDiagnosticQuiz(markdown: string): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
+    if (!this.apiKey) {
+      throw new InfrastructureError('Missing OPENAI_API_KEY')
+    }
+
+    let res: Response;
+    try {
+      res = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.model,
+          temperature: 0.2,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: DIAGNOSTIC_QUIZ_PROMPT },
+            { role: 'user', content: markdown },
+          ],
+        }),
+      })
+    } catch (e) {
+      throw new InfrastructureError('Failed to connect to OpenAI API for diagnostic quiz', e)
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
+      throw new InfrastructureError(`OpenAI API error (${res.status}): ${msg}`)
+    }
+
+    const data = await res.json()
+
+    // Log token usage
+    const usage = data.usage
+    const tokens: TokenUsage | null = usage
+      ? { promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens }
+      : null
+
+    const text = data.choices?.[0]?.message?.content
+    if (!text) {
+      throw new InfrastructureError(`OpenAI returned no content for diagnostic quiz: ${JSON.stringify(data)}`)
+    }
+
+    let quiz: DiagnosticQuiz
+    try {
+      quiz = JSON.parse(text)
+    } catch (e) {
+      throw new InfrastructureError(`Failed to parse OpenAI JSON response for diagnostic quiz: ${text.slice(0, 500)}`, e)
+    }
+
+    return { quiz, tokens }
   }
 }

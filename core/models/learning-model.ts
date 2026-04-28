@@ -55,3 +55,16 @@ export type ChapterContent = {
 export type CourseContent = {
   chapters: ChapterContent[]
 }
+
+export type DiagnosticQuestion = {
+  question: string
+  options: string[]
+  answer: number
+  explanation: string
+  source_chunk_id?: string
+  topic: string
+}
+
+export type DiagnosticQuiz = {
+  questions: DiagnosticQuestion[]
+}

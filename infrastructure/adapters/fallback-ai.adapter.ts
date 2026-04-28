@@ -1,5 +1,5 @@
 import { IAiService, TokenUsage } from '@/core/ports/ai.port'
-import type { Course } from '@/core/models/learning-model'
+import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 
 export class ChainAiAdapter implements IAiService {
   constructor(private adapters: IAiService[]) {
@@ -21,5 +21,20 @@ export class ChainAiAdapter implements IAiService {
       }
     }
     throw new Error(`All AI adapters failed. Last error: ${lastError}`)
+  }
+
+  async generateDiagnosticQuiz(markdown: string): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
+    let lastError: unknown;
+    for (const adapter of this.adapters) {
+      try {
+        const name = adapter.constructor.name
+        console.log(`[ChainAiAdapter] Trying AI provider for diagnostic: ${name}`)
+        return await adapter.generateDiagnosticQuiz(markdown)
+      } catch (e) {
+        console.warn(`[ChainAiAdapter] Provider ${adapter.constructor.name} failed diagnostic:`, e)
+        lastError = e
+      }
+    }
+    throw new Error(`All AI adapters failed diagnostic. Last error: ${lastError}`)
   }
 }
