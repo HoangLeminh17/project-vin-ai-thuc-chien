@@ -1,5 +1,6 @@
 import pino from 'pino';
 import { ILoggerPort } from '@/core/ports/logger.port';
+import { logStore } from '../log-store';
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -18,6 +19,7 @@ export class PinoLoggerAdapter implements ILoggerPort {
     } else {
       this.logger.debug(message);
     }
+    logStore.addLog('debug', message, context);
   }
 
   info(message: string, context?: Record<string, any>): void {
@@ -26,6 +28,7 @@ export class PinoLoggerAdapter implements ILoggerPort {
     } else {
       this.logger.info(message);
     }
+    logStore.addLog('info', message, context);
   }
 
   warn(message: string, context?: Record<string, any>): void {
@@ -34,6 +37,7 @@ export class PinoLoggerAdapter implements ILoggerPort {
     } else {
       this.logger.warn(message);
     }
+    logStore.addLog('warn', message, context);
   }
 
   error(message: string, context?: Record<string, any>): void {
@@ -42,5 +46,6 @@ export class PinoLoggerAdapter implements ILoggerPort {
     } else {
       this.logger.error(message);
     }
+    logStore.addLog('error', message, context);
   }
 }
