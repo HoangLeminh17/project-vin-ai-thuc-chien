@@ -65,6 +65,15 @@ function MiniRing({ pct, size = 14, strokeWidth = 2 }: { pct: number; size?: num
   );
 }
 
+// ── PriorityLabel ────────────────────────────────────────────────────────────
+
+function PriorityLabel({ pct, isNew }: { pct: number; isNew: boolean }) {
+  if (isNew) return <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--sy-ink-60)', background: 'var(--sy-bg-sunken)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>Chưa học</span>;
+  if (pct >= 80) return <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--sy-accent)', background: 'var(--sy-accent-soft)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>Nắm vững</span>;
+  if (pct >= 40) return <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--sy-hard)', background: '#fdf3e6', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>Cần củng cố</span>;
+  return <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--sy-warm)', background: 'var(--sy-warm-soft)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>Cần ôn ngay</span>;
+}
+
 // ── StateChip ────────────────────────────────────────────────────────────────
 
 function StateChip({ state }: { state: BrowseStatus }) {
@@ -204,18 +213,24 @@ function ChapterRail({
               const lessonCards = chapterCards.filter(c => c.li === li);
               if (lessonCards.length === 0) return null;
               const matureCount = lessonCards.filter(c => statusOf(progressMap[c.id]) === 'mature').length;
+              const newCount = lessonCards.filter(c => statusOf(progressMap[c.id]) === 'new').length;
               const masteryPct = Math.round((matureCount / lessonCards.length) * 100);
+              const isNew = newCount === lessonCards.length;
+              
               return (
                 <div key={li} style={{
-                  padding: '3px 16px 3px 32px',
+                  padding: '5px 16px 5px 32px',
                   fontSize: 12, color: 'var(--sy-ink-60)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  display: 'flex', flexDirection: 'column', gap: 4,
                 }}>
-                  <span className="sy-serif" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>{lesson.title}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                    <MiniRing pct={masteryPct} />
-                    <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)' }}>{lessonCards.length}</span>
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span className="sy-serif" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>{lesson.title}</span>
+                    <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)', flexShrink: 0 }}>{lessonCards.length} thẻ</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <PriorityLabel pct={masteryPct} isNew={isNew} />
+                    {!isNew && <span style={{ fontSize: 10, color: 'var(--sy-ink-40)' }}>{masteryPct}% độ thành thạo</span>}
+                  </div>
                 </div>
               );
             })}
