@@ -4,6 +4,7 @@ export type ContentItem = {
   text_level?: number
   img_path?: string
   table_body?: string
+  page_idx?: number
 }
 
 const ROMAN = String.raw`^(I{1,3}|IV|V|VI{0,3}|IX|X)\.`
@@ -22,32 +23,34 @@ export function contentListToMarkdown(items: ContentItem[]): string {
   const seen = new Set<string>()
   const parts: string[] = []
 
-  for (const item of items) {
-    if (item.type === 'discarded') continue
+  items.forEach((item, index) => {
+    if (item.type === 'discarded') return
+
+    const anchor = `<a id="chunk-${item.page_idx ?? 0}-${index}"></a>`
 
     if (item.type === 'text') {
       const text = (item.text ?? '').trim()
-      if (!text) continue
+      if (!text) return
 
       if (item.text_level === 1) {
         const marker = classifyHeading(text)
         if (marker && !seen.has(text)) {
           seen.add(text)
           if (marker === '##') parts.push('---')
-          parts.push(`${marker} ${text}`)
+          parts.push(`${anchor}\n${marker} ${text}`)
         } else {
-          parts.push(text)
+          parts.push(`${anchor}\n${text}`)
         }
       } else {
-        parts.push(text)
+        parts.push(`${anchor}\n${text}`)
       }
     } else if (item.type === 'image') {
-      parts.push(`![](${item.img_path ?? ''})`)
+      parts.push(`${anchor}\n![](${item.img_path ?? ''})`)
     } else if (item.type === 'table') {
       const content = (item.table_body ?? item.text ?? '').trim()
-      if (content) parts.push(content)
+      if (content) parts.push(`${anchor}\n${content}`)
     }
-  }
+  })
 
   return parts.join('\n\n')
 }

@@ -44,7 +44,11 @@ function formatNextReview(entry: ProgressMapEntry | undefined): string {
 
 // Stable pseudo source page derived from card id. Placeholder until the
 // generator emits real PDF page numbers. TODO(generator): replace with real value.
-function derivePseudoPage(cardId: string): number {
+function derivePseudoPage(cardId: string, sourceChunkId?: string): number {
+  if (sourceChunkId) {
+    const match = sourceChunkId.match(/chunk-(\d+)-/);
+    if (match) return parseInt(match[1], 10) + 1;
+  }
   let h = 0;
   for (let i = 0; i < cardId.length; i++) h = (h * 31 + cardId.charCodeAt(i)) >>> 0;
   return (h % 148) + 1;
@@ -318,7 +322,7 @@ function BrowseMode({
                     <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)', whiteSpace: 'nowrap' }}>{card.chapterTitle}</td>
                     <td style={{ padding: '12px 16px' }}><StateChip state={statusOf(entry)} /></td>
                     <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)' }}>{formatNextReview(entry)}</td>
-                    <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 11, color: 'var(--sy-ink-40)' }}>tr. {derivePseudoPage(card.id)}</td>
+                    <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 11, color: 'var(--sy-ink-40)' }}>tr. {derivePseudoPage(card.id, card.concept.source_chunk_id)}</td>
                   </tr>
                 );
               })}
@@ -359,7 +363,15 @@ function CardDetailModal({ card, onClose }: { card: FlatCard; onClose: () => voi
         onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <span className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-40)' }}>{card.chapterTitle} · {card.lessonTitle}</span>
-          <button onClick={onClose} style={{ color: 'var(--sy-ink-40)', fontSize: 18, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={(e) => {
+              e.stopPropagation();
+              alert(`Hiển thị nguồn gốc tài liệu cho thẻ này.\nNguồn: ${card.concept.source_chunk_id || 'Chưa rõ'}\n(PDF viewer đang được phát triển)`);
+            }} style={{ fontSize: 11, color: 'var(--sy-accent)', background: 'var(--sy-accent-soft)', padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'var(--sy-font-sans)', fontWeight: 600 }}>
+              📄 Xem nguồn gốc
+            </button>
+            <button onClick={onClose} style={{ color: 'var(--sy-ink-40)', fontSize: 18, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+          </div>
         </div>
         <h2 className="sy-serif" style={{ fontSize: 20, fontWeight: 400, lineHeight: 1.4, margin: '0 0 18px', color: 'var(--sy-ink)' }}>{card.concept.question}</h2>
         <div style={{ padding: '14px 16px', background: 'var(--sy-accent-soft)', borderRadius: 8, borderLeft: '3px solid var(--sy-accent)', marginBottom: 12 }}>
@@ -510,9 +522,15 @@ function StudyMode({ cards, filterCi, onExit, onRequestEdit }: {
             <span className="sy-mono" style={{ color: 'var(--sy-ink-40)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {card.chapterTitle} · {card.lessonTitle}
             </span>
-            <span className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-60)', padding: '3px 8px', borderRadius: 5, background: 'var(--sy-bg-sunken)', flexShrink: 0 }}>
-              📄 tr. {derivePseudoPage(card.id)}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={() => alert(`Hiển thị nguồn gốc tài liệu cho thẻ này.\nNguồn: ${card.concept.source_chunk_id || 'Chưa rõ'}\n(PDF viewer đang được phát triển)`)} 
+                style={{ fontSize: 11, color: 'var(--sy-accent)', background: 'var(--sy-accent-soft)', padding: '3px 8px', borderRadius: 5, border: 'none', cursor: 'pointer', fontFamily: 'var(--sy-font-sans)', fontWeight: 600 }}>
+                📄 Xem nguồn gốc
+              </button>
+              <span className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-60)', padding: '3px 8px', borderRadius: 5, background: 'var(--sy-bg-sunken)', flexShrink: 0 }}>
+                tr. {derivePseudoPage(card.id, card.concept.source_chunk_id)}
+              </span>
+            </div>
           </div>
 
           {/* Question */}

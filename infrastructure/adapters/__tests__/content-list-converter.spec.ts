@@ -4,33 +4,34 @@ import { join } from 'path'
 import { contentListToMarkdown, type ContentItem } from '../content-list-converter'
 
 function makeText(text: string, text_level?: number): ContentItem {
-  return { type: 'text', text, text_level }
+  return { type: 'text', text, text_level, page_idx: 0 }
 }
 
 describe('contentListToMarkdown — classifier', () => {
   it('Roman numeral chapter → --- then ##', () => {
     const out = contentListToMarkdown([makeText('I. INSULIN', 1)])
-    expect(out).toBe('---\n\n## I. INSULIN')
+    expect(out).toContain('---')
+    expect(out).toContain('## I. INSULIN')
   })
 
   it('numeric lesson (N.) → ###', () => {
     const out = contentListToMarkdown([makeText('1. Nhóm biguanid', 1)])
-    expect(out).toBe('### 1. Nhóm biguanid')
+    expect(out).toContain('### 1. Nhóm biguanid')
   })
 
   it('numeric sub-lesson (N.N.) → ###', () => {
     const out = contentListToMarkdown([makeText('1.1. Thế hệ:', 1)])
-    expect(out).toBe('### 1.1. Thế hệ:')
+    expect(out).toContain('### 1.1. Thế hệ:')
   })
 
   it('Roman + digit sub → ###', () => {
     const out = contentListToMarkdown([makeText('I.1 Phân loại', 1)])
-    expect(out).toBe('### I.1 Phân loại')
+    expect(out).toContain('### I.1 Phân loại')
   })
 
   it('non-pattern text_level=1 → plain text, no marker', () => {
     const out = contentListToMarkdown([makeText('INSULIN REGULAR', 1)])
-    expect(out).toBe('INSULIN REGULAR')
+    expect(out).toContain('INSULIN REGULAR')
     expect(out).not.toContain('##')
     expect(out).not.toContain('###')
   })
@@ -45,8 +46,9 @@ describe('contentListToMarkdown — dedupe', () => {
     const out = contentListToMarkdown(items)
     const lines = out.split('\n\n')
     expect(lines[0]).toBe('---')
-    expect(lines[1]).toBe('## I. INSULIN')
-    expect(lines[2]).toBe('I. INSULIN')
+    expect(lines[1]).toContain('## I. INSULIN')
+    expect(lines[2]).toContain('I. INSULIN')
+    expect(lines[2]).not.toContain('##')
   })
 
   it('dedupe also applies to ### headings', () => {
@@ -56,20 +58,21 @@ describe('contentListToMarkdown — dedupe', () => {
     ]
     const out = contentListToMarkdown(items)
     const lines = out.split('\n\n')
-    expect(lines[0]).toBe('### 1. Nhóm glinid')
-    expect(lines[1]).toBe('1. Nhóm glinid')
+    expect(lines[0]).toContain('### 1. Nhóm glinid')
+    expect(lines[1]).toContain('1. Nhóm glinid')
+    expect(lines[1]).not.toContain('###')
   })
 })
 
 describe('contentListToMarkdown — other item types', () => {
   it('image uses img_path directly (no extra images/ prefix)', () => {
-    const item: ContentItem = { type: 'image', img_path: 'images/abc.jpg' }
-    expect(contentListToMarkdown([item])).toBe('![](images/abc.jpg)')
+    const item: ContentItem = { type: 'image', img_path: 'images/abc.jpg', page_idx: 0 }
+    expect(contentListToMarkdown([item])).toContain('![](images/abc.jpg)')
   })
 
   it('table uses table_body', () => {
-    const item: ContentItem = { type: 'table', table_body: '| A | B |\n|---|---|\n| 1 | 2 |' }
-    expect(contentListToMarkdown([item])).toBe('| A | B |\n|---|---|\n| 1 | 2 |')
+    const item: ContentItem = { type: 'table', table_body: '| A | B |\n|---|---|\n| 1 | 2 |', page_idx: 0 }
+    expect(contentListToMarkdown([item])).toContain('| A | B |\n|---|---|\n| 1 | 2 |')
   })
 
   it('discarded items are skipped', () => {
@@ -77,7 +80,9 @@ describe('contentListToMarkdown — other item types', () => {
       { type: 'discarded', text: 'noise' },
       makeText('real content'),
     ]
-    expect(contentListToMarkdown(items)).toBe('real content')
+    const out = contentListToMarkdown(items)
+    expect(out).toContain('real content')
+    expect(out).not.toContain('noise')
   })
 })
 
@@ -88,12 +93,12 @@ describe('contentListToMarkdown — ĐTĐ fixture', () => {
   const lines = output.split('\n\n')
 
   it('produces exactly 8 unique ## chapters', () => {
-    const h2Lines = lines.filter(l => l.startsWith('## '))
+    const h2Lines = lines.filter(l => l.match(/\n## /) || l.startsWith('## '))
     expect(h2Lines).toHaveLength(8)
   })
 
   it('produces exactly 20 unique ### lessons', () => {
-    const h3Lines = lines.filter(l => l.startsWith('### '))
+    const h3Lines = lines.filter(l => l.match(/\n### /) || l.startsWith('### '))
     expect(h3Lines).toHaveLength(20)
   })
 
@@ -107,7 +112,7 @@ describe('contentListToMarkdown — ĐTĐ fixture', () => {
   })
 
   it('no duplicate ## headings', () => {
-    const h2Texts = lines.filter(l => l.startsWith('## ')).map(l => l.slice(3))
+    const h2Texts = lines.filter(l => l.match(/\n## /)).map(l => l.split('\n## ')[1])
     const unique = new Set(h2Texts)
     expect(unique.size).toBe(h2Texts.length)
   })

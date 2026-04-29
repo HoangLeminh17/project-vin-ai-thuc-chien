@@ -7,6 +7,7 @@ export type Lesson = {
   title: string
   key_concept: string
   outline: string[]
+  source_chunk_id?: string
 }
 
 export type Quiz = {
@@ -29,6 +30,7 @@ export type ConceptCard = {
   answer: string
   detail?: string
   followUps: string[]
+  source_chunk_id?: string
 }
 
 export type QuizQuestion = {
@@ -36,6 +38,7 @@ export type QuizQuestion = {
   options: string[]
   answer: number
   explanation: string
+  source_chunk_id?: string
 }
 
 export type LessonContent = {
