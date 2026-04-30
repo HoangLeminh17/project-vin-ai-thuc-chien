@@ -18,7 +18,8 @@ describe('withUseCaseLogging', () => {
 
     mockMonitoring = {
       captureException: vi.fn(),
-      trackEvent: vi.fn()
+      trackEvent: vi.fn(),
+      recordMetric: vi.fn()
     };
   });
 

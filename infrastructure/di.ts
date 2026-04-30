@@ -17,6 +17,7 @@ import { FirebaseStorageAdapter } from './adapters/firebase-storage.adapter';
 // import { LocalFsStorageAdapter } from './adapters/local-storage.adapter';
 
 import { PinoLoggerAdapter } from './adapters/pino-logger.adapter';
+import { WebhookAlertAdapter } from './adapters/webhook-alert.adapter';
 import { ConsoleMonitoringAdapter } from './adapters/console-monitoring.adapter';
 import { FirebaseAuthAdapter } from './adapters/firebase-auth.adapter';
 import { FirebaseProgressRepository } from './adapters/firebase-progress-repository.adapter';
@@ -29,7 +30,8 @@ import { withUseCaseLogging } from '@/core/utils/use-case-logger';
 
 // Instantiate adapters
 export const logger = new PinoLoggerAdapter();
-export const monitoring = new ConsoleMonitoringAdapter(logger);
+const alertAdapter = new WebhookAlertAdapter(process.env.SLACK_WEBHOOK_URL || '');
+export const monitoring = new ConsoleMonitoringAdapter(logger, alertAdapter);
 
 const storageAdapter = new FirebaseStorageAdapter(getBucket());
 const parserAdapter = new MineruParserAdapter({
