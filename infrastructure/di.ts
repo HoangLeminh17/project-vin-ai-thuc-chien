@@ -6,6 +6,8 @@ import { ReviewCardUseCase } from '@/core/use-cases/spaced-repetition/review-car
 import { GetDueCardsUseCase } from '@/core/use-cases/spaced-repetition/get-due-cards.usecase';
 import { GetSRSStatsUseCase } from '@/core/use-cases/spaced-repetition/get-srs-stats.usecase';
 import { GetProgressMapUseCase } from '@/core/use-cases/spaced-repetition/get-progress-map.usecase';
+import { GenerateDiagnosticQuizUseCase } from '@/core/use-cases/diagnostic/generate-diagnostic-quiz.usecase';
+import { GetPrioritizedDueCardsUseCase } from '@/core/use-cases/spaced-repetition/get-prioritized-due-cards.usecase';
 
 import { OpenAiAdapter } from './adapters/openai.adapter';
 import { MineruParserAdapter } from './adapters/mineru-parser.adapter';
@@ -56,11 +58,18 @@ const rawCreateSessionUseCase = new CreateSessionUseCase(authAdapter);
 export const createSessionUseCase = withUseCaseLogging(rawCreateSessionUseCase, 'CreateSessionUseCase', logger, monitoring);
 
 // SRS Use Cases
-const rawReviewCardUseCase = new ReviewCardUseCase(progressRepository);
+const rawReviewCardUseCase = new ReviewCardUseCase(progressRepository, uktService);
 export const reviewCardUseCase = withUseCaseLogging(rawReviewCardUseCase, 'ReviewCardUseCase', logger, monitoring);
 
 const rawGetDueCardsUseCase = new GetDueCardsUseCase(progressRepository);
 export const getDueCardsUseCase = withUseCaseLogging(rawGetDueCardsUseCase, 'GetDueCardsUseCase', logger, monitoring);
+
+const rawGetPrioritizedDueCardsUseCase = new GetPrioritizedDueCardsUseCase(progressRepository, uktService);
+export const getPrioritizedDueCardsUseCase = withUseCaseLogging(rawGetPrioritizedDueCardsUseCase, 'GetPrioritizedDueCardsUseCase', logger, monitoring);
+
+// Diagnostic Loop
+const rawGenerateDiagnosticQuizUseCase = new GenerateDiagnosticQuizUseCase(aiAdapter);
+export const generateDiagnosticQuizUseCase = withUseCaseLogging(rawGenerateDiagnosticQuizUseCase, 'GenerateDiagnosticQuizUseCase', logger, monitoring);
 
 const rawGetSRSStatsUseCase = new GetSRSStatsUseCase(progressRepository);
 export const getSRSStatsUseCase = withUseCaseLogging(rawGetSRSStatsUseCase, 'GetSRSStatsUseCase', logger, monitoring);
