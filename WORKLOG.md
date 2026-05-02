@@ -15,6 +15,50 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Course viewer page (browse / study / edit modes) + Course planning & content transformation | Lê Kim Dũng | #42 |
 | Monitoring & alerting infrastructure (log persistence, observability adapters) + Diagnostic quiz generation & spaced-repetition prioritization | Lê Kim Dũng | #43 |
 | Traceability | Lê Kim Dũng | #44 |
+| Synapsy UI redesign + CourseFlow component split + diagnostic flow + generation bug fixes | Nguyễn Bình Thành | #46 |
+
+---
+
+### [ADR-24] Tách CourseFlow + luồng chẩn đoán + sửa lỗi generation — 03/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #46
+
+**Bối cảnh:** Sau Sprint 5, trang `/course/[id]` là một file monolithic ~1973 dòng, khó bảo trì. Đồng thời phát sinh nhiều lỗi nghiêm trọng trong luồng tạo khóa học: course cached không được lưu vào thư viện, màn hình chờ tạo khóa học không hiển thị, bài test chẩn đoán kích hoạt sai thời điểm.
+
+**Các quyết định:**
+
+**1. Tách component theo View state machine**
+- `CourseFlow` là orchestrator duy nhất, quản lý View: `init → diagnostic-intro → diagnostic-quiz → course-tree → lesson`.
+- Mỗi view là một component riêng: `DiagnosticIntro`, `DiagnosticQuiz`, `CourseTree`, `LessonView` (chứa `StudyMode` + `EditMode`).
+- Lý do: file 1973 dòng không thể review, không thể test từng view độc lập.
+
+**2. Hệ thống cờ localStorage để kiểm soát diagnostic**
+- `justGenerated_{id}`: đặt ngay sau khi tạo xong, CourseFlow đọc lần đầu mount để skip diagnostic. Bị xóa khi user chọn "Quay về thư viện" — lần vào tiếp theo từ thư viện sẽ thấy diagnostic bình thường.
+- `diagnosticQuestions_{id}`: pre-cache câu hỏi trong lúc chờ generate content (fire-and-forget), để khi user bấm "Bắt đầu chẩn đoán" là load ngay, không chờ API.
+- Lý do: UX yêu cầu diagnostic chỉ xuất hiện khi user chủ động vào từ thư viện, không xuất hiện sau redirect tự động.
+
+**3. Dùng `useRef` chống React Strict Mode double-mount**
+- React Strict Mode mount component 2 lần liên tiếp để phát hiện side effect. `useEffect` chạy 2 lần → flag `justGenerated_` bị tiêu thụ ở lần 1, lần 2 thấy không có flag và hiển thị diagnostic-intro nhầm.
+- Fix: dùng `const diagInitialized = useRef(false)` làm guard. Ref được giữ nguyên qua cả 2 lần mount của Strict Mode, nên lần 2 thoát sớm mà không đọc localStorage lần nữa.
+
+**4. Sửa luồng tạo khóa học cho path cached**
+- Bug: branch `fromCache && data.courseContent` thiếu lời gọi `saveCourse` → course không được lưu vào thư viện, `savedCourseId` null → màn hình generation hiển thị nút "Học ngay" không hoạt động.
+- Fix: thêm `await saveCourse(...)` vào tất cả 3 nhánh (cached-full, cached-fallback, sequential). Lệnh `await` còn có tác dụng phụ là phá batch React → `GenerationScreen` được render trước khi `setStatus('done')`.
+
+**5. Kiểm tra khóa học còn tồn tại trước khi redirect**
+- Bug: `courses` list trong GenerationContext là snapshot client-side. Nếu user xóa khóa học rồi tạo lại cùng file, code tìm thấy `existing` trong list cũ và redirect vào ID đã bị xóa → 404.
+- Fix: gọi `fetch('/api/courses/${existing.id}')` để verify trước khi redirect. Nếu 404 thì fall-through tạo mới.
+
+**6. Màn hình hoàn thành với 2 lựa chọn thay vì auto-redirect**
+- Sau khi generation xong, không còn tự `router.push('/course/:id')`. Thay vào đó hiện màn hình với 2 nút: "Học luôn →" (vào khóa học) và "← Quay về thư viện" (về home).
+- Lý do: user cần được lựa chọn; auto-redirect bỏ qua bước chẩn đoán và gây confusion khi trang nhảy đột ngột.
+
+**Hệ quả:**
+- (+) Course cached được lưu vào thư viện đúng cách.
+- (+) Diagnostic chỉ xuất hiện khi user mở khóa học lần đầu từ thư viện, không xuất hiện sau generation.
+- (+) Màn hình generation hiển thị đúng cho cả cached lẫn non-cached path.
+- (+) Không còn redirect vào 404 khi course bị xóa và tạo lại.
+- (-) Thêm 4 cờ localStorage cần quản lý thủ công — cần cleanup nếu user xóa khóa học.
 
 ---
 
@@ -32,7 +76,6 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Nâng cấp trang Browse & Refactor Clean Architecture | Nguyễn Bình Thành | 23/04 | #30 |
 | Fix log hook UTF-8 encoding (Windows) | Nguyễn Bình Thành | 24/04 | #35 |
 | Chọn AI provider (Gemini / OpenAI fallback) | Lê Minh Hoàng | 24/04 | #34 |
-| Merge Sprint 4 PRs + chuẩn hóa quy trình PR | Nguyễn Bình Thành | 24/04 | — |
 
 ---
 

@@ -1,0 +1,171 @@
+## File Map
+
+### API Routes
+POST /api/auth/login          → app/api/auth/login/route.ts
+POST /api/auth/logout         → app/api/auth/logout/route.ts
+POST /api/parse-pdf           → app/api/parse-pdf/route.ts
+POST /api/generate-course     → app/api/generate-course/route.ts
+POST /api/generate-content    → app/api/generate-content/route.ts
+POST /api/extract-facts       → app/api/extract-facts/route.ts
+GET  /api/courses             → app/api/courses/route.ts
+GET  /api/courses/[id]        → app/api/courses/[id]/route.ts
+POST /api/progress/review     → app/api/progress/review/route.ts
+GET  /api/progress/map        → app/api/progress/map/route.ts
+GET  /api/progress/stats      → app/api/progress/stats/route.ts
+GET  /api/progress/due        → app/api/progress/due/route.ts
+POST /api/diagnostic-quiz     → app/api/diagnostic-quiz/route.ts
+GET  /api/admin/logs          → app/api/admin/logs/route.ts
+
+### Pages
+/                             → app/page.tsx           ← home + library + generation screen
+/course/[id]                  → app/course/[id]/page.tsx
+/review                       → app/review/page.tsx
+/admin/monitor                → app/admin/monitor/page.tsx
+
+### Components
+Design system (tokens + primitives)
+  T (design tokens)           → app/components/synapsy/index.ts
+  SynapsyLogo, SynapsyRing,
+  GeoDecoration, StateChip    → app/components/synapsy/
+  Spinner                     → app/components/Spinner.tsx
+  FlashFactGallery            → app/components/FlashFactGallery.tsx
+
+Course flow (CourseFlow orchestrates the views below)
+  CourseFlow                  → app/components/course/CourseFlow.tsx
+  CourseTree                  → app/components/course/CourseTree.tsx
+  LessonView                  → app/components/course/LessonView.tsx
+  StudyMode                   → app/components/course/StudyMode.tsx
+  EditMode                    → app/components/course/EditMode.tsx
+
+Diagnostic flow
+  DiagnosticIntro             → app/components/diagnostic/DiagnosticIntro.tsx
+  DiagnosticQuiz              → app/components/diagnostic/DiagnosticQuiz.tsx
+  DiagnosticResults           → app/components/diagnostic/DiagnosticResults.tsx
+
+### Core
+Domain models                 → core/models/learning-model.ts
+                              → core/models/saved-course.ts
+Ports                         → core/ports/
+Use cases                     → core/use-cases/
+
+### Infrastructure
+DI container                  → infrastructure/di.ts
+Adapters                      → infrastructure/adapters/
+  Firebase Auth               → infrastructure/adapters/firebase-auth.adapter.ts
+  Firebase Storage            → infrastructure/adapters/firebase-storage.adapter.ts
+  Firestore Course            → infrastructure/adapters/firestore-course.adapter.ts
+  MinerU Parser               → infrastructure/adapters/mineru-parser.adapter.ts
+  OpenAI                      → infrastructure/adapters/openai.adapter.ts
+  UKT Service                 → infrastructure/adapters/ukt-service.adapter.ts
+
+### Lib
+Types                         → lib/types.ts
+AI calls                      → lib/ai.ts
+Prompts                       → lib/prompts.ts
+Parsers                       → lib/parsers/
+  ContentListConverter        → lib/parsers/content-list-converter.ts
+Generation context            → lib/contexts/generation-context.tsx
+
+---
+## Key Types
+
+```ts
+// Course structure
+type Course = {
+  id: string
+  title: string
+  chapters: Chapter[]
+}
+type Chapter = {
+  title: string
+  lessons: Lesson[]
+  quiz: { topic: string; questions: QuizQuestion[] }
+}
+type Lesson = {
+  title: string
+  key_concept: string
+  outline: string[]          // 4-8 bullet points (Stage 1 output)
+  concept?: ConceptCard      // populated after Stage 2
+}
+
+// ConceptCard (active recall format)
+type ConceptCard = {
+  question: string
+  answer: string
+  detail?: string
+  followUps: string[]
+}
+
+// Quiz
+type QuizQuestion = {
+  question: string
+  options: string[]          // 4 options
+  answer: number             // correct index 0-3
+  explanation: string
+  source_chunk_id?: string
+}
+
+// SRS Progress
+type ProgressMapEntry = {
+  status: 'NEW' | 'LEARNING' | 'REVIEW'
+  nextReviewDate: string
+  lastReviewedAt?: string
+  isDue: boolean
+}
+type ProgressMap = Record<string, ProgressMapEntry>   // key = cardId
+
+// Card ID format: `${chapterIndex}-${lessonIndex}`
+```
+
+---
+## UI Structure — /course/[id]/page.tsx → CourseFlow
+
+/course/[id]/page.tsx loads the SavedCourse and renders <CourseFlow />.
+
+CourseFlow manages a View state machine:
+  init              → loading guard (prevents flicker)
+  diagnostic-intro  → DiagnosticIntro (first visit only; skipped via justGenerated_ flag)
+  diagnostic-loading→ spinner while fetching quiz from /api/diagnostic-quiz
+  diagnostic-quiz   → DiagnosticQuiz (10 questions, MCQ)
+  course-tree       → CourseTree (chapter/lesson overview)
+  lesson            → LessonView (study/edit for one lesson)
+
+localStorage flags used by CourseFlow:
+  justGenerated_{id}        — set after generation; consumed on first mount to skip diagnostic
+  diagnosticDone_{id}       — set after quiz or skip; prevents re-trigger on subsequent visits
+  diagnosticResults_{id}    — JSON of question results (used to color-code CourseTree nodes)
+  diagnosticQuestions_{id}  — pre-cached quiz questions generated during course build
+
+CourseTree layout:
+  Chapter list with expandable lessons
+  Lesson nodes color-coded: red (due/failed) · amber (learning) · green (mastered) · grey (new)
+  "Tiếp tục học →" button picks the earliest-due lesson
+
+LessonView:
+  StudyMode — flashcard (question → reveal → 4 SRS ratings: Again/Hard/Good/Easy)
+  EditMode  — card editor + AI chips
+
+Rating meta (study mode):
+  0 Again  — "không nhớ"  — 1 phút
+  1 Hard   — "lờ mờ"      — 10 phút
+  2 Good   — "nhớ rồi"    — 1 ngày
+  3 Easy   — "quá dễ"     — 4 ngày
+  Keyboard: phím 1-4; spacebar = xem đáp án
+
+---
+## Generation flow (app/page.tsx + generation-context.tsx)
+
+Status machine: idle → parsing → generating → done
+
+GenerationScreen is rendered while status === 'generating' || status === 'done'
+  (keeps UI visible for cached fast-path courses; previously only shown for non-cached)
+
+Three generation paths in startGeneration():
+  1. existing (contentHash match + API alive)  → set justGenerated_ + redirect
+  2. fromCache + courseContent in response     → load map from cache, saveCourse, preFetchDiagnostic
+  3. fromCache fallback (no content)           → parallel fetchChapter calls, saveCourse
+  4. fresh (not cached)                        → sequential fetchChapter, saveCourse per chapter
+
+preFetchDiagnostic(courseId, markdown):
+  Fire-and-forget POST /api/diagnostic-quiz during generation.
+  Result stored in localStorage `diagnosticQuestions_{id}` so first quiz start is instant.
