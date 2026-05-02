@@ -6,6 +6,18 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+## Sprint 5 — 27/04 → 03/05/2026
+
+| Task | Người làm | PR |
+|---|---|---|
+| UKT Python service engine + Redis state + TypeScript adapter | Lê Kim Dũng | #40 |
+| Full-stack course generation workflow (context providers, repository adapters, API orchestration) + Persistent course management (Firestore) | Lê Kim Dũng | #41 |
+| Course viewer page (browse / study / edit modes) + Course planning & content transformation | Lê Kim Dũng | #42 |
+| Monitoring & alerting infrastructure (log persistence, observability adapters) + Diagnostic quiz generation & spaced-repetition prioritization | Lê Kim Dũng | #43 |
+| Traceability | Lê Kim Dũng | #44 |
+
+---
+
 ## Sprint 4 — 20/04 → 26/04/2026
 
 | Task | Người làm | Deadline | PR |
