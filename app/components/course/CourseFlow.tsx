@@ -45,8 +45,8 @@ function courseToMarkdown(course: SavedCourse): string {
     lines.push(`\n## ${ch.title}`)
     const chContent = content.chapters[ci]
     if (!chContent) return
-    chContent.lessons.forEach(lesson => {
-      lines.push(`\n### ${lesson.lesson_title}`)
+    chContent.lessons.forEach((lesson, li) => {
+      lines.push(`\n### [${ci}-${li}] ${lesson.lesson_title}`)
       const c = lesson.concept
       lines.push(`Q: ${c.question}`)
       lines.push(`A: ${c.answer}`)
