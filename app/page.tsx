@@ -111,6 +111,17 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
   const doneCount = Object.keys(courseContentMap).length
   const allDone = course?.chapters?.every((_, i) => courseContentMap[i] !== undefined) ?? false
 
+  const handleGoBack = () => {
+    if (savedCourseId) localStorage.removeItem(`justGenerated_${savedCourseId}`)
+    onReset()
+  }
+
+  const handleStudyNow = () => {
+    if (!savedCourseId) return
+    router.push(`/course/${savedCourseId}`)
+    onReset()
+  }
+
   return (
     <main className="min-h-screen" style={{ background: T.bg, fontFamily: T.fontSans }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 28px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid }}>
@@ -118,7 +129,7 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
           <SynapsyLogo size={18} />
           <span className="sy-serif" style={{ fontSize: 15, fontWeight: 700, letterSpacing: '-0.03em' }}>Synapsy</span>
           <div style={{ height: 16, width: 1, background: T.ink10 }} />
-          <button onClick={onReset} style={{ fontSize: 13, color: T.ink60, fontWeight: 500 }}>← Quay về Thư viện</button>
+          <button onClick={handleGoBack} style={{ fontSize: 13, color: T.ink60, fontWeight: 500 }}>← Quay về Thư viện</button>
         </div>
         <span className="sy-mono" style={{ fontSize: 12, color: T.ink60 }}>
           {allDone ? '✓ Hoàn thành!' : `Đang biên soạn · ${doneCount}/${course.chapters.length} chương`}
@@ -159,19 +170,32 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
               )
             })}
           </div>
-          {savedCourseId && (
+          {allDone && savedCourseId ? (
             <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${T.ink10}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: T.ink, margin: 0 }}>Sẵn sàng học tập!</p>
-                  <p style={{ fontSize: 12, color: T.ink60, margin: '2px 0 0' }}>Bạn có thể học các chương đã hoàn thành ngay bây giờ.</p>
-                </div>
-                <button onClick={() => router.push(`/course/${savedCourseId}`)} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                  {allDone ? 'Bắt đầu học ngay →' : 'Học ngay →'}
+              <p style={{ fontSize: 16, fontWeight: 700, color: T.ink, margin: '0 0 4px' }}>🎉 Khóa học đã sẵn sàng!</p>
+              <p style={{ fontSize: 12, color: T.ink60, margin: '0 0 16px' }}>Chẩn đoán kiến thức đang được chuẩn bị trong nền.</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+                  Học luôn →
+                </button>
+                <button onClick={handleGoBack} style={{ background: T.bgSolid, color: T.ink60, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: `1px solid ${T.ink10}` }}>
+                  ← Quay về thư viện
                 </button>
               </div>
             </div>
-          )}
+          ) : savedCourseId ? (
+            <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${T.ink10}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: T.ink, margin: 0 }}>Đang biên soạn...</p>
+                  <p style={{ fontSize: 12, color: T.ink60, margin: '2px 0 0' }}>Bạn có thể học các chương đã hoàn thành ngay bây giờ.</p>
+                </div>
+                <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                  Học ngay →
+                </button>
+              </div>
+            </div>
+          ) : null}
         </div>
         <div style={{ padding: '28px', background: T.bgSoft, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
@@ -223,13 +247,6 @@ export default function Home() {
     if (inputRef.current) inputRef.current.value = ''
   }, [resetGeneration])
 
-  useEffect(() => {
-    if (status === 'done' && savedCourseId) {
-      router.push(`/course/${savedCourseId}`)
-      resetGeneration()
-    }
-  }, [status, savedCourseId, router, resetGeneration])
-
   function handleFile(f: File | null) { if (f && f.type === 'application/pdf') setFile(f) }
   function handleDrop(e: DragEvent<HTMLDivElement>) { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null) }
   function handleStart() { if (file) startGeneration(file) }
@@ -262,7 +279,7 @@ export default function Home() {
       <GenerationScreen
         course={course!} stage2Loading={stage2Loading} courseContentMap={courseContentMap}
         rawMarkdown={rawMarkdown} savedCourseId={savedCourseId} stage2Errors={stage2Errors}
-        onReset={resetGeneration}
+        onReset={reset}
         onRetryChapter={async (i) => {
           if (!course) return
           await fetchChapter(i)
