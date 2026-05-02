@@ -1,3 +1,4 @@
+export { CourseFlow } from './CourseFlow'
 export { CourseTree } from './CourseTree'
 export { LessonView } from './LessonView'
 export { StudyMode } from './StudyMode'
