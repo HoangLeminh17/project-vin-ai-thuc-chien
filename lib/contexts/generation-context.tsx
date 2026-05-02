@@ -27,6 +27,37 @@ interface GenerationContextType extends GenerationState {
 
 const GenerationContext = createContext<GenerationContextType | undefined>(undefined);
 
+function buildMarkdown(title: string, course: Course, contentMap: Record<number, ChapterContent>): string {
+  const lines = [`# ${title}`]
+  course.chapters.forEach((ch, ci) => {
+    lines.push(`\n## ${ch.title}`)
+    const chContent = contentMap[ci]
+    if (!chContent) return
+    chContent.lessons.forEach(lesson => {
+      lines.push(`\n### ${lesson.lesson_title}`)
+      lines.push(`Q: ${lesson.concept.question}`)
+      lines.push(`A: ${lesson.concept.answer}`)
+      if (lesson.concept.detail) lines.push(lesson.concept.detail)
+    })
+  })
+  return lines.join('\n')
+}
+
+function preFetchDiagnostic(courseId: string, markdown: string) {
+  fetch('/api/diagnostic-quiz', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ markdown }),
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.questions?.length) {
+        localStorage.setItem(`diagnosticQuestions_${courseId}`, JSON.stringify(data.questions))
+      }
+    })
+    .catch(() => {})
+}
+
 export function GenerationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { saveCourse, updateCourse, courses } = useCourses(user?.uid ?? null);
@@ -138,6 +169,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         c && (c.contentHash === hash || (!c.contentHash && c.title === resolvedCourse!.title))
       );
       if (existing) {
+        localStorage.setItem(`justGenerated_${existing.id}`, 'true')
         setSavedCourseId(existing.id);
         setStatus('done');
         return;
@@ -157,16 +189,27 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         if (user && resolvedCourse) {
           const content: CourseContent = { chapters: cachedChapters };
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash);
-          if (saved) setSavedCourseId(saved.id);
+          if (saved) {
+            setSavedCourseId(saved.id);
+            localStorage.setItem(`justGenerated_${saved.id}`, 'true')
+            preFetchDiagnostic(saved.id, buildMarkdown(resolvedCourse.title, resolvedCourse, map))
+          }
         }
         setStatus('done');
       } else if (fromCache) {
         // Fallback if courseContent is missing but fromCache is true
         const results = await Promise.all(chapters.map(i => fetchChapter(i, resolvedCourse || undefined, hash)));
         if (user && resolvedCourse) {
-          const content: CourseContent = { chapters: results.filter(Boolean) as ChapterContent[] };
+          const chapterList = results.filter(Boolean) as ChapterContent[]
+          const content: CourseContent = { chapters: chapterList };
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash);
-          if (saved) setSavedCourseId(saved.id);
+          if (saved) {
+            setSavedCourseId(saved.id);
+            localStorage.setItem(`justGenerated_${saved.id}`, 'true')
+            const fallbackMap: Record<number, ChapterContent> = {}
+            chapterList.forEach((ch, i) => { fallbackMap[i] = ch })
+            preFetchDiagnostic(saved.id, buildMarkdown(resolvedCourse.title, resolvedCourse, fallbackMap))
+          }
         }
         setStatus('done');
       } else {
@@ -182,12 +225,18 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
                 if (saved) {
                   currentSavedId = saved.id;
                   setSavedCourseId(saved.id);
+                  localStorage.setItem(`justGenerated_${saved.id}`, 'true')
                 }
               } else {
                 await updateCourse(currentSavedId, content);
               }
             }
           }
+        }
+        if (currentSavedId && resolvedCourse) {
+          const seqMap: Record<number, ChapterContent> = {}
+          accumulatedChapters.forEach((ch, i) => { seqMap[i] = ch })
+          preFetchDiagnostic(currentSavedId, buildMarkdown(resolvedCourse.title, resolvedCourse, seqMap))
         }
         setStatus('done');
       }
