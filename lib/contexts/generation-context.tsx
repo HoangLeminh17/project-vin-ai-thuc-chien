@@ -150,10 +150,15 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       let currentSavedId: string | null = null;
 
       if (fromCache && data.courseContent) {
-        const chapters = data.courseContent.chapters || [];
+        const cachedChapters = data.courseContent.chapters as ChapterContent[] || [];
         const map: Record<number, ChapterContent> = {};
-        chapters.forEach((ch: ChapterContent, i: number) => { map[i] = ch; });
+        cachedChapters.forEach((ch: ChapterContent, i: number) => { map[i] = ch; });
         setCourseContentMap(map);
+        if (user && resolvedCourse) {
+          const content: CourseContent = { chapters: cachedChapters };
+          const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash);
+          if (saved) setSavedCourseId(saved.id);
+        }
         setStatus('done');
       } else if (fromCache) {
         // Fallback if courseContent is missing but fromCache is true
