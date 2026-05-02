@@ -75,6 +75,11 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
   const allCards = flattenCards(course)
 
   useEffect(() => {
+    if (localStorage.getItem(`justGenerated_${course.id}`) === 'true') {
+      localStorage.removeItem(`justGenerated_${course.id}`)
+      setView('course-tree')
+      return
+    }
     const done = localStorage.getItem(`diagnosticDone_${course.id}`)
     if (done === 'true') {
       const saved = localStorage.getItem(`diagnosticResults_${course.id}`)
@@ -88,6 +93,18 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
   }, [course.id])
 
   const handleDiagnosticStart = useCallback(async () => {
+    const cached = localStorage.getItem(`diagnosticQuestions_${course.id}`)
+    if (cached) {
+      try {
+        const questions = JSON.parse(cached)
+        if (questions?.length) {
+          localStorage.removeItem(`diagnosticQuestions_${course.id}`)
+          setDiagnosticQuestions(questions)
+          setView('diagnostic-quiz')
+          return
+        }
+      } catch { /* ignore */ }
+    }
     setView('diagnostic-loading')
     try {
       const res = await fetch('/api/diagnostic-quiz', {
@@ -100,7 +117,6 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
       setDiagnosticQuestions(quiz.questions ?? [])
       setView('diagnostic-quiz')
     } catch {
-      // Fallback: skip diagnostic on error
       localStorage.setItem(`diagnosticDone_${course.id}`, 'true')
       setView('course-tree')
     }
