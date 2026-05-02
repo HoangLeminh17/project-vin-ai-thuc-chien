@@ -257,7 +257,7 @@ export default function Home() {
   }
 
   // Generation screen
-  if (course && (status === 'generating' || (status === 'done' && !isFromCache))) {
+  if (course && (status === 'generating' || status === 'done')) {
     return (
       <GenerationScreen
         course={course!} stage2Loading={stage2Loading} courseContentMap={courseContentMap}
