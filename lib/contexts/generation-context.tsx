@@ -33,8 +33,8 @@ function buildMarkdown(title: string, course: Course, contentMap: Record<number,
     lines.push(`\n## ${ch.title}`)
     const chContent = contentMap[ci]
     if (!chContent) return
-    chContent.lessons.forEach(lesson => {
-      lines.push(`\n### ${lesson.lesson_title}`)
+    chContent.lessons.forEach((lesson, li) => {
+      lines.push(`\n### [${ci}-${li}] ${lesson.lesson_title}`)
       lines.push(`Q: ${lesson.concept.question}`)
       lines.push(`A: ${lesson.concept.answer}`)
       if (lesson.concept.detail) lines.push(lesson.concept.detail)
