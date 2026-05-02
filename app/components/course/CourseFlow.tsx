@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { T } from '@/app/components/synapsy'
 import { SavedCourse } from '@/core/models/saved-course'
 import { DiagnosticQuestion } from '@/core/models/learning-model'
@@ -71,10 +71,15 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
   const [diagnosticQuestions, setDiagnosticQuestions] = useState<DiagnosticQuestion[]>([])
   const [diagnosticState, setDiagnosticState] = useState<Record<string, number>>({})
   const [selectedLesson, setSelectedLesson] = useState<{ ci: number; li: number } | null>(null)
+  // Guard against React Strict Mode double-mount consuming the justGenerated flag twice
+  const diagInitialized = useRef(false)
 
   const allCards = flattenCards(course)
 
   useEffect(() => {
+    if (diagInitialized.current) return
+    diagInitialized.current = true
+
     if (localStorage.getItem(`justGenerated_${course.id}`) === 'true') {
       localStorage.removeItem(`justGenerated_${course.id}`)
       setView('course-tree')
