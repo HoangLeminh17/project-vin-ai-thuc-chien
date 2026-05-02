@@ -169,10 +169,14 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         c && (c.contentHash === hash || (!c.contentHash && c.title === resolvedCourse!.title))
       );
       if (existing) {
-        localStorage.setItem(`justGenerated_${existing.id}`, 'true')
-        setSavedCourseId(existing.id);
-        setStatus('done');
-        return;
+        const check = await fetch(`/api/courses/${existing.id}`)
+        if (check.ok) {
+          localStorage.setItem(`justGenerated_${existing.id}`, 'true')
+          setSavedCourseId(existing.id);
+          setStatus('done');
+          return;
+        }
+        // Course was deleted — fall through to regenerate
       }
 
       const fromCache = data.fromCache;
