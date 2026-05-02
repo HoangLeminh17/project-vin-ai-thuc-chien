@@ -2,40 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── Synapsy design tokens ── */
+/* ── Synapsy design tokens — ThetaWise-inspired: crisp white, near-black, cool blue ── */
 :root {
-  /* Backgrounds — warm paper */
-  --sy-bg: #f7f4ed;
-  --sy-bg-soft: #fbf9f3;
+  /* Backgrounds — cool white */
+  --sy-bg: #f5f6f8;
+  --sy-bg-soft: #f9fafb;
   --sy-bg-solid: #ffffff;
-  --sy-bg-sunken: #efeae0;
+  --sy-bg-sunken: #eef0f3;
 
-  /* Ink — warm near-black */
-  --sy-ink: #1a1814;
-  --sy-ink-80: #2d2a24;
-  --sy-ink-60: #605a4e;
-  --sy-ink-40: #8f8676;
-  --sy-ink-20: #c4bdae;
-  --sy-ink-10: #e3dccd;
+  /* Ink — true near-black with cool undertone */
+  --sy-ink: #0a0b0d;
+  --sy-ink-80: #1a1d22;
+  --sy-ink-60: #4a5060;
+  --sy-ink-40: #8a909e;
+  --sy-ink-20: #c4c8d0;
+  --sy-ink-10: #e4e6ea;
 
-  /* Accent — teal (SRS positive) */
-  --sy-accent: #2d6a5a;
-  --sy-accent-soft: #e3efea;
+  /* Accent — reserved blue, focus/mastery only */
+  --sy-accent: #2563eb;
+  --sy-accent-soft: #eff4ff;
 
-  /* Warm — terracotta (CTA) */
-  --sy-warm: #c96442;
-  --sy-warm-soft: #f5e6de;
+  /* Warm — near-black CTA (primary action) */
+  --sy-warm: #0a0b0d;
+  --sy-warm-soft: #eef0f3;
 
   /* SRS rating colours */
-  --sy-again: #c94a3d;
-  --sy-hard: #d28540;
-  --sy-good: #5c8d5a;
-  --sy-easy: #4a7fa8;
+  --sy-again: #dc3545;
+  --sy-hard:  #c47a2a;
+  --sy-good:  #1a7a4a;
+  --sy-easy:  #2563eb;
 
   /* Typography */
-  --sy-font-serif: "Source Serif 4", Charter, Georgia, serif;
-  --sy-font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --sy-font-mono: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  --sy-font-serif: "Source Serif 4", Georgia, serif;
+  --sy-font-sans:  "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --sy-font-mono:  "JetBrains Mono", "SF Mono", ui-monospace, monospace;
 }
 
 /* ── Base overrides ── */
