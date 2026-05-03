@@ -7,7 +7,7 @@ import { FlashFactGallery, Spinner } from '@/app/components'
 import { useCourses } from '@/lib/hooks/use-courses'
 import { SavedCourse } from '@/core/models/saved-course'
 import { Course, CourseContent, ChapterContent } from '@/core/models/learning-model'
-import { useGeneration } from '@/lib/contexts/generation-context'
+import { useGeneration, type DiagnosticStatus } from '@/lib/contexts/generation-context'
 import { SynapsyLogo, SynapsyRing, GeoDecoration, T } from '@/app/components/synapsy'
 
 // ── SRS stats ─────────────────────────────────────────────────────────────────
@@ -75,13 +75,15 @@ function courseStats(saved: SavedCourse, map: ProgressMap) {
 
 // ── Pipeline tracker ──────────────────────────────────────────────────────────
 
-function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal, allDone }: {
-  parsed: boolean; outlined: boolean; chaptersDone: number; chaptersTotal: number; allDone: boolean
+function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal, allDone, diagnosticStatus }: {
+  parsed: boolean; outlined: boolean; chaptersDone: number; chaptersTotal: number; allDone: boolean; diagnosticStatus: DiagnosticStatus
 }) {
-  const stages: { label: string; state: 'done' | 'active' | 'pending' }[] = [
+  const diagState = !allDone ? 'pending' : diagnosticStatus === 'done' ? 'done' : diagnosticStatus === 'loading' ? 'active' : diagnosticStatus === 'error' ? 'error' : 'pending'
+  const stages: { label: string; state: 'done' | 'active' | 'pending' | 'error' }[] = [
     { label: 'Đọc PDF',            state: parsed ? 'done' : 'active' },
     { label: 'Phân tích cấu trúc', state: parsed ? (outlined ? 'done' : 'active') : 'pending' },
     { label: `Tạo concept cards · ${chaptersDone}/${chaptersTotal}`, state: !outlined ? 'pending' : (allDone ? 'done' : 'active') },
+    { label: 'Tạo bài test chẩn đoán', state: diagState },
   ]
   return (
     <div style={{ padding: '14px 16px', background: T.bgSunken, borderRadius: 8, fontSize: 11, color: T.ink60, lineHeight: 1.55 }}>
@@ -92,7 +94,8 @@ function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal, allDon
             {s.state === 'done'    && <span style={{ color: T.srsGood }}>✓</span>}
             {s.state === 'active'  && <span className="sy-animate-pulse" style={{ color: T.accent }}>◉</span>}
             {s.state === 'pending' && <span style={{ color: T.ink20 }}>○</span>}
-            <span style={{ color: s.state === 'pending' ? T.ink40 : T.ink60 }}>{s.label}</span>
+            {s.state === 'error'   && <span style={{ color: T.srsAgain }}>✕</span>}
+            <span style={{ color: s.state === 'pending' ? T.ink40 : s.state === 'error' ? T.srsAgain : T.ink60 }}>{s.label}</span>
           </div>
         ))}
       </div>
@@ -102,10 +105,10 @@ function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal, allDon
 
 // ── Generation screen ─────────────────────────────────────────────────────────
 
-function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown, savedCourseId, stage2Errors, onRetryChapter, onReset }: {
+function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown, savedCourseId, stage2Errors, diagnosticStatus, onRetryChapter, onReset }: {
   course: Course; stage2Loading: Record<number, boolean>; courseContentMap: Record<number, ChapterContent>
   rawMarkdown: string; savedCourseId: string | null; stage2Errors: Record<number, string>
-  onRetryChapter: (i: number) => void; onReset: () => void
+  diagnosticStatus: DiagnosticStatus; onRetryChapter: (i: number) => void; onReset: () => void
 }) {
   const router = useRouter()
   const doneCount = Object.keys(courseContentMap).length
@@ -173,7 +176,9 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
           {allDone && savedCourseId ? (
             <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${T.ink10}` }}>
               <p style={{ fontSize: 16, fontWeight: 700, color: T.ink, margin: '0 0 4px' }}>🎉 Khóa học đã sẵn sàng!</p>
-              <p style={{ fontSize: 12, color: T.ink60, margin: '0 0 16px' }}>Chẩn đoán kiến thức đang được chuẩn bị trong nền.</p>
+              <p style={{ fontSize: 12, color: T.ink60, margin: '0 0 16px' }}>
+                {diagnosticStatus === 'done' ? 'Bài test chẩn đoán đã sẵn sàng!' : diagnosticStatus === 'error' ? 'Không tạo được bài test — bạn có thể làm sau.' : 'Bài test chẩn đoán đang được tạo...'}
+              </p>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
                   Học luôn →
@@ -202,7 +207,7 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
             <p className="sy-mono" style={{ fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 600, margin: '0 0 14px' }}>💡 Flash Facts</p>
             <FlashFactGallery markdown={rawMarkdown} />
           </div>
-          <PipelineTracker parsed={Boolean(rawMarkdown)} outlined={true} chaptersDone={doneCount} chaptersTotal={course.chapters.length} allDone={allDone} />
+          <PipelineTracker parsed={Boolean(rawMarkdown)} outlined={true} chaptersDone={doneCount} chaptersTotal={course.chapters.length} allDone={allDone} diagnosticStatus={diagnosticStatus} />
         </div>
       </div>
     </main>
@@ -212,13 +217,19 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
 // ── Main home ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { status, course, courseContentMap, stage2Loading, stage2Errors, error, rawMarkdown, savedCourseId, isFromCache, startGeneration, resetGeneration, fetchChapter } = useGeneration()
+  const { status, course, courseContentMap, stage2Loading, stage2Errors, error, rawMarkdown, savedCourseId, isFromCache, diagnosticStatus, startGeneration, resetGeneration, fetchChapter } = useGeneration()
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { user, loading: authLoading, login, logout } = useAuth()
-  const { courses, loading: coursesLoading, deleteCourse } = useCourses(user?.uid ?? null)
+  const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses } = useCourses(user?.uid ?? null)
+
+  const prevStatus = useRef(status)
+  useEffect(() => {
+    if (prevStatus.current !== 'idle' && status === 'idle') refreshCourses()
+    prevStatus.current = status
+  }, [status, refreshCourses])
 
   const uniqueCourses = useMemo(() => {
     if (!Array.isArray(courses)) return []
@@ -279,6 +290,7 @@ export default function Home() {
       <GenerationScreen
         course={course!} stage2Loading={stage2Loading} courseContentMap={courseContentMap}
         rawMarkdown={rawMarkdown} savedCourseId={savedCourseId} stage2Errors={stage2Errors}
+        diagnosticStatus={diagnosticStatus}
         onReset={reset}
         onRetryChapter={async (i) => {
           if (!course) return
