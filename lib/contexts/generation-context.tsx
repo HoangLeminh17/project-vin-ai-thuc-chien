@@ -165,12 +165,21 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       if (!resolvedCourse) return;
 
       // Check if this course is already in the user's library
-      const existing = (courses || []).find(c => 
+      const existing = (courses || []).find(c =>
         c && (c.contentHash === hash || (!c.contentHash && c.title === resolvedCourse!.title))
       );
       if (existing) {
         const check = await fetch(`/api/courses/${existing.id}`)
         if (check.ok) {
+          if (
+            !localStorage.getItem(`diagnosticQuestions_${existing.id}`) &&
+            !localStorage.getItem(`diagnosticDone_${existing.id}`) &&
+            existing.courseContent
+          ) {
+            const map: Record<number, ChapterContent> = {}
+            existing.courseContent.chapters.forEach((ch, i) => { map[i] = ch })
+            preFetchDiagnostic(existing.id, buildMarkdown(existing.title, existing.course, map))
+          }
           localStorage.setItem(`justGenerated_${existing.id}`, 'true')
           setSavedCourseId(existing.id);
           setStatus('done');
