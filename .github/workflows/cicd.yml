@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: CI/CD Pipeline to Railway
 
 on:
   push:
@@ -27,19 +27,27 @@ jobs:
         run: npm run lint
 
       - name: Run tests
-        run: npm run test
+        run: npx vitest run
 
-      - name: Build application
-        run: npm run build
+  deploy:
+    needs: build-and-test
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm i -g @railway/cli
+
+      # Deploy UKT Service
+      - name: Deploy UKT Service to Railway
+        run: railway up --service ukt-service --detach
         env:
-          # Thêm các biến môi trường cần thiết cho quá trình build nếu có
-          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_PROJECT_ID }}
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
-  # Bạn có thể thêm job CD ở đây sau khi chọn nền tảng deploy (Vercel, Railway, Render, etc.)
-  # deploy:
-  #   needs: build-and-test
-  #   if: github.ref == 'refs/heads/main'
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Deploy
-  #       run: echo "Thêm logic deploy tại đây"
+      # Deploy Web App
+      - name: Deploy Web App to Railway
+        run: railway up --service web --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
