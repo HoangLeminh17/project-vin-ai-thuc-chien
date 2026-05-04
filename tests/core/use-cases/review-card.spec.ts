@@ -52,4 +52,36 @@ describe('ReviewCardUseCase', () => {
       interval: 6,
     }));
   });
+
+  it('should call UKT update if service is provided and topic exists', async () => {
+    const mockRepo = {
+      getByCardId: vi.fn().mockResolvedValue(null),
+      save: vi.fn().mockResolvedValue(undefined),
+    };
+
+    const mockUktService = {
+      predict: vi.fn(),
+      update: vi.fn().mockResolvedValue({ kc_id: 'topic1', updated_mu: 1, updated_sigma: 0.1, p_correct: 0.8 })
+    };
+
+    const useCase = new ReviewCardUseCase(mockRepo as any, mockUktService as any);
+    
+    // Test with rating 1 (Hard) -> uktRating 'hard'
+    await useCase.execute('user1', 'card1', 1, 'Q', 'A', 'topic1');
+
+    expect(mockUktService.update).toHaveBeenCalledWith({
+      student_id: 'user1',
+      kc_id: 'topic1',
+      rating: 'hard'
+    });
+
+    // Test with rating 3 (Easy) -> uktRating 'easy'
+    await useCase.execute('user1', 'card2', 3, 'Q2', 'A2', 'topic2');
+
+    expect(mockUktService.update).toHaveBeenCalledWith({
+      student_id: 'user1',
+      kc_id: 'topic2',
+      rating: 'easy'
+    });
+  });
 });

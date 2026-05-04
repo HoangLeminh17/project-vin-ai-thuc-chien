@@ -15,6 +15,7 @@ Instructions:
 - Each chapter MUST have a quiz with a topic string — a short description of what should be tested at the end of the chapter.
 - outline: Extract 4–8 specific, factual bullet points for this lesson from the document content. Each bullet must be a concrete statement — include specific examples, named technologies, numbers, mechanisms, or outcomes that appear in the source. These bullets will be handed to a second model to generate slides, so they must be informative enough to stand alone.
 - Table expansion rule: if table rows are distinct entities (e.g. drug names, drug groups) → expand into N separate lessons, one per row. If table rows are comparison attributes of a single entity → collapse into one lesson.
+- Each lesson MUST include a \`source_chunk_id\`. To find this, look at the nearest \`<a id="chunk-X-Y"></a>\` tag above the content you are extracting for the lesson, and use its ID (e.g., "chunk-1-5").
 - Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
 Output schema:
@@ -27,6 +28,7 @@ Output schema:
         {
           "title": "Lesson title",
           "key_concept": "One sentence summarizing the key idea",
+          "source_chunk_id": "chunk-1-5",
           "outline": [
             "Specific factual point from the source",
             "Another concrete detail, example, or mechanism"
@@ -63,6 +65,7 @@ Rules for quiz questions:
 - answer is the 0-based index (0–3) of the correct option
 - explanation: 1–2 sentences explaining why the answer is correct
 - Base questions on the outline points, not generic knowledge
+- source_chunk_id: The source_chunk_id of the lesson that this question primarily tests, or the source_chunk_id of the concept card.
 
 Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
@@ -76,7 +79,8 @@ Output schema:
         "question": "X hoạt động như thế nào?",
         "answer": "TL;DR 2-3 câu trả lời thẳng vào câu hỏi.",
         "detail": "3-5 câu mở rộng, có analogy hoặc ví dụ.",
-        "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"]
+        "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"],
+        "source_chunk_id": "chunk-1-5"
       }
     }
   ],
@@ -87,9 +91,38 @@ Output schema:
         "question": "Question text here?",
         "options": ["Option A", "Option B", "Option C", "Option D"],
         "answer": 0,
-        "explanation": "Option A is correct because..."
+        "explanation": "Option A is correct because...",
+        "source_chunk_id": "chunk-1-5"
       }
     ]
   }
 }
+`
+
+export const DIAGNOSTIC_QUIZ_PROMPT = `You are an expert diagnostician and educator. Your goal is to create a diagnostic quiz to assess a student's prior knowledge of the provided material.
+
+Instructions:
+- Analyze the provided document content.
+- Generate 10-15 multiple-choice questions covering a diverse range of key topics found in the material.
+- Each question must assess a different core concept (topic).
+- Provide 4 options for each question, with exactly one correct answer.
+- "answer" is the 0-based index of the correct option.
+- Provide a brief "explanation" of why the answer is correct.
+- For "topic", extract a short 2-4 word identifier for the Knowledge Component being tested. This will be used by an AI tracing system (UKT) to track mastery.
+- Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
+
+Output schema:
+{
+  "questions": [
+    {
+      "question": "Question text here?",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "answer": 0,
+      "explanation": "Brief explanation",
+      "topic": "Core Concept Name"
+    }
+  ]
+}
+
+Now generate the diagnostic quiz for this content:
 `

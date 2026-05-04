@@ -18,10 +18,12 @@ export function withUseCaseLogging<T extends { execute: (...args: any[]) => Prom
             const result = await original.apply(target, args);
             const duration = Date.now() - startTime;
             logger.info(`[${useCaseName}] Execution completed`, { durationMs: duration });
+            monitoring.recordMetric('latency', duration, { useCase: useCaseName, status: 'success' });
             return result;
           } catch (error: any) {
             const duration = Date.now() - startTime;
             logger.error(`[${useCaseName}] Execution failed`, { durationMs: duration, error: error.message });
+            monitoring.recordMetric('latency', duration, { useCase: useCaseName, status: 'error' });
             monitoring.captureException(error, { useCase: useCaseName });
             throw error;
           }

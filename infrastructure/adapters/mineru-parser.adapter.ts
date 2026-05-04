@@ -64,7 +64,7 @@ export class MineruParserAdapter implements IDocumentParser {
     return taskId;
   }
 
-  private async pollAndExtract(taskId: string, safeName: string, timeoutMs = 300_000, intervalMs = 3_000): Promise<ParseResult> {
+  private async pollAndExtract(taskId: string, safeName: string, timeoutMs = 900_000, intervalMs = 3_000): Promise<ParseResult> {
     const deadline = Date.now() + timeoutMs;
 
     while (Date.now() < deadline) {

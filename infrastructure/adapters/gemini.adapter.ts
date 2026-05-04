@@ -1,6 +1,6 @@
 import { IAiService, TokenUsage } from '@/core/ports/ai.port'
-import { PLANNER_PROMPT } from '@/lib/prompts'
-import type { Course } from '@/core/models/learning-model'
+import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
+import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
 
 export interface GeminiConfig {
@@ -100,5 +100,74 @@ export class GeminiAdapter implements IAiService {
     }))
 
     return { course, tokens }
+  }
+
+  async generateDiagnosticQuiz(markdown: string): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
+    if (!this.apiKey) {
+      throw new InfrastructureError('Missing GEMINI_API_KEY')
+    }
+
+    const url = `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`
+
+    let res: Response
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: DIAGNOSTIC_QUIZ_PROMPT }],
+          },
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: 'application/json',
+          },
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: markdown }],
+            },
+          ],
+        }),
+      })
+    } catch (e) {
+      throw new InfrastructureError('Failed to connect to Gemini API', e)
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
+      throw new InfrastructureError(`Gemini API error (${res.status}): ${msg}`)
+    }
+
+    const data = await res.json()
+    const usage = data.usageMetadata
+    const tokens: TokenUsage | null = usage
+      ? {
+          promptTokens: usage.promptTokenCount ?? 0,
+          completionTokens: usage.candidatesTokenCount ?? 0,
+          totalTokens: usage.totalTokenCount ?? 0,
+        }
+      : null
+
+    const text = data.candidates?.[0]?.content?.parts
+      ?.map((part: { text?: string }) => part.text ?? '')
+      .join('')
+      .trim()
+
+    if (!text) {
+      throw new InfrastructureError(`Gemini returned no content: ${JSON.stringify(data)}`)
+    }
+
+    let quiz: DiagnosticQuiz
+    try {
+      quiz = JSON.parse(text)
+    } catch (e) {
+      throw new InfrastructureError(`Failed to parse Gemini JSON response for diagnostic quiz: ${text.slice(0, 500)}`, e)
+    }
+
+    return { quiz, tokens }
   }
 }

@@ -44,7 +44,11 @@ function formatNextReview(entry: ProgressMapEntry | undefined): string {
 
 // Stable pseudo source page derived from card id. Placeholder until the
 // generator emits real PDF page numbers. TODO(generator): replace with real value.
-function derivePseudoPage(cardId: string): number {
+function derivePseudoPage(cardId: string, sourceChunkId?: string): number {
+  if (sourceChunkId) {
+    const match = sourceChunkId.match(/chunk-(\d+)-/);
+    if (match) return parseInt(match[1], 10) + 1;
+  }
   let h = 0;
   for (let i = 0; i < cardId.length; i++) h = (h * 31 + cardId.charCodeAt(i)) >>> 0;
   return (h % 148) + 1;
@@ -63,6 +67,15 @@ function MiniRing({ pct, size = 14, strokeWidth = 2 }: { pct: number; size?: num
         strokeDasharray={c} strokeDashoffset={off} strokeLinecap="round" style={{ transition: 'stroke-dashoffset .4s ease' }} />
     </svg>
   );
+}
+
+// ── PriorityLabel ────────────────────────────────────────────────────────────
+
+function PriorityLabel({ pct, isNew }: { pct: number; isNew: boolean }) {
+  if (isNew) return <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--sy-ink-60)', background: 'var(--sy-bg-sunken)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>Chưa học</span>;
+  if (pct >= 80) return <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--sy-accent)', background: 'var(--sy-accent-soft)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>Nắm vững</span>;
+  if (pct >= 40) return <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--sy-hard)', background: '#fdf3e6', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>Cần củng cố</span>;
+  return <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--sy-warm)', background: 'var(--sy-warm-soft)', padding: '2px 6px', borderRadius: 6, whiteSpace: 'nowrap' }}>Cần ôn ngay</span>;
 }
 
 // ── StateChip ────────────────────────────────────────────────────────────────
@@ -204,18 +217,24 @@ function ChapterRail({
               const lessonCards = chapterCards.filter(c => c.li === li);
               if (lessonCards.length === 0) return null;
               const matureCount = lessonCards.filter(c => statusOf(progressMap[c.id]) === 'mature').length;
+              const newCount = lessonCards.filter(c => statusOf(progressMap[c.id]) === 'new').length;
               const masteryPct = Math.round((matureCount / lessonCards.length) * 100);
+              const isNew = newCount === lessonCards.length;
+              
               return (
                 <div key={li} style={{
-                  padding: '3px 16px 3px 32px',
+                  padding: '5px 16px 5px 32px',
                   fontSize: 12, color: 'var(--sy-ink-60)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  display: 'flex', flexDirection: 'column', gap: 4,
                 }}>
-                  <span className="sy-serif" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>{lesson.title}</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 }}>
-                    <MiniRing pct={masteryPct} />
-                    <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)' }}>{lessonCards.length}</span>
-                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span className="sy-serif" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0, flex: 1 }}>{lesson.title}</span>
+                    <span className="sy-mono" style={{ fontSize: 10, color: 'var(--sy-ink-40)', flexShrink: 0 }}>{lessonCards.length} thẻ</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <PriorityLabel pct={masteryPct} isNew={isNew} />
+                    {!isNew && <span style={{ fontSize: 10, color: 'var(--sy-ink-40)' }}>{masteryPct}% độ thành thạo</span>}
+                  </div>
                 </div>
               );
             })}
@@ -318,7 +337,7 @@ function BrowseMode({
                     <td style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)', whiteSpace: 'nowrap' }}>{card.chapterTitle}</td>
                     <td style={{ padding: '12px 16px' }}><StateChip state={statusOf(entry)} /></td>
                     <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 12, color: 'var(--sy-ink-60)' }}>{formatNextReview(entry)}</td>
-                    <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 11, color: 'var(--sy-ink-40)' }}>tr. {derivePseudoPage(card.id)}</td>
+                    <td className="sy-mono" style={{ padding: '12px 16px', fontSize: 11, color: 'var(--sy-ink-40)' }}>tr. {derivePseudoPage(card.id, card.concept.source_chunk_id)}</td>
                   </tr>
                 );
               })}
@@ -359,7 +378,15 @@ function CardDetailModal({ card, onClose }: { card: FlatCard; onClose: () => voi
         onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
           <span className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-40)' }}>{card.chapterTitle} · {card.lessonTitle}</span>
-          <button onClick={onClose} style={{ color: 'var(--sy-ink-40)', fontSize: 18, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <button onClick={(e) => {
+              e.stopPropagation();
+              alert(`Hiển thị nguồn gốc tài liệu cho thẻ này.\nNguồn: ${card.concept.source_chunk_id || 'Chưa rõ'}\n(PDF viewer đang được phát triển)`);
+            }} style={{ fontSize: 11, color: 'var(--sy-accent)', background: 'var(--sy-accent-soft)', padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: 'var(--sy-font-sans)', fontWeight: 600 }}>
+              📄 Xem nguồn gốc
+            </button>
+            <button onClick={onClose} style={{ color: 'var(--sy-ink-40)', fontSize: 18, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}>✕</button>
+          </div>
         </div>
         <h2 className="sy-serif" style={{ fontSize: 20, fontWeight: 400, lineHeight: 1.4, margin: '0 0 18px', color: 'var(--sy-ink)' }}>{card.concept.question}</h2>
         <div style={{ padding: '14px 16px', background: 'var(--sy-accent-soft)', borderRadius: 8, borderLeft: '3px solid var(--sy-accent)', marginBottom: 12 }}>
@@ -510,9 +537,15 @@ function StudyMode({ cards, filterCi, onExit, onRequestEdit }: {
             <span className="sy-mono" style={{ color: 'var(--sy-ink-40)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {card.chapterTitle} · {card.lessonTitle}
             </span>
-            <span className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-60)', padding: '3px 8px', borderRadius: 5, background: 'var(--sy-bg-sunken)', flexShrink: 0 }}>
-              📄 tr. {derivePseudoPage(card.id)}
-            </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button onClick={() => alert(`Hiển thị nguồn gốc tài liệu cho thẻ này.\nNguồn: ${card.concept.source_chunk_id || 'Chưa rõ'}\n(PDF viewer đang được phát triển)`)} 
+                style={{ fontSize: 11, color: 'var(--sy-accent)', background: 'var(--sy-accent-soft)', padding: '3px 8px', borderRadius: 5, border: 'none', cursor: 'pointer', fontFamily: 'var(--sy-font-sans)', fontWeight: 600 }}>
+                📄 Xem nguồn gốc
+              </button>
+              <span className="sy-mono" style={{ fontSize: 11, color: 'var(--sy-ink-60)', padding: '3px 8px', borderRadius: 5, background: 'var(--sy-bg-sunken)', flexShrink: 0 }}>
+                tr. {derivePseudoPage(card.id, card.concept.source_chunk_id)}
+              </span>
+            </div>
           </div>
 
           {/* Question */}
