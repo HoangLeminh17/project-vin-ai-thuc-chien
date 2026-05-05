@@ -66,15 +66,22 @@ Branch naming: `<type>/<short-description>` (e.g. `docs/weekly-report-week1`)
 ## PR requirements
 
 - Run `bash scripts/setup_hooks.sh` before creating any PR (one-time setup)
-- **Always target `main` directly** — never chain a PR off another feature branch. Chained PRs auto-close when the base branch is merged and deleted.
+- **Chaining is allowed:** You are ENCOURAGED to use Stacked PRs (chaining feature branches) to maintain the atomic PR rule (e.g., `feat-logic` targets `feat-ui`, which targets `feat-structure`, which targets `main`).
+- **CLAUDE'S MERGE RESPONSIBILITY:** Human reviewers will only approve Stacked PRs. You (Claude) are responsible for executing the merge via `gh cli` to prevent ordering mistakes.
+- **Strict Merge Order (Top-Down):** When instructed to merge a Stacked PR chain, you MUST merge from the leaf branch down to the root. 
+  - *Example order for PR3 -> PR2 -> PR1 -> main:* 
+    1. `gh pr merge <PR3-number>`
+    2. `gh pr merge <PR2-number>`
+    3. `gh pr merge <PR1-number>` (This finally merges everything into `main`).
+  - **CRITICAL:** NEVER merge the base PR into `main` before the higher PRs are merged down into it.
+- **Squash Alternative:** If the chain is broken or a human messed up the base branches, use `gh pr create --base main --head <leaf-branch>` to gather all stranded commits into one final PR, then merge it.
 
 ### Atomic PR size
+Split features into three Stacked PRs instead of one large PR:
 
-Split features into three PRs instead of one large PR:
-
-1. **PR 1 — Structure**: directory layout, types, ports (Clean Architecture)
-2. **PR 2 — UI**: component, loading state, error state
-3. **PR 3 — Logic**: business logic, error handling, edge cases
+1. **PR 1 — Structure** (Targets `main`): directory layout, types, ports
+2. **PR 2 — UI** (Targets PR 1's branch): component, loading state, error state
+3. **PR 3 — Logic** (Targets PR 2's branch): business logic, error handling, edge cases
 
 ### Title
 

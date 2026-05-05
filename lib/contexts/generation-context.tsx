@@ -6,6 +6,8 @@ import { SavedCourse } from '@/core/models/saved-course';
 import { useAuth } from './auth-context';
 import { useCourses } from '../hooks/use-courses';
 
+export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
+
 interface GenerationState {
   status: 'idle' | 'parsing' | 'generating' | 'done';
   course: Course | null;
@@ -17,6 +19,7 @@ interface GenerationState {
   currentHash: string;
   savedCourseId: string | null;
   isFromCache: boolean;
+  diagnosticStatus: DiagnosticStatus;
 }
 
 interface GenerationContextType extends GenerationState {
@@ -33,29 +36,14 @@ function buildMarkdown(title: string, course: Course, contentMap: Record<number,
     lines.push(`\n## ${ch.title}`)
     const chContent = contentMap[ci]
     if (!chContent) return
-    chContent.lessons.forEach(lesson => {
-      lines.push(`\n### ${lesson.lesson_title}`)
+    chContent.lessons.forEach((lesson, li) => {
+      lines.push(`\n### [${ci}-${li}] ${lesson.lesson_title}`)
       lines.push(`Q: ${lesson.concept.question}`)
       lines.push(`A: ${lesson.concept.answer}`)
       if (lesson.concept.detail) lines.push(lesson.concept.detail)
     })
   })
   return lines.join('\n')
-}
-
-function preFetchDiagnostic(courseId: string, markdown: string) {
-  fetch('/api/diagnostic-quiz', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ markdown }),
-  })
-    .then(res => res.json())
-    .then(data => {
-      if (data.questions?.length) {
-        localStorage.setItem(`diagnosticQuestions_${courseId}`, JSON.stringify(data.questions))
-      }
-    })
-    .catch(() => {})
 }
 
 export function GenerationProvider({ children }: { children: React.ReactNode }) {
@@ -72,6 +60,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const [currentHash, setCurrentHash] = useState('');
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
   const [isFromCache, setIsFromCache] = useState(false);
+  const [diagnosticStatus, setDiagnosticStatus] = useState<DiagnosticStatus>('idle');
 
   const resetGeneration = useCallback(() => {
     setStatus('idle');
@@ -84,7 +73,27 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     setCurrentHash('');
     setSavedCourseId(null);
     setIsFromCache(false);
+    setDiagnosticStatus('idle');
   }, []);
+
+  const runDiagnosticPrefetch = useCallback((courseId: string, markdown: string) => {
+    setDiagnosticStatus('loading')
+    fetch('/api/diagnostic-quiz', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ markdown }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.questions?.length) {
+          localStorage.setItem(`diagnosticQuestions_${courseId}`, JSON.stringify(data.questions))
+          setDiagnosticStatus('done')
+        } else {
+          setDiagnosticStatus('error')
+        }
+      })
+      .catch(() => { setDiagnosticStatus('error') })
+  }, [])
 
   const fetchChapter = useCallback(async (i: number, overrideCourse?: Course, overrideHash?: string): Promise<ChapterContent | null> => {
     const activeCourse = overrideCourse || course;
@@ -106,7 +115,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       });
       const data = await res.json();
       if (!data.success) throw new Error(data.error);
-      
+
       setCourseContentMap(prev => ({ ...prev, [i]: data.chapter }));
       return data.chapter;
     } catch (e) {
@@ -164,13 +173,21 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
 
       if (!resolvedCourse) return;
 
-      // Check if this course is already in the user's library
-      const existing = (courses || []).find(c => 
+      const existing = (courses || []).find(c =>
         c && (c.contentHash === hash || (!c.contentHash && c.title === resolvedCourse!.title))
       );
       if (existing) {
         const check = await fetch(`/api/courses/${existing.id}`)
         if (check.ok) {
+          if (
+            !localStorage.getItem(`diagnosticQuestions_${existing.id}`) &&
+            !localStorage.getItem(`diagnosticDone_${existing.id}`) &&
+            existing.courseContent
+          ) {
+            const map: Record<number, ChapterContent> = {}
+            existing.courseContent.chapters.forEach((ch, i) => { map[i] = ch })
+            runDiagnosticPrefetch(existing.id, buildMarkdown(existing.title, existing.course, map))
+          }
           localStorage.setItem(`justGenerated_${existing.id}`, 'true')
           setSavedCourseId(existing.id);
           setStatus('done');
@@ -196,12 +213,11 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           if (saved) {
             setSavedCourseId(saved.id);
             localStorage.setItem(`justGenerated_${saved.id}`, 'true')
-            preFetchDiagnostic(saved.id, buildMarkdown(resolvedCourse.title, resolvedCourse, map))
+            runDiagnosticPrefetch(saved.id, buildMarkdown(resolvedCourse.title, resolvedCourse, map))
           }
         }
         setStatus('done');
       } else if (fromCache) {
-        // Fallback if courseContent is missing but fromCache is true
         const results = await Promise.all(chapters.map(i => fetchChapter(i, resolvedCourse || undefined, hash)));
         if (user && resolvedCourse) {
           const chapterList = results.filter(Boolean) as ChapterContent[]
@@ -212,12 +228,11 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             localStorage.setItem(`justGenerated_${saved.id}`, 'true')
             const fallbackMap: Record<number, ChapterContent> = {}
             chapterList.forEach((ch, i) => { fallbackMap[i] = ch })
-            preFetchDiagnostic(saved.id, buildMarkdown(resolvedCourse.title, resolvedCourse, fallbackMap))
+            runDiagnosticPrefetch(saved.id, buildMarkdown(resolvedCourse.title, resolvedCourse, fallbackMap))
           }
         }
         setStatus('done');
       } else {
-        // Sequential generation to update UI
         for (const i of chapters) {
           const ch = await fetchChapter(i, resolvedCourse || undefined, hash);
           if (ch) {
@@ -240,7 +255,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         if (currentSavedId && resolvedCourse) {
           const seqMap: Record<number, ChapterContent> = {}
           accumulatedChapters.forEach((ch, i) => { seqMap[i] = ch })
-          preFetchDiagnostic(currentSavedId, buildMarkdown(resolvedCourse.title, resolvedCourse, seqMap))
+          runDiagnosticPrefetch(currentSavedId, buildMarkdown(resolvedCourse.title, resolvedCourse, seqMap))
         }
         setStatus('done');
       }
@@ -248,7 +263,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
     }
-  }, [courses, user, saveCourse, updateCourse, fetchChapter, resetGeneration]);
+  }, [courses, user, saveCourse, updateCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
 
   const value = useMemo(() => ({
     status,
@@ -261,10 +276,11 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     currentHash,
     savedCourseId,
     isFromCache,
+    diagnosticStatus,
     startGeneration,
     resetGeneration,
     fetchChapter
-  }), [status, course, courseContentMap, stage2Loading, stage2Errors, rawMarkdown, error, currentHash, savedCourseId, isFromCache, startGeneration, resetGeneration, fetchChapter]);
+  }), [status, course, courseContentMap, stage2Loading, stage2Errors, rawMarkdown, error, currentHash, savedCourseId, isFromCache, diagnosticStatus, startGeneration, resetGeneration, fetchChapter]);
 
   return (
     <GenerationContext.Provider value={value}>
