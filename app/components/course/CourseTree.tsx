@@ -27,7 +27,7 @@ function chapterColor(lessonIds: string[], diagnosticState: Record<string, numbe
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface ProgressEntry { status: string; isDue: boolean }
+export interface ProgressEntry { status: string; isDue: boolean; lastReviewedAt?: string }
 
 interface Props {
   course: SavedCourse
@@ -61,11 +61,11 @@ export function CourseTree({ course, progressMap, diagnosticState, onLessonClick
   // since DiagnosticQuestion.source_chunk_id or topic maps to topics
   // For tree coloring we use the lesson's mastery from progressMap or diagnostic
   function lessonMastery(ci: number, li: number): number | null {
-    const cardId = `${ci}-${li}`
-    const entry = progressMap[cardId]
-    if (entry) return entry.status === 'REVIEW' && !entry.isDue ? 100 : entry.isDue ? 10 : 30
-    const diagKey = `${ci}-${li}`
-    if (diagnosticState[diagKey] !== undefined) return diagnosticState[diagKey]
+    const entry = progressMap[`${ci}-${li}`]
+    if (entry?.lastReviewedAt && new Date(entry.lastReviewedAt) >= new Date(course.createdAt)) {
+      return entry.status === 'REVIEW' && !entry.isDue ? 100 : entry.isDue ? 10 : 30
+    }
+    if (diagnosticState[`${ci}-${li}`] !== undefined) return diagnosticState[`${ci}-${li}`]
     return null
   }
 

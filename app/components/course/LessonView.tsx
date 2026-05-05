@@ -9,7 +9,7 @@ import { EditMode } from './EditMode'
 
 type Tab = 'browse' | 'study' | 'edit'
 
-export interface ProgressEntry { status: string; isDue: boolean }
+export interface ProgressEntry { status: string; isDue: boolean; lastReviewedAt?: string }
 
 interface Props {
   course: SavedCourse
