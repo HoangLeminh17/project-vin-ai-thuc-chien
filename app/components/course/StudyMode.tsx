@@ -24,14 +24,19 @@ export function StudyMode({ cards, onExit }: Props) {
     const { label, interval } = RATING_META[ratingIndex]
     setToast(`${label} · ${interval}`)
     setSlideDir('out')
+    const nextIdx = idx + 1
     setTimeout(() => {
       setToast(null)
       setRevealed(false)
+      if (nextIdx >= total) {
+        onExit()
+        return
+      }
       setSlideDir('in')
-      setIdx(i => (i + 1) % total)
+      setIdx(nextIdx)
       setTimeout(() => setSlideDir(null), 200)
     }, 280)
-  }, [card, total])
+  }, [card, idx, total, onExit])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

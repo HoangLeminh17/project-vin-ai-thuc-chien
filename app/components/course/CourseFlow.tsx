@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { T } from '@/app/components/synapsy'
 import { SavedCourse } from '@/core/models/saved-course'
 import { DiagnosticQuestion } from '@/core/models/learning-model'
@@ -45,8 +45,8 @@ function courseToMarkdown(course: SavedCourse): string {
     lines.push(`\n## ${ch.title}`)
     const chContent = content.chapters[ci]
     if (!chContent) return
-    chContent.lessons.forEach(lesson => {
-      lines.push(`\n### ${lesson.lesson_title}`)
+    chContent.lessons.forEach((lesson, li) => {
+      lines.push(`\n### [${ci}-${li}] ${lesson.lesson_title}`)
       const c = lesson.concept
       lines.push(`Q: ${c.question}`)
       lines.push(`A: ${c.answer}`)
@@ -71,10 +71,20 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
   const [diagnosticQuestions, setDiagnosticQuestions] = useState<DiagnosticQuestion[]>([])
   const [diagnosticState, setDiagnosticState] = useState<Record<string, number>>({})
   const [selectedLesson, setSelectedLesson] = useState<{ ci: number; li: number } | null>(null)
+  // Guard against React Strict Mode double-mount consuming the justGenerated flag twice
+  const diagInitialized = useRef(false)
 
   const allCards = flattenCards(course)
 
   useEffect(() => {
+    if (diagInitialized.current) return
+    diagInitialized.current = true
+
+    if (localStorage.getItem(`justGenerated_${course.id}`) === 'true') {
+      localStorage.removeItem(`justGenerated_${course.id}`)
+      setView('course-tree')
+      return
+    }
     const done = localStorage.getItem(`diagnosticDone_${course.id}`)
     if (done === 'true') {
       const saved = localStorage.getItem(`diagnosticResults_${course.id}`)
@@ -88,6 +98,18 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
   }, [course.id])
 
   const handleDiagnosticStart = useCallback(async () => {
+    const cached = localStorage.getItem(`diagnosticQuestions_${course.id}`)
+    if (cached) {
+      try {
+        const questions = JSON.parse(cached)
+        if (questions?.length) {
+          localStorage.removeItem(`diagnosticQuestions_${course.id}`)
+          setDiagnosticQuestions(questions)
+          setView('diagnostic-quiz')
+          return
+        }
+      } catch { /* ignore */ }
+    }
     setView('diagnostic-loading')
     try {
       const res = await fetch('/api/diagnostic-quiz', {
@@ -100,7 +122,6 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
       setDiagnosticQuestions(quiz.questions ?? [])
       setView('diagnostic-quiz')
     } catch {
-      // Fallback: skip diagnostic on error
       localStorage.setItem(`diagnosticDone_${course.id}`, 'true')
       setView('course-tree')
     }

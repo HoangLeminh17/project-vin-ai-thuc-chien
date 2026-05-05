@@ -45,6 +45,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           setSaved(data)
         } else {
           const res = await fetch(`/api/courses/${id}`)
+          if (res.status === 404) { router.replace('/'); return }
           const data = await res.json()
           if (!data.success) throw new Error(data.error)
           setSaved(data.course)

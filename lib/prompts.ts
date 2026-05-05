@@ -109,6 +109,7 @@ Instructions:
 - "answer" is the 0-based index of the correct option.
 - Provide a brief "explanation" of why the answer is correct.
 - For "topic", extract a short 2-4 word identifier for the Knowledge Component being tested. This will be used by an AI tracing system (UKT) to track mastery.
+- For "source_chunk_id", copy the bracketed prefix from the lesson heading exactly as written (e.g. a heading "### [0-2] Lesson Title" → source_chunk_id is "0-2"). If a question covers multiple lessons, use the primary one.
 - Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
 Output schema:
@@ -119,7 +120,8 @@ Output schema:
       "options": ["Option A", "Option B", "Option C", "Option D"],
       "answer": 0,
       "explanation": "Brief explanation",
-      "topic": "Core Concept Name"
+      "topic": "Core Concept Name",
+      "source_chunk_id": "0-2"
     }
   ]
 }
