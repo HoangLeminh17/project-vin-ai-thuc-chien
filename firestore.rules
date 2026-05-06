@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Tắt toàn bộ quyền truy cập từ client side (vì ứng dụng sử dụng Admin SDK ở phía Server)
+    // Điều này đảm bảo dữ liệu chỉ được truy cập qua các API Route đã được xác thực của ứng dụng.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

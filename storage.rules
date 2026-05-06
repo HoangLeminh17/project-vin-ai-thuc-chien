@@ -1,0 +1,10 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Tắt toàn bộ quyền truy cập từ client side (vì ứng dụng sử dụng Admin SDK ở phía Server)
+    // Điều này sẽ giải quyết cảnh báo "Test Mode" từ Firebase.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
