@@ -1,6 +1,8 @@
-# AI Course Generator
+# Synapsy — AI Flashcard Course Generator
 
-Upload a PDF, parse it to structured markdown (MinerU API), then use an AI Planner Agent (OpenAI or Gemini) to split it into chapters, lessons, slides, and quizzes.
+Upload a PDF, parse it to structured markdown (MinerU API), then use a two-stage AI pipeline to generate chapters, lessons, and **ConceptCard flashcards** with built-in **spaced repetition (SRS)**.
+
+Course viewer uses a **master-detail layout**: a fixed tree nav on the left (chapters → lessons → cards inline) and a card detail pane on the right with Edit and Study tabs.
 
 ![App demo](image.png)
 <!-- Replace with a better screenshot or screen recording when available -->
@@ -9,9 +11,10 @@ Upload a PDF, parse it to structured markdown (MinerU API), then use an AI Plann
 
 - **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
 - **Backend**: Next.js API routes (`app/api/`)
-- **AI**: OpenAI or Gemini
+- **AI Stage 1**: OpenAI GPT-4o-mini (Planner — outlines chapters/lessons)
+- **AI Stage 2**: OpenAI GPT-4o-mini (Generator — expands outlines into ConceptCards)
 - **Auth**: Firebase Auth (Google sign-in)
-- **Database**: Firebase Firestore (course persistence)
+- **Database**: Firebase Firestore (course + SRS progress persistence)
 - **Storage**: Firebase Storage (temporary PDF upload for MinerU)
 - **PDF parsing**: MinerU Precision API
 
