@@ -8,7 +8,7 @@ import { SavedCourse } from '@/core/models/saved-course'
 import { ChapterContent } from '@/core/models/learning-model'
 import { LocalCourseAdapter } from '@/infrastructure/adapters/local-course.adapter'
 import { CourseFlow } from '@/app/components/course'
-import type { ProgressEntry } from '@/app/components/course'
+import type { ProgressEntry } from '@/lib/types'
 import { T } from '@/app/components/synapsy'
 
 const isLocal = process.env.NEXT_PUBLIC_COURSE_STORE === 'local'

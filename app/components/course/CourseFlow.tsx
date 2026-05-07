@@ -6,35 +6,14 @@ import { SavedCourse } from '@/core/models/saved-course'
 import { DiagnosticQuestion } from '@/core/models/learning-model'
 import { DiagnosticIntro, DiagnosticQuiz } from '@/app/components/diagnostic'
 import { CourseTree } from './CourseTree'
-import { LessonView } from './LessonView'
-import { FlatCard } from './types'
-import type { ProgressEntry } from './LessonView'
+import type { ProgressEntry } from '@/lib/types'
 
-type View = 'init' | 'diagnostic-intro' | 'diagnostic-loading' | 'diagnostic-quiz' | 'course-tree' | 'lesson'
+type View = 'init' | 'diagnostic-intro' | 'diagnostic-loading' | 'diagnostic-quiz' | 'course-tree'
 
 interface Props {
   course: SavedCourse
   progressMap: Record<string, ProgressEntry>
   onExit: () => void
-}
-
-function flattenCards(course: SavedCourse): FlatCard[] {
-  const content = course.courseContent
-  if (!content) return []
-  const cards: FlatCard[] = []
-  course.course.chapters.forEach((ch, ci) => {
-    const chContent = content.chapters[ci]
-    if (!chContent) return
-    chContent.lessons.forEach((lesson, li) => {
-      cards.push({
-        id: `${ci}-${li}`,
-        ci, chapterTitle: ch.title,
-        li, lessonTitle: lesson.lesson_title,
-        concept: lesson.concept,
-      })
-    })
-  })
-  return cards
 }
 
 function courseToMarkdown(course: SavedCourse): string {
@@ -70,11 +49,8 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
   const [view, setView] = useState<View>('init')
   const [diagnosticQuestions, setDiagnosticQuestions] = useState<DiagnosticQuestion[]>([])
   const [diagnosticState, setDiagnosticState] = useState<Record<string, number>>({})
-  const [selectedLesson, setSelectedLesson] = useState<{ ci: number; li: number } | null>(null)
   // Guard against React Strict Mode double-mount consuming the justGenerated flag twice
   const diagInitialized = useRef(false)
-
-  const allCards = flattenCards(course)
 
   useEffect(() => {
     if (diagInitialized.current) return
@@ -151,20 +127,6 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
     setView('course-tree')
   }, [course.id])
 
-  const handleLessonClick = useCallback((ci: number, li: number) => {
-    setSelectedLesson({ ci, li })
-    setView('lesson')
-  }, [])
-
-  const handleContinue = useCallback(() => {
-    const dueCard = allCards.find(c => progressMap[c.id]?.isDue)
-    const target = dueCard ?? allCards[0]
-    if (target) {
-      setSelectedLesson({ ci: target.ci, li: target.li })
-      setView('lesson')
-    }
-  }, [allCards, progressMap])
-
   if (view === 'init') return <LoadingOverlay label="Đang tải..." />
 
   if (view === 'diagnostic-intro') return (
@@ -179,30 +141,12 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
     <DiagnosticQuiz course={course} questions={diagnosticQuestions} onComplete={handleDiagnosticComplete} />
   )
 
-  if (view === 'course-tree') return (
+  return (
     <CourseTree
       course={course}
       progressMap={progressMap}
       diagnosticState={diagnosticState}
-      onLessonClick={handleLessonClick}
-      onContinue={handleContinue}
       onExit={onExit}
     />
   )
-
-  if (view === 'lesson' && selectedLesson) {
-    const lessonCards = allCards.filter(c => c.ci === selectedLesson.ci && c.li === selectedLesson.li)
-    return (
-      <LessonView
-        course={course}
-        chapterIdx={selectedLesson.ci}
-        lessonIdx={selectedLesson.li}
-        cards={lessonCards}
-        progressMap={progressMap}
-        onBack={() => setView('course-tree')}
-      />
-    )
-  }
-
-  return null
 }

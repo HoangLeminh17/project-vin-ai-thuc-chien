@@ -9,16 +9,24 @@ const AI_CHIPS = ['💡 Giải thích dễ hơn', '📌 Thêm ví dụ lâm sàn
 interface Props {
   cards: FlatCard[]
   initialCardId?: string | null
+  /** When set, overrides internal card selection — used by master-detail parent */
+  controlledCardId?: string | null
+  /** Hides the left card list — used when the tree nav IS the card list */
+  hideList?: boolean
 }
 
-export function EditMode({ cards, initialCardId }: Props) {
-  const [selectedId, setSelectedId] = useState(initialCardId ?? cards[0]?.id ?? null)
+export function EditMode({ cards, initialCardId, controlledCardId, hideList }: Props) {
+  const [selectedId, setSelectedId] = useState(controlledCardId ?? initialCardId ?? cards[0]?.id ?? null)
   const [aiInput, setAiInput] = useState('')
   const [aiProposal, setAiProposal] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const aiInputRef = useRef<HTMLInputElement>(null)
 
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
+
+  useEffect(() => {
+    if (controlledCardId != null) setSelectedId(controlledCardId)
+  }, [controlledCardId])
 
   useEffect(() => {
     if (cards.length > 0 && !cards.find(c => c.id === selectedId)) {
@@ -48,8 +56,8 @@ export function EditMode({ cards, initialCardId }: Props) {
   return (
     <div style={{ flex: 1, display: 'flex', overflow: 'hidden', fontFamily: T.fontSans }}>
 
-      {/* Card list */}
-      <div style={{ width: 300, flexShrink: 0, borderRight: `1px solid ${T.ink10}`, background: T.bgSolid, overflowY: 'auto' }}>
+      {/* Card list — hidden when parent provides its own navigation (hideList=true) */}
+      {!hideList && <div style={{ width: 300, flexShrink: 0, borderRight: `1px solid ${T.ink10}`, background: T.bgSolid, overflowY: 'auto' }}>
         <div style={{ padding: '13px 18px', borderBottom: `1px solid ${T.ink10}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 12, color: T.ink60, fontWeight: 500 }}>{cards.length} thẻ</span>
           <button style={{ fontSize: 11, color: T.ink, fontWeight: 700, padding: '4px 10px', borderRadius: 6, background: T.bgSunken, border: 'none', cursor: 'pointer' }}>+ Thẻ mới</button>
@@ -72,7 +80,7 @@ export function EditMode({ cards, initialCardId }: Props) {
             </button>
           )
         })}
-      </div>
+      </div>}
 
       {/* Detail pane */}
       <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>

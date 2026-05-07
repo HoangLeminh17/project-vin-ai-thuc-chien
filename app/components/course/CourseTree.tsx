@@ -1,10 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { SynapsyLogo, SynapsyRing, T } from '@/app/components/synapsy'
 import { SavedCourse } from '@/core/models/saved-course'
+import type { ProgressEntry } from '@/lib/types'
+import { FlatCard } from './types'
+import { StudyMode } from './StudyMode'
+import { EditMode } from './EditMode'
 
-// ── Semantic color from mastery pct ──────────────────────────────────────────
+// ── Color helpers ─────────────────────────────────────────────────────────────
 
 interface NodeColors { bg: string; border: string; text: string; dot: string; label: string }
 
@@ -18,204 +22,397 @@ function nodeColor(pct: number | null | undefined): NodeColors {
   return { bg: '#fff5f5', border: '#fecdcd', text: '#7a0000', dot: '#dc3545', label: 'Yếu' }
 }
 
-function chapterColor(lessonIds: string[], diagnosticState: Record<string, number>): NodeColors {
-  const tested = lessonIds.filter(id => diagnosticState[id] !== undefined)
-  if (tested.length === 0) return nodeColor(null)
-  const avg = tested.reduce((sum, id) => sum + diagnosticState[id], 0) / tested.length
-  return nodeColor(avg)
+// ── SRS state chip ────────────────────────────────────────────────────────────
+
+type SrsState = 'due' | 'learning' | 'mature' | 'new'
+
+function cardSrsState(cardId: string, progressMap: Record<string, ProgressEntry>): SrsState {
+  const e = progressMap[cardId]
+  if (!e) return 'new'
+  if (e.isDue) return 'due'
+  if (e.status === 'REVIEW') return 'mature'
+  return 'learning'
 }
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+const SRS_CHIP: Record<SrsState, { label: string; bg: string; color: string; border: string }> = {
+  due:      { label: 'ÔN',     bg: '#fff1f1', color: '#c0392b', border: '#fecdcd' },
+  learning: { label: 'HỌC',   bg: '#fffbf0', color: '#92580a', border: '#f5d78a' },
+  new:      { label: 'MỚI',   bg: '#f0f4ff', color: '#2c4fb3', border: '#c7d4f8' },
+  mature:   { label: 'ĐÃ NHỚ', bg: '#f0faf5', color: '#0f5132', border: '#b7e6cc' },
+}
 
-export interface ProgressEntry { status: string; isDue: boolean; lastReviewedAt?: string }
+function MiniChip({ state }: { state: SrsState }) {
+  const s = SRS_CHIP[state]
+  return (
+    <span style={{
+      fontSize: 8, fontWeight: 800, letterSpacing: '0.06em',
+      padding: '1px 6px', borderRadius: 10,
+      background: s.bg, border: `1px solid ${s.border}`, color: s.color,
+      flexShrink: 0, whiteSpace: 'nowrap',
+    }}>{s.label}</span>
+  )
+}
 
-interface Props {
+// ── Flatten course content into FlatCard[] ────────────────────────────────────
+
+function flattenCards(course: SavedCourse): FlatCard[] {
+  const content = course.courseContent
+  if (!content) return []
+  const cards: FlatCard[] = []
+  course.course.chapters.forEach((ch, ci) => {
+    const chContent = content.chapters[ci]
+    if (!chContent) return
+    chContent.lessons.forEach((lesson, li) => {
+      cards.push({
+        id: `${ci}-${li}`,
+        ci, chapterTitle: ch.title,
+        li, lessonTitle: lesson.lesson_title,
+        concept: lesson.concept,
+      })
+    })
+  })
+  return cards
+}
+
+// ── Empty detail state ────────────────────────────────────────────────────────
+
+function EmptyDetail() {
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, color: T.ink40, fontFamily: T.fontSans }}>
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+        <rect x="8" y="6" width="24" height="28" rx="3" stroke={T.ink20} strokeWidth="1.5" />
+        <rect x="12" y="10" width="10" height="1.5" rx="0.75" fill={T.ink20} />
+        <rect x="12" y="14" width="16" height="1.5" rx="0.75" fill={T.ink20} />
+        <rect x="12" y="18" width="13" height="1.5" rx="0.75" fill={T.ink20} />
+        <rect x="12" y="22" width="8"  height="1.5" rx="0.75" fill={T.ink20} />
+      </svg>
+      <p style={{ fontSize: 13, margin: 0, fontWeight: 500 }}>Chọn một thẻ để xem</p>
+    </div>
+  )
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
+
+export interface Props {
   course: SavedCourse
   progressMap: Record<string, ProgressEntry>
   diagnosticState: Record<string, number>
-  onLessonClick: (chapterIdx: number, lessonIdx: number) => void
-  onContinue: () => void
   onExit: () => void
 }
 
-// ── CourseTree ────────────────────────────────────────────────────────────────
+// ── CourseTree ─────────────────────────────────────────────────────────────────
 
-export function CourseTree({ course, progressMap, diagnosticState, onLessonClick, onContinue, onExit }: Props) {
+export function CourseTree({ course, progressMap, diagnosticState, onExit }: Props) {
   const chapters = course.course.chapters
-  const content = course.courseContent
+  const allCards = useMemo(() => flattenCards(course), [course])
 
-  const [expandedChapters, setExpandedChapters] = useState<Record<string, boolean>>(
-    chapters.reduce((acc, _, i) => ({ ...acc, [i]: true }), {})
+  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>(
+    () => chapters.reduce((acc: Record<number, boolean>, _, i) => ({ ...acc, [i]: true }), {})
   )
+  const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>({})
+  const [activeCard, setActiveCard] = useState<FlatCard | null>(null)
+  const [detailTab, setDetailTab] = useState<'edit' | 'study'>('edit')
+  const [studyOverlay, setStudyOverlay] = useState(false)
 
   const toggleChapter = (i: number) =>
-    setExpandedChapters(prev => ({ ...prev, [i]: !prev[i] }))
+    setExpandedChapters(p => ({ ...p, [i]: !p[i] }))
 
-  // Total card counts from courseContent
-  const totalCards = content?.chapters.reduce((sum, ch) => sum + ch.lessons.length, 0) ?? 0
-  const dueCards = Object.values(progressMap).filter(e => e.isDue).length
-  const matureCards = Object.values(progressMap).filter(e => e.status === 'REVIEW' && !e.isDue).length
-  const overallPct = totalCards === 0 ? 0 : Math.round((matureCards / totalCards) * 100)
+  const toggleLesson = (key: string) =>
+    setExpandedLessons(p => {
+      const wasExpanded = p[key] !== false
+      return { ...p, [key]: !wasExpanded }
+    })
 
-  // Build lesson ID for diagnostic lookup: we use chapter index + lesson index as key
-  // since DiagnosticQuestion.source_chunk_id or topic maps to topics
-  // For tree coloring we use the lesson's mastery from progressMap or diagnostic
+  const dueCards    = allCards.filter(c => progressMap[c.id]?.isDue)
+  const totalDue    = dueCards.length
+  const totalCards  = allCards.length
+  const matureCards = allCards.filter(c => progressMap[c.id]?.status === 'REVIEW' && !progressMap[c.id]?.isDue).length
+  const overallPct  = totalCards === 0 ? 0 : Math.round((matureCards / totalCards) * 100)
+
   function lessonMastery(ci: number, li: number): number | null {
-    const entry = progressMap[`${ci}-${li}`]
+    const key = `${ci}-${li}`
+    const entry = progressMap[key]
     if (entry?.lastReviewedAt && new Date(entry.lastReviewedAt) >= new Date(course.createdAt)) {
       return entry.status === 'REVIEW' && !entry.isDue ? 100 : entry.isDue ? 10 : 30
     }
-    if (diagnosticState[`${ci}-${li}`] !== undefined) return diagnosticState[`${ci}-${li}`]
+    if (diagnosticState[key] !== undefined) return diagnosticState[key]
     return null
   }
+
+  // ── Study overlay (Ôn all due) ────────────────────────────────────────────
+
+  if (studyOverlay) {
+    const deck = dueCards.length > 0 ? dueCards : allCards
+    return (
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: T.bg, fontFamily: T.fontSans }}>
+        <div style={{ padding: '12px 22px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+          <button onClick={() => setStudyOverlay(false)} style={{ color: T.ink60, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5 }}>
+            ← Sơ đồ
+          </button>
+          <span style={{ color: T.ink20 }}>|</span>
+          <SynapsyLogo size={16} />
+          <div style={{ flex: 1 }}>
+            <p className="sy-serif" style={{ fontSize: 14, fontWeight: 600, margin: 0, color: T.ink }}>Ôn tập hôm nay</p>
+            <p className="sy-mono" style={{ fontSize: 10, color: T.ink40, margin: 0 }}>{deck.length} thẻ · {course.title}</p>
+          </div>
+        </div>
+        <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
+          <StudyMode cards={deck} onExit={() => setStudyOverlay(false)} />
+        </div>
+      </div>
+    )
+  }
+
+  // ── Main layout ───────────────────────────────────────────────────────────
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: T.bg, overflow: 'hidden', fontFamily: T.fontSans, color: T.ink }}>
 
-      {/* Header */}
-      <div style={{ padding: '13px 24px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-        <button onClick={onExit} style={{ color: T.ink60, fontSize: 14, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>← Thư viện</button>
-        <span style={{ color: T.ink20 }}>|</span>
-        <SynapsyLogo size={18} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p className="sy-serif" style={{ fontSize: 15, fontWeight: 700, margin: 0, letterSpacing: '-0.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{course.title}</p>
-          <p className="sy-mono" style={{ fontSize: 10, color: T.ink40, margin: 0 }}>{course.courseContent?.chapters.length ?? 0} chương</p>
-        </div>
-        <button onClick={onContinue} style={{ background: T.ink, color: T.bgSolid, padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', letterSpacing: '-0.01em', flexShrink: 0, border: 'none' }}>
-          Tiếp tục →
+      {/* ── Header ── */}
+      <div style={{ padding: '0 20px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'stretch', flexShrink: 0, height: 52 }}>
+
+        <button
+          onClick={onExit}
+          style={{ color: T.ink60, fontSize: 13, background: 'none', border: 'none', borderRight: `1px solid ${T.ink10}`, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, paddingRight: 16, flexShrink: 0 }}
+        >
+          ← Thư viện
         </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, padding: '0 16px', minWidth: 0 }}>
+          <SynapsyLogo size={16} />
+          <p className="sy-serif" style={{ fontSize: 14, fontWeight: 700, margin: 0, letterSpacing: '-0.015em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {course.title}
+          </p>
+        </div>
+
+        {/* Stats */}
+        <div style={{ display: 'flex', alignItems: 'center', borderLeft: `1px solid ${T.ink10}` }}>
+          {([
+            { v: totalDue,         label: 'cần ôn', red: totalDue > 0 },
+            { v: totalCards,       label: 'thẻ',    red: false },
+            { v: `${overallPct}%`, label: 'vững',   red: false },
+          ] as const).map((s, i) => (
+            <div key={i} style={{ padding: '0 14px', borderRight: `1px solid ${T.ink10}`, textAlign: 'center' }}>
+              <p style={{ fontSize: 16, fontWeight: 800, margin: 0, letterSpacing: '-0.04em', color: s.red ? T.srsAgain : T.ink, lineHeight: 1.1 }}>{s.v}</p>
+              <p className="sy-mono" style={{ fontSize: 9, color: T.ink40, margin: 0, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>{s.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Ôn button */}
+        <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 16 }}>
+          <button
+            onClick={() => totalDue > 0 && setStudyOverlay(true)}
+            disabled={totalDue === 0}
+            style={{
+              background: totalDue > 0 ? T.ink : T.bgSunken,
+              color: totalDue > 0 ? T.bgSolid : T.ink40,
+              padding: '8px 18px', borderRadius: 8, border: 'none',
+              fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em',
+              cursor: totalDue > 0 ? 'pointer' : 'default',
+              opacity: totalDue > 0 ? 1 : 0.5,
+              display: 'flex', alignItems: 'center', gap: 7,
+              transition: 'opacity 0.15s', flexShrink: 0,
+            }}
+            onMouseEnter={e => { if (totalDue > 0) (e.currentTarget as HTMLButtonElement).style.opacity = '0.82' }}
+            onMouseLeave={e => { if (totalDue > 0) (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+          >
+            <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
+              <polygon points="0,0 10,6 0,12" fill="currentColor" />
+            </svg>
+            Ôn {totalDue > 0 ? `${totalDue} thẻ` : ''}
+          </button>
+        </div>
       </div>
 
+      {/* ── Body ── */}
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
 
-        {/* Tree */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px 60px' }}>
+        {/* Left: tree nav */}
+        <div style={{ width: 300, flexShrink: 0, borderRight: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
-          {/* Summary row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 32 }}>
-            {[
-              { label: 'Thẻ cần ôn', value: dueCards, unit: 'thẻ', accent: dueCards > 0 },
-              { label: 'Tổng thẻ', value: totalCards, unit: 'thẻ', accent: false },
-              { label: 'Nắm vững', value: `${overallPct}%`, unit: '', accent: false },
-            ].map(stat => (
-              <div key={stat.label} style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 10, padding: '14px 18px' }}>
-                <p style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700, margin: '0 0 5px' }}>{stat.label}</p>
-                <p style={{ fontSize: 24, fontWeight: 800, margin: 0, letterSpacing: '-0.04em', color: stat.accent ? T.srsAgain : T.ink }}>
-                  {stat.value}<span style={{ fontSize: 12, fontWeight: 500, color: T.ink60, marginLeft: 3 }}>{stat.unit}</span>
-                </p>
-              </div>
+          {/* Legend strip */}
+          <div style={{ padding: '8px 16px', borderBottom: `1px solid ${T.ink10}`, display: 'flex', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
+            {([
+              { dot: '#1a7a4a', label: '≥80%' },
+              { dot: '#c47a2a', label: '40–79%' },
+              { dot: '#dc3545', label: '<40%' },
+              { dot: '#8a909e', label: 'Chưa test' },
+            ] as const).map(l => (
+              <span key={l.label} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: T.ink60 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: l.dot, flexShrink: 0 }} />
+                {l.label}
+              </span>
             ))}
           </div>
 
-          {/* Chapter + lesson tree */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Tree */}
+          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 40 }}>
             {chapters.map((ch, ci) => {
-              const expanded = expandedChapters[ci]
-              const lessonIds = ch.lessons.map((_, li) => `${ci}-${li}`)
-              const chDiagState: Record<string, number> = {}
-              lessonIds.forEach((id, li) => {
-                const m = lessonMastery(ci, li)
-                if (m !== null) chDiagState[id] = m
-              })
-              const chCol = chapterColor(lessonIds, chDiagState)
-
-              const lessonPcts = ch.lessons.map((_, li) => lessonMastery(ci, li) ?? 0)
-              const chPct = lessonPcts.length > 0 ? Math.round(lessonPcts.reduce((a, b) => a + b, 0) / lessonPcts.length) : 0
-              const chDue = lessonIds.filter(id => progressMap[id]?.isDue).length
+              const lessonIds    = ch.lessons.map((_, li) => `${ci}-${li}`)
+              const testedPcts   = lessonIds.map((_, li) => lessonMastery(ci, li)).filter((p): p is number => p !== null)
+              const chAvg        = testedPcts.length > 0 ? Math.round(testedPcts.reduce((a, b) => a + b, 0) / testedPcts.length) : null
+              const chCol        = nodeColor(chAvg)
+              const chDue        = lessonIds.filter(id => progressMap[id]?.isDue).length
+              const chExpanded   = expandedChapters[ci]
 
               return (
                 <div key={ci}>
-                  {/* Chapter node */}
+
+                  {/* Chapter row */}
                   <button
                     onClick={() => toggleChapter(ci)}
-                    style={{ width: '100%', textAlign: 'left', background: chCol.bg, border: `1.5px solid ${chCol.border}`, borderRadius: 12, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 3px 12px rgba(0,0,0,0.07)')}
-                    onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+                    style={{ width: '100%', textAlign: 'left', padding: '9px 20px 9px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: `1px solid ${T.ink10}`, transition: 'background 0.1s' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = T.bgSunken)}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >
-                    <span style={{ width: 12, height: 12, borderRadius: '50%', background: chCol.dot, flexShrink: 0, boxShadow: `0 0 0 3px ${chCol.border}` }} />
+                    <span style={{ width: 3, height: 28, borderRadius: 2, background: chCol.dot, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <span className="sy-mono" style={{ fontSize: 10, color: chCol.text, opacity: 0.7 }}>Chương {String(ci + 1).padStart(2, '0')}</span>
-                        {chDue > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: T.ink, color: T.bgSolid, padding: '1px 7px', borderRadius: 10 }}>{chDue} cần ôn</span>}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 1 }}>
+                        <span className="sy-mono" style={{ fontSize: 9, color: T.ink40, letterSpacing: '0.08em', fontWeight: 600 }}>
+                          CH.{String(ci + 1).padStart(2, '0')}
+                        </span>
+                        {chDue > 0 && (
+                          <span style={{ fontSize: 9, fontWeight: 800, background: '#fff1f1', color: '#c0392b', border: '1px solid #fecdcd', padding: '0 5px', borderRadius: 8 }}>
+                            {chDue} ôn
+                          </span>
+                        )}
                       </div>
-                      <p style={{ fontSize: 15, fontWeight: 700, margin: '2px 0 0', color: chCol.text, letterSpacing: '-0.01em' }}>{ch.title}</p>
+                      <p style={{ fontSize: 12.5, fontWeight: 700, margin: 0, color: T.ink, letterSpacing: '-0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {ch.title}
+                      </p>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                      <SynapsyRing pct={chPct} size={28} strokeWidth={3} color={chCol.dot} />
-                      <span className="sy-mono" style={{ fontSize: 12, color: chCol.text, fontWeight: 600, minWidth: 36 }}>{chPct}%</span>
-                      <span style={{ fontSize: 14, color: chCol.text, opacity: 0.6, transform: expanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', display: 'inline-block' }}>›</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      <SynapsyRing pct={chAvg ?? 0} size={20} strokeWidth={2.5} color={chCol.dot} />
+                      <span style={{ fontSize: 10, color: T.ink40, transform: chExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s', display: 'inline-block' }}>›</span>
                     </div>
                   </button>
 
-                  {/* Lesson nodes */}
-                  {expanded && (
-                    <div style={{ marginTop: 4, marginLeft: 28, display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
-                      <div style={{ position: 'absolute', left: -16, top: 4, bottom: 4, width: 1.5, background: chCol.border, borderRadius: 1 }} />
+                  {/* Lessons */}
+                  {chExpanded && ch.lessons.map((lesson, li) => {
+                    const lessonKey  = `${ci}-${li}`
+                    const m          = lessonMastery(ci, li)
+                    const lCol       = nodeColor(m)
+                    const lCards     = allCards.filter(c => c.ci === ci && c.li === li)
+                    const lDue       = lCards.filter(c => progressMap[c.id]?.isDue).length
+                    const lExpanded  = expandedLessons[lessonKey] !== false
 
-                      {ch.lessons.map((lesson, li) => {
-                        const m = lessonMastery(ci, li)
-                        const lCol = nodeColor(m)
-                        const lDue = progressMap[`${ci}-${li}`]?.isDue ? 1 : 0
-                        const lCards = content?.chapters[ci]?.lessons.length ?? 0
+                    return (
+                      <div key={li}>
 
-                        return (
-                          <div key={li} style={{ position: 'relative' }}>
-                            <div style={{ position: 'absolute', left: -16, top: '50%', width: 16, height: 1.5, background: chCol.border }} />
-                            <button
-                              onClick={() => onLessonClick(ci, li)}
-                              style={{ width: '100%', textAlign: 'left', background: lCol.bg, border: `1px solid ${lCol.border}`, borderRadius: 9, padding: '11px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
-                              onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.06)')}
-                              onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
-                            >
-                              <span style={{ width: 8, height: 8, borderRadius: '50%', background: lCol.dot, flexShrink: 0 }} />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ fontSize: 13, fontWeight: 500, margin: 0, color: lCol.text, letterSpacing: '-0.005em' }}>{lesson.title}</p>
-                                <div style={{ display: 'flex', gap: 8, marginTop: 3, alignItems: 'center' }}>
-                                  <span style={{ fontSize: 10, color: lCol.dot, fontWeight: 600, background: lCol.border + '60', padding: '1px 7px', borderRadius: 10 }}>{lCol.label}</span>
-                                  {lDue > 0 && <span className="sy-mono" style={{ fontSize: 10, color: T.srsAgain, fontWeight: 700 }}>{lDue} cần ôn</span>}
-                                </div>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                                <SynapsyRing pct={m ?? 0} size={22} strokeWidth={2.5} color={lCol.dot} />
-                                <span className="sy-mono" style={{ fontSize: 11, color: lCol.text, fontWeight: 600, minWidth: 30 }}>{m ?? 0}%</span>
-                                <span style={{ fontSize: 12, color: lCol.text, opacity: 0.5 }}>›</span>
-                              </div>
-                            </button>
+                        {/* Lesson row */}
+                        <button
+                          onClick={() => toggleLesson(lessonKey)}
+                          style={{ width: '100%', textAlign: 'left', padding: '7px 20px 7px 32px', display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: `1px solid ${T.ink10}`, transition: 'background 0.1s' }}
+                          onMouseEnter={e => (e.currentTarget.style.background = T.bgSunken)}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        >
+                          <span style={{ width: 7, height: 7, borderRadius: '50%', background: lCol.dot, flexShrink: 0, boxShadow: `0 0 0 2px ${lCol.border}` }} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: T.ink80, letterSpacing: '-0.005em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {lesson.title}
+                            </p>
+                            <div style={{ display: 'flex', gap: 6, marginTop: 2, alignItems: 'center' }}>
+                              <span style={{ fontSize: 9, color: lCol.dot, fontWeight: 700 }}>{lCol.label}</span>
+                              <span className="sy-mono" style={{ fontSize: 9, color: T.ink40 }}>{lCards.length} thẻ</span>
+                              {lDue > 0 && <span className="sy-mono" style={{ fontSize: 9, color: '#dc3545', fontWeight: 700 }}>{lDue} ôn</span>}
+                            </div>
                           </div>
-                        )
-                      })}
-                    </div>
-                  )}
+                          <span style={{ fontSize: 10, color: T.ink40, transform: lExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s', display: 'inline-block', flexShrink: 0 }}>›</span>
+                        </button>
+
+                        {/* Cards inline */}
+                        {lExpanded && lCards.map((card, cardIdx) => {
+                          const srsState = cardSrsState(card.id, progressMap)
+                          const isActive = card.id === activeCard?.id
+                          return (
+                            <button
+                              key={card.id}
+                              onClick={() => { setActiveCard(card); setDetailTab('edit') }}
+                              style={{
+                                width: '100%', textAlign: 'left',
+                                padding: '8px 20px 8px 46px',
+                                display: 'flex', alignItems: 'flex-start', gap: 8,
+                                cursor: 'pointer',
+                                background: isActive ? T.ink : 'transparent',
+                                border: 'none',
+                                borderBottom: `1px solid ${T.ink10}`,
+                                borderLeft: isActive ? `3px solid ${T.ink}` : '3px solid transparent',
+                                transition: 'background 0.1s',
+                              }}
+                              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = T.bgSunken }}
+                              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+                            >
+                              <span className="sy-mono" style={{ fontSize: 9, color: isActive ? 'rgba(255,255,255,0.5)' : T.ink40, marginTop: 2, flexShrink: 0, minWidth: 14 }}>
+                                {cardIdx + 1}
+                              </span>
+                              <p className="sy-serif" style={{
+                                fontSize: 12, margin: 0, lineHeight: 1.4,
+                                color: isActive ? '#fff' : T.ink80,
+                                fontWeight: isActive ? 600 : 400,
+                                flex: 1, minWidth: 0,
+                                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
+                              }}>
+                                {card.concept.question}
+                              </p>
+                              <MiniChip state={srsState} />
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )
+                  })}
                 </div>
               )
             })}
           </div>
         </div>
 
-        {/* Right: legend */}
-        <div style={{ width: 220, flexShrink: 0, borderLeft: `1px solid ${T.ink10}`, background: T.bgSolid, padding: '24px 18px', overflowY: 'auto' }}>
-          <p style={{ fontSize: 10, fontWeight: 700, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 12px' }}>Chú giải</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 28 }}>
-            {([
-              { dot: '#1a7a4a', bg: '#f0faf5', border: '#b7e6cc', label: 'Nắm vững', sub: '≥ 80%' },
-              { dot: '#c47a2a', bg: '#fffbf0', border: '#f5d78a', label: 'Cần ôn',   sub: '40–79%' },
-              { dot: '#dc3545', bg: '#fff5f5', border: '#fecdcd', label: 'Yếu',       sub: '< 40%' },
-              { dot: '#8a909e', bg: '#f5f6f8', border: '#c4c8d0', label: 'Chưa test', sub: 'Không có dữ liệu' },
-            ] as const).map(item => (
-              <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: item.bg, border: `1px solid ${item.border}`, borderRadius: 8 }}>
-                <span style={{ width: 9, height: 9, borderRadius: '50%', background: item.dot, flexShrink: 0 }} />
-                <div>
-                  <p style={{ fontSize: 12, fontWeight: 600, margin: 0, color: item.dot }}>{item.label}</p>
-                  <p className="sy-mono" style={{ fontSize: 10, margin: 0, color: item.dot, opacity: 0.7 }}>{item.sub}</p>
+        {/* Right: detail pane */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {!activeCard ? (
+            <EmptyDetail />
+          ) : detailTab === 'study' ? (
+            <StudyMode
+              cards={allCards.filter(c => c.ci === activeCard.ci && c.li === activeCard.li)}
+              onExit={() => setDetailTab('edit')}
+            />
+          ) : (
+            <>
+              {/* Tab bar */}
+              <div style={{ padding: '10px 22px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: 2, background: T.bgSunken, borderRadius: 8, padding: 3, flexShrink: 0 }}>
+                  {(['edit', 'study'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => setDetailTab(tab)}
+                      style={{
+                        padding: '6px 16px', borderRadius: 6, fontSize: 12,
+                        fontWeight: detailTab === tab ? 700 : 500,
+                        color: detailTab === tab ? T.ink : T.ink60,
+                        background: detailTab === tab ? T.bgSolid : 'transparent',
+                        border: 'none', cursor: 'pointer',
+                        boxShadow: detailTab === tab ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {tab === 'edit' ? 'Sửa' : 'Học'}
+                    </button>
+                  ))}
                 </div>
+                <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {activeCard.chapterTitle} › {activeCard.lessonTitle}
+                </span>
               </div>
-            ))}
-          </div>
 
-          <p style={{ fontSize: 10, fontWeight: 700, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 10px' }}>Kiểm tra đầu vào</p>
-          <div style={{ background: T.bgSunken, borderRadius: 8, padding: '10px 12px', fontSize: 12, color: T.ink60, lineHeight: 1.55 }}>
-            Màu sắc phản ánh kết quả bài test. Học theo thứ tự ưu tiên từ đỏ → vàng → xanh.
-          </div>
+              {/* EditMode without card list */}
+              <EditMode
+                cards={allCards.filter(c => c.ci === activeCard.ci && c.li === activeCard.li)}
+                controlledCardId={activeCard.id}
+                hideList
+              />
+            </>
+          )}
         </div>
       </div>
     </div>

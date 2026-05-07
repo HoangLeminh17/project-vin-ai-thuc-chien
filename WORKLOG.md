@@ -6,6 +6,55 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+## Sprint 6 — 04/05 → 10/05/2026
+
+| Task | Người làm | PR |
+|---|---|---|
+| Redesign `/course/[id]` — Master-Detail CourseTree | Nguyễn Bình Thành | #53, #54, #55 |
+
+---
+
+### [ADR-25] Redesign trang khóa học thành Master-Detail — 07/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #53, #54, #55
+
+**Bối cảnh:** Trang `/course/[id]` theo thiết kế cũ buộc user phải điều hướng qua nhiều lớp màn hình: CourseTree → click lesson → LessonView (3 tab: Thẻ/Học/Sửa). Mỗi lần click lesson là mất toàn bộ context của cây bài học. Nút "Ôn" nằm trong từng bài riêng lẻ khiến không có cách ôn toàn bộ thẻ due trong một phiên. Thiết kế Synapsy Prototype (handoff từ Claude Design) đề xuất bố cục Master-Detail giải quyết 3 vấn đề này cùng lúc.
+
+**Các quyết định:**
+
+**1. Layout Master-Detail 2 cột cố định**
+- Trái (300px): `CourseTree` là navigation panel cố định — chapters accordion → lessons accordion → thẻ inline. Click lesson → expand ngay tại chỗ, không navigate sang trang khác.
+- Phải (flex-1): Detail pane — click thẻ bất kỳ → hiện nội dung thẻ ngay bên phải.
+- Lý do: User thấy toàn bộ cây bài học và nội dung thẻ đồng thời, không mất context.
+
+**2. Xóa LessonView và 3 tab Thẻ/Học/Sửa**
+- `LessonView.tsx` bị xóa hoàn toàn. Tab "Thẻ" (browse) không còn cần thiết vì thẻ đã hiện inline trong cây.
+- Detail pane bên phải có tab `Sửa / Học` ở đầu pane: Sửa = `EditMode` không có card list (tree IS the list), Học = `StudyMode` cho bài học đó.
+- Lý do: Bố cục cũ buộc user chọn 1 trong 3 tab rồi mới thấy nội dung. Bố cục mới loại bỏ bước trung gian này.
+
+**3. Nút "Ôn" duy nhất ở header, gom tất cả thẻ due**
+- Nút "Ôn X thẻ" nằm ở header `CourseTree`, kích hoạt study overlay với toàn bộ thẻ due (không phân theo bài).
+- Nếu không có thẻ due, nút bị disabled.
+- Lý do: Trước đây mỗi bài có nút "Học ngay" riêng → user phải ôn từng bài. Với SRS, thẻ due phân tán khắp các bài → cần 1 deck tổng hợp.
+
+**4. `ProgressEntry` chuyển từ `LessonView` sang `lib/types.ts`**
+- Đây là domain type (SRS progress state từ API), không phải UI type — không nên import từ component.
+- Lý do: Tránh dependency ngược (domain type bị gắn với UI component), dễ gây nhầm lẫn cho dev sau.
+
+**5. `EditMode` thêm `hideList` và `controlledCardId`**
+- `hideList=true`: ẩn panel card list bên trái khi tree nav đã đóng vai trò đó.
+- `controlledCardId`: sync card đang chọn từ parent (CourseTree) xuống EditMode qua `useEffect`.
+- Lý do: Reuse EditMode mà không duplicate code, đảm bảo single source of truth cho card selection.
+
+**Hệ quả:**
+- (+) User thấy cây bài học và nội dung thẻ cùng lúc — không còn mất context khi điều hướng.
+- (+) Ôn tập toàn bộ thẻ due trong 1 click thay vì phải vào từng bài.
+- (+) Giảm state machine trong `CourseFlow` (bỏ `lesson` view + 2 handler).
+- (+) `LessonView.tsx` bị xóa — giảm 1 file cần maintain.
+- (-) Layout 2 cột yêu cầu màn hình đủ rộng — mobile chưa được xử lý trong sprint này.
+
+---
+
 ## Sprint 5 — 27/04 → 03/05/2026
 
 | Task | Người làm | PR |

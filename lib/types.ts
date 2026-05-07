@@ -52,3 +52,10 @@ export type ChapterContent = {
 export type CourseContent = {
   chapters: ChapterContent[]
 }
+
+// SRS progress entry — returned by /api/progress/map
+export type ProgressEntry = {
+  status: string
+  isDue: boolean
+  lastReviewedAt?: string
+}
