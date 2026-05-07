@@ -71,9 +71,8 @@ app/components/
   FlashFactGallery.tsx
 
   course/                       ← CourseFlow orchestrates views bên dưới
-    CourseFlow.tsx
-    CourseTree.tsx
-    LessonView.tsx
+    CourseFlow.tsx              ← state machine (init → diagnostic → course-tree)
+    CourseTree.tsx              ← master-detail: tree nav (trái 300px) + card detail pane (phải)
     StudyMode.tsx
     EditMode.tsx
 
@@ -136,14 +135,13 @@ type QuizQuestion = {
   source_chunk_id?: string   // "ci-li" format — khớp lessonMastery() lookup key
 }
 
-// SRS Progress
-type ProgressMapEntry = {
-  status: 'NEW' | 'LEARNING' | 'REVIEW'
-  nextReviewDate: string
-  lastReviewedAt?: string
+// SRS Progress  (lib/types.ts)
+type ProgressEntry = {
+  status: string        // 'NEW' | 'LEARNING' | 'REVIEW'
   isDue: boolean
+  lastReviewedAt?: string
 }
-type ProgressMap = Record<string, ProgressMapEntry>  // key = "ci-li"
+type ProgressMap = Record<string, ProgressEntry>  // key = "ci-li"
 
 // Diagnostic status
 type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error'
@@ -232,11 +230,10 @@ diagnostic-loading        ← spinner / fetch /api/diagnostic-quiz
 diagnostic-quiz           ← DiagnosticQuiz (10 câu MCQ)
   │
   ▼
-course-tree               ← CourseTree (tổng quan chapter/lesson)
-  │
-  ▼
-lesson                    ← LessonView (StudyMode | EditMode)
+course-tree               ← CourseTree master-detail (self-contained: card selection + study)
 ```
+
+`CourseTree` quản lý nội bộ: accordion tree nav trái, card detail pane phải (tab Sửa/Học), study overlay khi click "Ôn X thẻ". Không còn trạng thái `lesson` — `CourseFlow` kết thúc tại `course-tree`.
 
 **localStorage flags:**
 
@@ -262,7 +259,10 @@ lesson                    ← LessonView (StudyMode | EditMode)
 
 **CourseTree node colors:** red (due/failed) · amber (learning) · green (mastered) · grey (new)
 
-**"Tiếp tục học →"** chọn lesson đến hạn sớm nhất.
+**Layout master-detail:**
+- Trái (300px): chapters accordion → lessons accordion → thẻ inline. Click thẻ → hiện detail pane phải.
+- Phải (flex-1): tab **Sửa** (`EditMode` không card list) hoặc **Học** (`StudyMode` cho bài đó).
+- Header: nút **"Ôn X thẻ"** gom toàn bộ thẻ due thành 1 deck study overlay.
 
 ---
 
