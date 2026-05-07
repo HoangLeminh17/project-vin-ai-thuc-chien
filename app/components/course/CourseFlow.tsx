@@ -58,19 +58,7 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
 
     if (localStorage.getItem(`justGenerated_${course.id}`) === 'true') {
       localStorage.removeItem(`justGenerated_${course.id}`)
-      const cached = localStorage.getItem(`diagnosticQuestions_${course.id}`)
-      if (cached) {
-        try {
-          const questions = JSON.parse(cached)
-          if (questions?.length) {
-            localStorage.removeItem(`diagnosticQuestions_${course.id}`)
-            setDiagnosticQuestions(questions)
-            setView('diagnostic-quiz')
-            return
-          }
-        } catch { /* ignore */ }
-      }
-      setView('course-tree')
+      setView('diagnostic-intro')
       return
     }
     const done = localStorage.getItem(`diagnosticDone_${course.id}`)

@@ -173,7 +173,7 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
               )
             })}
           </div>
-          {allDone && savedCourseId ? (
+          {allDone && savedCourseId && (diagnosticStatus === 'done' || diagnosticStatus === 'error') ? (
             <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${T.ink10}` }}>
               <p style={{ fontSize: 16, fontWeight: 700, color: T.ink, margin: '0 0 4px' }}>🎉 Khóa học đã sẵn sàng!</p>
               <p style={{ fontSize: 12, color: T.ink60, margin: '0 0 16px' }}>
