@@ -61,7 +61,21 @@ docs: short description       # Documentation
 
 Branch naming: `<type>/<short-description>` (e.g. `docs/weekly-report-week1`)
 
-**One commit per logical change** — never bundle multiple features/fixes into a single commit.
+**Commit granularly and often** — never bundle multiple logical changes into one commit. Each commit should represent exactly one unit of work. Aim for 5–10+ commits per PR.
+
+Examples of commit-worthy units:
+- Add a new type or interface
+- Add one new component (even if incomplete)
+- Add one function or hook
+- Move or rename a file
+- Fix one bug
+- Add one test case or test file
+- Update one prompt or config
+
+**Bad:** `feat: implement master-detail layout` (1 commit, 400 lines)
+**Good:** `feat: add ProgressEntry type to lib/types.ts` → `feat: add card list accordion to CourseTree` → `feat: add detail pane empty state` → ... (8 commits)
+
+If you finish a task in fewer than 5 commits, you almost certainly bundled too much.
 
 ## PR requirements
 
