@@ -177,7 +177,7 @@ async function generateChapterContentGemini(chapter: Chapter, input: string): Pr
   })
   if (!res.ok) {
     const body = await res.json().catch(() => null)
-    throw new Error(`Gemini API error (${res.status}): ${body?.error?.message?.split('\\n')[0] || 'Unknown'}`)
+    throw new Error(`Gemini API error (${res.status}): ${body?.error?.message?.split('\n')[0] || 'Unknown'}`)
   }
   const data = await res.json()
   const text = data.candidates?.[0]?.content?.parts?.map((part: any) => part.text ?? '').join('').trim()
@@ -258,22 +258,22 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
 
   let lastError: unknown;
 
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      console.log('[generate-content] Trying Gemini...')
-      return await generateChapterContentGemini(chapter, input)
-    } catch (e) {
-      console.warn('[generate-content] Gemini failed:', e)
-      lastError = e
-    }
-  }
-
   if (process.env.OPENAI_API_KEY) {
     try {
       console.log('[generate-content] Trying OpenAI...')
       return await generateChapterContentOpenAI(chapter, input)
     } catch (e) {
       console.warn('[generate-content] OpenAI failed:', e)
+      lastError = e
+    }
+  }
+
+  if (process.env.GEMINI_API_KEY) {
+    try {
+      console.log('[generate-content] Trying Gemini...')
+      return await generateChapterContentGemini(chapter, input)
+    } catch (e) {
+      console.warn('[generate-content] Gemini failed:', e)
       lastError = e
     }
   }
