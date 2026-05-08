@@ -157,26 +157,39 @@ type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error'
 Upload PDF
     │
     ▼
-POST /api/parse-pdf          (MinerU Precision API)
+POST /api/parse-pdf              (MinerU Precision API)
     │
     ▼
 Markdown source
     │
-    ├─── POST /api/generate-course      Stage 1: GPT-4o (Planner)
-    │         → Chapter + Lesson outlines
+    ├── POST /api/extract-facts  (song song, để animate Flash Facts)
     │
-    └─── POST /api/generate-content     Stage 2: GPT-4o-mini (Generator)
-              → ConceptCard + quiz per lesson
-                    │
-                    ▼
-              SavedCourse → Firestore
-                    │
-                    ▼
-              POST /api/diagnostic-quiz (prefetch, parallel)
-                    │
-                    ▼
-              localStorage `diagnosticQuestions_{id}`
+    ▼
+POST /api/generate-course        Stage 1: GPT-4o (Planner)
+    │    → Course JSON: chapters[].lessons[].{title, outline[]}
+    │    → cache vào Firestore `course_cache/{hash}`
+    │
+    ▼ (sequential, từng chapter một)
+POST /api/generate-content       Stage 2: GPT-4o-mini (Generator)
+    │    → ChapterContent: lessons[].concept + quiz
+    │    → cache vào `course_cache/{hash}/chapters/{i}`
+    │    → partial save vào `courses/` (SavedCourse) sau mỗi chapter
+    │
+    ▼
+POST /api/diagnostic-quiz        (prefetch ngầm sau chapter đầu tiên)
+    │    → localStorage `diagnosticQuestions_{id}`
+    │
+    ▼
+setStatus('done')
 ```
+
+### Caching (2 tầng)
+
+| Collection | Key | Nội dung | Dùng để |
+| :--- | :--- | :--- | :--- |
+| `course_cache/{hash}` | content hash của markdown | Course JSON (Stage 1) | Bỏ qua Stage 1 nếu cùng PDF |
+| `course_cache/{hash}/chapters/{i}` | chapter index | ChapterContent (Stage 2) | Bỏ qua Stage 2 per chapter |
+| `courses/{id}` | Firestore doc ID | SavedCourse (full) | Library + SRS |
 
 ### Status machine (`generation-context.tsx`)
 
@@ -188,10 +201,12 @@ Bốn nhánh trong `startGeneration()`:
 
 | Nhánh | Điều kiện | Hành động |
 | :--- | :--- | :--- |
-| **existing** | contentHash match + API alive | set `justGenerated_` → redirect; prefetch diagnostic nếu chưa có |
-| **fromCache + content** | cache hit kèm courseContent | load map, saveCourse, runDiagnosticPrefetch |
-| **fromCache fallback** | cache hit, không có content | parallel fetchChapter, saveCourse, runDiagnosticPrefetch |
-| **fresh** | không cache | sequential fetchChapter per chapter, saveCourse, prefetch sau cùng |
+| **existing** | Firestore có course trùng hash + `chapters.length > 0` + API alive | Restore `courseContentMap` từ `existing.courseContent`, `setStatus('done')` |
+| **fromCache + content** | `fromCache: true` từ generate-course + `courseContent.chapters.length > 0` | Load map từ cache, saveCourse, runDiagnosticPrefetch, `setStatus('done')` |
+| **fromCache fallback** | `fromCache: true` nhưng chapters rỗng | Sequential `fetchChapter` per chapter (Stage 2 chưa cache) |
+| **fresh** | Không có cache Stage 1 | Sequential `fetchChapter`, save từng chapter, prefetch diagnostic sau cùng |
+
+> **Guard quan trọng:** Cả hai nhánh "existing" và "fromCache + content" đều check `chapters.length > 0` trước khi early return — tránh skip Stage 2 khi cache chỉ có Stage 1 outline rỗng.
 
 `runDiagnosticPrefetch(courseId, markdown)`:
 - Set `diagnosticStatus = 'loading'`
@@ -206,9 +221,9 @@ Bốn nhánh trong `startGeneration()`:
 
 | Bước | Done khi |
 | :--- | :--- |
-| Phân tích tài liệu | status rời `'parsing'` |
-| Tạo cấu trúc khoá học | course JSON resolve |
-| Tạo nội dung bài học | toàn bộ chapter content resolve |
+| Đọc PDF | `rawMarkdown` có nội dung |
+| Phân tích cấu trúc | `course` JSON resolve từ Stage 1 |
+| Tạo concept cards · X/N | tất cả chapter trong `courseContentMap` |
 | Tạo bài test chẩn đoán | `diagnosticStatus` = `'done'` hoặc `'error'` |
 
 ---
