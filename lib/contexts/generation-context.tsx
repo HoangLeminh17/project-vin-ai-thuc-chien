@@ -20,6 +20,7 @@ interface GenerationState {
   savedCourseId: string | null;
   isFromCache: boolean;
   diagnosticStatus: DiagnosticStatus;
+  pdfLocalPath: string | null;
 }
 
 interface GenerationContextType extends GenerationState {
@@ -61,6 +62,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const [savedCourseId, setSavedCourseId] = useState<string | null>(null);
   const [isFromCache, setIsFromCache] = useState(false);
   const [diagnosticStatus, setDiagnosticStatus] = useState<DiagnosticStatus>('idle');
+  const [pdfLocalPath, setPdfLocalPath] = useState<string | null>(null);
 
   const resetGeneration = useCallback(() => {
     setStatus('idle');
@@ -74,6 +76,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     setSavedCourseId(null);
     setIsFromCache(false);
     setDiagnosticStatus('idle');
+    setPdfLocalPath(null);
   }, []);
 
   const runDiagnosticPrefetch = useCallback((courseId: string, markdown: string) => {
@@ -145,6 +148,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       }
       markdown = data.markdown ?? '';
       setRawMarkdown(markdown);
+      if (data.pdfLocalPath) setPdfLocalPath(data.pdfLocalPath);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
@@ -277,10 +281,11 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     savedCourseId,
     isFromCache,
     diagnosticStatus,
+    pdfLocalPath,
     startGeneration,
     resetGeneration,
     fetchChapter
-  }), [status, course, courseContentMap, stage2Loading, stage2Errors, rawMarkdown, error, currentHash, savedCourseId, isFromCache, diagnosticStatus, startGeneration, resetGeneration, fetchChapter]);
+  }), [status, course, courseContentMap, stage2Loading, stage2Errors, rawMarkdown, error, currentHash, savedCourseId, isFromCache, diagnosticStatus, pdfLocalPath, startGeneration, resetGeneration, fetchChapter]);
 
   return (
     <GenerationContext.Provider value={value}>
