@@ -61,7 +61,7 @@ export function FlashFactGallery({ markdown }: FlashFactGalleryProps) {
         
         <div className="min-h-[80px] flex items-center">
           <p className="text-xl font-medium text-blue-900 leading-relaxed transition-all duration-500 animate-in fade-in slide-in-from-bottom-4">
-            "{facts[currentIndex]}"
+            &quot;{facts[currentIndex]}&quot;
           </p>
         </div>
         
