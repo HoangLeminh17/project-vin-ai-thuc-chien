@@ -14,9 +14,11 @@ interface Props {
   controlledCardId?: string | null
   /** Hides the left card list — used when the tree nav IS the card list */
   hideList?: boolean
+  /** Local filesystem path to the origin PDF — enables the source panel */
+  pdfLocalPath?: string | null
 }
 
-export function EditMode({ cards, initialCardId, controlledCardId, hideList }: Props) {
+export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdfLocalPath }: Props) {
   const [selectedId, setSelectedId] = useState(controlledCardId ?? initialCardId ?? cards[0]?.id ?? null)
   const [aiInput, setAiInput] = useState('')
   const [aiProposal, setAiProposal] = useState<string | null>(null)
@@ -110,34 +112,48 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
           {/* TL;DR */}
           <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
             <span className="sy-mono" style={{ fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>TL;DR</span>
-            <div contentEditable suppressContentEditableWarning className="sy-serif"
-              style={{ fontSize: 15, fontWeight: 500, color: T.ink, outline: 'none', marginTop: 6, lineHeight: 1.5 }}>
+            <p className="sy-serif" style={{ fontSize: 15, fontWeight: 500, color: T.ink, margin: '6px 0 0', lineHeight: 1.5 }}>
               {card.concept.answer}
-            </div>
+              {card.concept.sourceExcerpt && pdfLocalPath && (
+                <sup
+                  onClick={() => setShowSource(true)}
+                  title="Xem nguồn trong PDF"
+                  style={{ cursor: 'pointer', color: T.accent, fontSize: 11, marginLeft: 3, fontWeight: 700 }}
+                >①</sup>
+              )}
+            </p>
           </div>
 
           {/* Detail */}
           {card.concept.detail && (
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
               <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Chi tiết</span>
-              <div contentEditable suppressContentEditableWarning className="sy-serif"
-                style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, outline: 'none', marginTop: 6 }}>
+              <p className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, margin: '6px 0 0' }}>
                 {card.concept.detail}
-              </div>
+                {card.concept.sourceExcerpt && pdfLocalPath && (
+                  <sup
+                    onClick={() => setShowSource(true)}
+                    title="Xem nguồn trong PDF"
+                    style={{ cursor: 'pointer', color: T.accent, fontSize: 11, marginLeft: 3, fontWeight: 700 }}
+                  >①</sup>
+                )}
+              </p>
             </div>
           )}
 
-          {/* Source */}
+          {/* Source excerpt — always visible; PDF toggle only when local path available */}
           {card.concept.sourceExcerpt && (
             <div style={{ background: T.bgSoft, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '14px 22px', marginBottom: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Nguồn</span>
-                <button
-                  onClick={() => setShowSource(s => !s)}
-                  style={{ fontSize: 11, color: T.accent, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.fontSans }}
-                >
-                  {showSource ? '← Đóng' : 'Xem trang →'}
-                </button>
+                <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Nguồn ①</span>
+                {pdfLocalPath && (
+                  <button
+                    onClick={() => setShowSource(s => !s)}
+                    style={{ fontSize: 11, color: T.accent, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.fontSans }}
+                  >
+                    {showSource ? '← Đóng' : 'Xem PDF →'}
+                  </button>
+                )}
               </div>
               <p className="sy-serif" style={{ fontSize: 12.5, color: T.ink60, fontStyle: 'italic', margin: '6px 0 0', lineHeight: 1.55 }}>
                 &ldquo;{card.concept.sourceExcerpt}&rdquo;
@@ -202,8 +218,9 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
           </div>
         </div>
       </div>{/* end detail column */}
-      {showSource && card.concept.sourceExcerpt && (
+      {showSource && card.concept.sourceExcerpt && pdfLocalPath && (
         <PdfPanel
+          pdfLocalPath={pdfLocalPath}
           sourceExcerpt={card.concept.sourceExcerpt}
           chunkId={card.concept.source_chunk_id}
           onClose={() => setShowSource(false)}
