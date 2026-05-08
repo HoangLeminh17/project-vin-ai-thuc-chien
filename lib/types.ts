@@ -26,6 +26,7 @@ export type ConceptCard = {
   answer: string      // TL;DR 2-3 câu
   detail?: string     // 3-5 câu, có analogy/ví dụ
   followUps: string[] // 2 follow-up questions
+  sourceExcerpt?: string  // verbatim outline bullet that grounds the answer; used for citation panel
 }
 
 export type QuizQuestion = {
