@@ -1,15 +1,10 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/TextLayer.css'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import { T } from '@/app/components/synapsy'
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.mjs',
-  import.meta.url,
-).toString()
 
 interface Props {
   pdfLocalPath: string
@@ -32,6 +27,13 @@ export function PdfPanel({ pdfLocalPath, sourceExcerpt, chunkId, onClose }: Prop
   const [numPages, setNumPages] = useState<number | null>(null)
   const [page, setPage] = useState(targetPage)
   const [scale, setScale] = useState(1.2)
+
+  useEffect(() => {
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+      'pdfjs-dist/build/pdf.worker.min.mjs',
+      import.meta.url,
+    ).toString()
+  }, [])
 
   const pdfUrl = `/api/pdf-source?path=${encodeURIComponent(pdfLocalPath)}`
 
