@@ -31,6 +31,7 @@ export type ConceptCard = {
   detail?: string
   followUps: string[]
   source_chunk_id?: string
+  sourceExcerpt?: string  // verbatim outline bullet that grounds the answer; used for citation panel
 }
 
 export type QuizQuestion = {
