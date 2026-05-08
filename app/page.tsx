@@ -153,7 +153,7 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
               const isDone = courseContentMap[ci] !== undefined
               const isLoading = stage2Loading[ci]
               return (
-                <div key={ci} style={{ background: T.bgSolid, border: `1px solid ${isLoading ? T.accent + '66' : T.ink10}`, borderRadius: 10, padding: '14px 18px', opacity: (!isDone && !isLoading) ? 0.55 : 1, transition: 'opacity 0.3s, border-color 0.3s' }}>
+                <div key={ci} style={{ background: T.bgSolid, border: `1px solid ${isLoading ? T.accent + '66' : isDone ? T.srsGood + '44' : T.ink10}`, borderRadius: 10, padding: '14px 18px', opacity: (!isDone && !isLoading) ? 0.6 : 1, transition: 'opacity 0.3s, border-color 0.3s' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                       <span className="sy-mono" style={{ fontSize: 11, color: T.ink40, flexShrink: 0 }}>0{ci + 1}</span>
@@ -167,8 +167,21 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
                     <div style={{ flexShrink: 0 }}>
                       {stage2Errors[ci] && <button onClick={() => onRetryChapter(ci)} style={{ fontSize: 11, color: T.accent, background: T.bgSunken, padding: '4px 8px', borderRadius: 6 }}>Thử lại</button>}
                       {isLoading && <div className="sy-animate-spin" style={{ width: 16, height: 16, border: `2px solid ${T.ink10}`, borderTopColor: T.accent, borderRadius: '50%' }} />}
+                      {isDone && <span style={{ fontSize: 13, color: T.srsGood }}>✓</span>}
                     </div>
                   </div>
+                  {ch.lessons?.length > 0 && (
+                    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${T.ink10}`, display: 'flex', flexDirection: 'column', gap: 5 }}>
+                      {ch.lessons.map((lesson, li) => (
+                        <div key={li} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span className="sy-mono" style={{ fontSize: 10, color: isDone ? T.srsGood : isLoading ? T.accent : T.ink20, flexShrink: 0, width: 10 }}>
+                            {isDone ? '✓' : isLoading ? '◉' : '○'}
+                          </span>
+                          <span className="sy-mono" style={{ fontSize: 11, color: isDone ? T.ink60 : T.ink40, lineHeight: 1.4 }}>{lesson.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )
             })}
