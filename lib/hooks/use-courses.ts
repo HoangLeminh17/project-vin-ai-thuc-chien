@@ -86,6 +86,8 @@ export function useCourses(userId: string | null) {
 
   const deleteCourse = useCallback(async (id: string): Promise<boolean> => {
     if (!userId) return false;
+    let snapshot: SavedCourse[] = [];
+    setCourses(prev => { snapshot = prev; return prev.filter(c => c.id !== id); });
     try {
       if (localAdapter) {
         await localAdapter.delete(id, userId);
@@ -94,12 +96,13 @@ export function useCourses(userId: string | null) {
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
       }
-      await refresh();
       return true;
     } catch {
+      setCourses(snapshot);
+      setError('Xóa thất bại, vui lòng thử lại.');
       return false;
     }
-  }, [userId, refresh]);
+  }, [userId]);
 
   return { courses, loading, error, refresh, saveCourse, updateCourse, deleteCourse };
 }

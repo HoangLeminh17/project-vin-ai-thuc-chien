@@ -211,7 +211,7 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { user, loading: authLoading, login, logout } = useAuth()
-  const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses } = useCourses(user?.uid ?? null)
+  const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses, error: deleteError } = useCourses(user?.uid ?? null)
 
   const prevStatus = useRef(status)
   useEffect(() => {
@@ -418,6 +418,12 @@ export default function Home() {
               </button>
             )}
           </div>
+
+          {deleteError && (
+            <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fff5f5', border: '1px solid #fecdcd', borderRadius: 8, fontSize: 13, color: '#7a0000' }}>
+              {deleteError}
+            </div>
+          )}
 
           {/* File selected: show start button */}
           {file && (

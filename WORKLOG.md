@@ -11,6 +11,25 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Task | Người làm | PR |
 |---|---|---|
 | Redesign `/course/[id]` — Master-Detail CourseTree | Nguyễn Bình Thành | #53, #54, #55 |
+| Optimistic update cho xóa course ở thư viện | Nguyễn Bình Thành | #62 |
+
+---
+
+### [ADR-26] Optimistic update cho xóa course — 08/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #62
+
+**Bối cảnh:** Flow xóa course cũ: gọi DELETE API → chờ response (~1–2s) → gọi GET /api/courses để refresh → UI mới cập nhật. User phải đợi latency của 2 round-trip trước khi thấy kết quả.
+
+**Quyết định: Optimistic update trong `useCourses` hook**
+
+- Dùng functional `setCourses(prev => ...)` để capture snapshot và filter ngay lập tức — UI cập nhật tức thì, không chờ network.
+- Gọi DELETE API ngầm sau đó.
+- Thành công: không cần gọi `refresh()` thêm — state đã đúng từ bước optimistic.
+- Thất bại: `setCourses(snapshot)` để revert về danh sách cũ + `setError(...)` để hiện banner lỗi trong library section.
+- Loại bỏ `refresh()` khỏi success path của `deleteCourse`, `refresh` cũng được bỏ khỏi dependency array của callback này.
+
+**Lý do không tạo toast riêng:** Hook đã có `error` state được consumer đọc; reuse tránh thêm dependency và component mới không cần thiết.
 
 ---
 
