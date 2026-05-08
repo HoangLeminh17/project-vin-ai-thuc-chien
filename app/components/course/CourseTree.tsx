@@ -98,11 +98,12 @@ export interface Props {
   progressMap: Record<string, ProgressEntry>
   diagnosticState: Record<string, number>
   onExit: () => void
+  pdfLocalPath?: string | null
 }
 
 // ── CourseTree ─────────────────────────────────────────────────────────────────
 
-export function CourseTree({ course, progressMap, diagnosticState, onExit }: Props) {
+export function CourseTree({ course, progressMap, diagnosticState, onExit, pdfLocalPath }: Props) {
   const chapters = course.course.chapters
   const allCards = useMemo(() => flattenCards(course), [course])
 
@@ -410,6 +411,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit }: Pro
                 cards={allCards.filter(c => c.ci === activeCard.ci && c.li === activeCard.li)}
                 controlledCardId={activeCard.id}
                 hideList
+                pdfLocalPath={pdfLocalPath}
               />
             </>
           )}
