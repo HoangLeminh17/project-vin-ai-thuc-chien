@@ -13,37 +13,31 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Redesign `/course/[id]` — Master-Detail CourseTree | Nguyễn Bình Thành | #53, #54, #55 |
 | Optimistic update cho xóa course ở thư viện | Nguyễn Bình Thành | #62 |
 | In-memory TTL cache cho VerifySessionUseCase | Nguyễn Bình Thành | #63 |
-| Fix pipeline tracker stuck "Tạo concept cards · 0/2" | Nguyễn Bình Thành | (PR pending) |
+| Fix pipeline tracker stuck + lesson list trong GenerationScreen | Nguyễn Bình Thành | #64 |
 
 ---
 
-### [Investigation] Pipeline tracker stuck — 08/05/2026
+### [ADR-28] Fix pipeline tracker stuck + lesson list — 08/05/2026
 
-**Người làm:** Nguyễn Bình Thành
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #64
 
-**Triệu chứng:**
-- Pipeline tracker hiện `Tạo concept cards · 0/2` và không tiến thêm
-- `/api/generate-course` trả về 200 trong 872ms (bất thường, nghi cache)
-- `/api/generate-content` không xuất hiện trong log
-- `/api/extract-facts` gọi 3 lần song song
+**Triệu chứng ban đầu:** Pipeline tracker hiện `Tạo concept cards · 0/2` không tiến, `/api/generate-content` không được gọi, generate-course trả về 872ms (nghi cache hit).
 
-**Root cause (static analysis):**
+**Ba bug được tìm và fix:**
 
-`generation-context.tsx` lines 176–197 — nhánh "existing course":
+**Bug 1 — `setCourseContentMap` bị bỏ sót (nhánh existing course):**
+Khi user re-upload PDF đã có trong Firestore, code build `map` từ `existing.courseContent` để truyền vào `runDiagnosticPrefetch` nhưng quên gọi `setCourseContentMap(map)`. Early return với `courseContentMap = {}` → tracker stuck mãi.
+Fix: Thêm `setCourseContentMap(map)` trước khi early return.
 
-```
-existing = courses.find(c => c.contentHash === hash)  → TÌM THẤY
-check = fetch('/api/courses/existing.id')             → 200 OK
-setSavedCourseId; setStatus('done'); return ← EARLY RETURN
-```
+**Bug 2 — Guard `chapters.length` bị thiếu:**
+`getFullCachedCourse` trả `{ chapters: [] }` (object truthy) khi Stage 1 cache có nhưng Stage 2 chưa generate. Cả hai nhánh "existing" và "fromCache" thiếu kiểm tra `chapters.length > 0` → nhảy vào cache path với map rỗng, stuck lại.
+Fix: Đổi điều kiện thành `existing.courseContent?.chapters?.length` và `data.courseContent?.chapters?.length`.
 
-Code **không gọi `setCourseContentMap()`** trước khi return. Có một `map` được build cho `runDiagnosticPrefetch` nhưng chỉ dùng nội bộ, không gọi setter. Kết quả: `courseContentMap` ở `{}` → tracker stuck.
+**Bug 3 — Lesson list không hiển thị trong GenerationScreen:**
+Chapter cards chỉ show title + trạng thái, không hiện lesson list dù Stage 1 đã có `course.chapters[ci].lessons[]`. User mất feedback về nội dung đang generate.
+Fix: Luôn render lesson list dưới mỗi chapter card: `○` pending → `◉` loading → `✓` done.
 
-Lý do 872ms: `courseRepository.getFullCachedCourse(hash)` trả full cache từ Firestore, không cần gọi OpenAI.
-
-Lý do `extract-facts` ×3: `FlashFactGallery` render ở 2 nơi (loading screen + GenerationScreen) + React StrictMode double-invoke trong dev.
-
-**Fix:** Thêm `setCourseContentMap(map)` trước `runDiagnosticPrefetch`, đồng thời đưa guard `existing.courseContent` lên điều kiện outer `if` để khi không có content → fall through regenerate thay vì early return với map rỗng.
+**Thay đổi kèm:** Cập nhật `PIPELINE.md` faithful với thực tế — sơ đồ flow đầy đủ, bảng caching 2 tầng, 4 nhánh `startGeneration` với guard condition.
 
 ---
 
