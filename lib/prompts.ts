@@ -58,6 +58,7 @@ Rules for concept cards:
 - answer: TL;DR 2-3 dense sentences, no bullets, answer the question directly
 - detail: 3-5 sentences expanding the answer; include analogy or concrete example if the concept is abstract
 - followUps: exactly 2 genuine follow-up questions that dig deeper, not just topic labels
+- sourceExcerpt: copy the single outline bullet that most directly supports the answer — verbatim, do not paraphrase
 
 Rules for quiz questions:
 - 3–5 questions testing understanding of the chapter content
@@ -80,7 +81,8 @@ Output schema:
         "answer": "TL;DR 2-3 câu trả lời thẳng vào câu hỏi.",
         "detail": "3-5 câu mở rộng, có analogy hoặc ví dụ.",
         "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"],
-        "source_chunk_id": "chunk-1-5"
+        "source_chunk_id": "chunk-1-5",
+        "sourceExcerpt": "Verbatim outline bullet that most directly supports the answer."
       }
     }
   ],
