@@ -28,8 +28,14 @@ Hệ thống có khả năng phát hiện các trường hợp:
 - `POST /update`: Cập nhật trạng thái tức thời sau mỗi lần học viên đánh giá thẻ bài (Hard/Ok/Easy).
 - `GET /health`: Kiểm tra sức khỏe hệ thống và trạng thái load model.
 
-## 🛠 Cài đặt & Chạy
-Dịch vụ được Dockerize hoàn toàn và tích hợp trong `docker-compose.yml` của toàn dự án.
+## 🧪 Kiểm thử & Linting
+Dịch vụ sử dụng `pytest` để chạy unit tests và `ruff` để đảm bảo chất lượng code.
+
+- **Chạy tests:** `pytest test_api.py -v`
+- **Chạy lint:** `ruff check .`
+- **Tự động sửa lỗi lint:** `ruff check . --fix`
+
+Hệ thống CI/CD sẽ tự động kiểm tra lint và chạy tests mỗi khi có code mới được đẩy lên.
 
 ---
 *Phát triển dựa trên nghiên cứu về Uncertainty-aware Knowledge Tracing.*

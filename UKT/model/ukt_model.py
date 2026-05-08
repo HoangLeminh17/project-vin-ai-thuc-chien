@@ -50,7 +50,7 @@ class WassersteinSelfAttention(nn.Module):
         )
 
         # Causal mask (chỉ attend đến quá khứ)
-        T = k_mu.size(1)
+        k_mu.size(1)
         attn_weights = torch.softmax(scores / self.scale, dim=-1)   # (B, T)
 
         # Weighted sum of values

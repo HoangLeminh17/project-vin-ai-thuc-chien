@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 # ── Cố gắng load PyTorch UKT ─────────────────────────────────────────────────
 try:
-    import torch
+    import torch  # noqa: F401
     from model.ukt_model import UKTModel
     TORCH_AVAILABLE = True
 except ImportError:

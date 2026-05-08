@@ -1,16 +1,14 @@
 """
 Test suite cho UKT API.
-Chạy: pytest tests/test_api.py -v
-Hoặc: python tests/test_api.py  (không cần pytest)
+Chạy: pytest test_api.py -v
+Hoặc: python test_api.py  (không cần pytest)
 """
 
-import sys, os
+import sys
+import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-import json
 import time
-import math
-from unittest.mock import patch
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -44,8 +42,7 @@ def make_interactions_for_student():
 
 def test_bayesian_engine_basic():
     """UKTEngine hoạt động với BayesianKT (không cần PyTorch)."""
-    from app.ukt_engine import UKTEngine, _is_aleatory
-    from app.state_store import StateStore
+    from app.ukt_engine import UKTEngine
 
     engine = UKTEngine()
     interactions = make_interactions_for_student()
@@ -69,7 +66,7 @@ def test_bayesian_engine_basic():
     assert result.priority_order[0] in ["tich_phan", "ma_tran"], \
         f"Weak KC should be first, got: {result.priority_order}"
 
-    print(f"[PASS] test_bayesian_engine_basic")
+    print("[PASS] test_bayesian_engine_basic")
     print(f"  dao_ham  µ={mu_dh:.3f}")
     print(f"  tich_phan µ={mu_tp:.3f}")
     print(f"  priority_order: {result.priority_order}")
@@ -94,7 +91,7 @@ def test_sigma_represents_uncertainty():
 
     assert sigma_few > sigma_many, \
         f"Ít data nên sigma cao hơn: {sigma_few:.3f} vs {sigma_many:.3f}"
-    print(f"[PASS] test_sigma_represents_uncertainty")
+    print("[PASS] test_sigma_represents_uncertainty")
     print(f"  sigma (2 interactions):  {sigma_few:.3f}")
     print(f"  sigma (20 interactions): {sigma_many:.3f}")
 
@@ -154,7 +151,7 @@ def test_next_card_zone_of_proximal_development():
     assert result.next_card_kc == "kc_medium", \
         f"Nên chọn kc_medium (zone of proximal dev.), got: {result.next_card_kc}\n" \
         f"p_correct values: { {kc: round(s.p_correct,3) for kc,s in result.knowledge_state.items()} }"
-    print(f"[PASS] test_next_card_zone_of_proximal_development")
+    print("[PASS] test_next_card_zone_of_proximal_development")
     print(f"  next_card_kc = {result.next_card_kc}")
     for kc, s in result.knowledge_state.items():
         print(f"  {kc}: µ={s.mu:.3f}, p_correct={s.p_correct:.3f}")
@@ -172,8 +169,8 @@ def test_update_state_ratings():
 
     assert easy_state["kc_test"]["mu"] > base_state["kc_test"]["mu"], "easy → µ tăng"
     assert hard_state["kc_test"]["mu"] < base_state["kc_test"]["mu"], "hard → µ giảm"
-    print(f"[PASS] test_update_state_ratings")
-    print(f"  base µ = 0.500")
+    print("[PASS] test_update_state_ratings")
+    print("  base µ = 0.500")
     print(f"  easy µ = {easy_state['kc_test']['mu']:.3f}")
     print(f"  hard µ = {hard_state['kc_test']['mu']:.3f}")
 
@@ -214,7 +211,7 @@ def test_prior_state_integration():
 
     # µ lần 2 nên cao hơn hoặc bằng lần 1 (prior tích lũy)
     assert mu2 >= mu1 - 0.01, f"Prior state phải được tích hợp: mu1={mu1:.3f}, mu2={mu2:.3f}"
-    print(f"[PASS] test_prior_state_integration")
+    print("[PASS] test_prior_state_integration")
     print(f"  µ without prior: {mu1:.3f}")
     print(f"  µ with prior:    {mu2:.3f}")
 
