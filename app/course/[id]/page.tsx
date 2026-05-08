@@ -20,7 +20,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const { id } = use(params)
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const { savedCourseId: generatingId, status: genStatus, courseContentMap: genContentMap, course: genCourse } = useGeneration()
+  const { savedCourseId: generatingId, status: genStatus, courseContentMap: genContentMap, course: genCourse, pdfLocalPath } = useGeneration()
 
   const [saved, setSaved] = useState<SavedCourse | null>(null)
   const [fetchError, setFetchError] = useState('')
@@ -91,6 +91,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           course={effectiveCourse}
           progressMap={progressMap}
           onExit={() => router.push('/')}
+          pdfLocalPath={pdfLocalPath}
         />
       </div>
     </div>
