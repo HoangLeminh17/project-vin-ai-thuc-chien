@@ -8,7 +8,7 @@ import { DiagnosticIntro, DiagnosticQuiz } from '@/app/components/diagnostic'
 import { CourseTree } from './CourseTree'
 import type { ProgressEntry } from '@/lib/types'
 
-type View = 'init' | 'diagnostic-intro' | 'diagnostic-loading' | 'diagnostic-quiz' | 'course-tree'
+type View = 'init' | 'diagnostic-intro' | 'diagnostic-loading' | 'diagnostic-quiz' | 'diagnostic-error' | 'course-tree'
 
 interface Props {
   course: SavedCourse
@@ -98,8 +98,7 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
       setDiagnosticQuestions(quiz.questions ?? [])
       setView('diagnostic-quiz')
     } catch {
-      localStorage.setItem(`diagnosticDone_${course.id}`, 'true')
-      setView('course-tree')
+      setView('diagnostic-error')
     }
   }, [course])
 
@@ -123,6 +122,21 @@ export function CourseFlow({ course, progressMap, onExit }: Props) {
 
   if (view === 'diagnostic-loading') return (
     <LoadingOverlay label="Đang tạo bài test chẩn đoán..." />
+  )
+
+  if (view === 'diagnostic-error') return (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: T.bg, fontFamily: T.fontSans, padding: 40, textAlign: 'center' }}>
+      <p style={{ fontSize: 15, fontWeight: 600, color: T.ink, margin: 0 }}>Không thể tạo bài test chẩn đoán</p>
+      <p style={{ fontSize: 13, color: T.ink60, margin: 0, maxWidth: 340, lineHeight: 1.55 }}>Có lỗi khi kết nối máy chủ. Bạn có thể thử lại hoặc bỏ qua để vào khóa học.</p>
+      <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+        <button onClick={handleDiagnosticStart} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none' }}>
+          Thử lại
+        </button>
+        <button onClick={handleSkipDiagnostic} style={{ background: T.bgSolid, color: T.ink60, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: `1px solid ${T.ink10}` }}>
+          Bỏ qua →
+        </button>
+      </div>
+    </div>
   )
 
   if (view === 'diagnostic-quiz') return (

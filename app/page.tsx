@@ -173,34 +173,22 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
               )
             })}
           </div>
-          {allDone && savedCourseId && (diagnosticStatus === 'done' || diagnosticStatus === 'error') ? (
+          {allDone && savedCourseId && (diagnosticStatus === 'done' || diagnosticStatus === 'error') && (
             <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${T.ink10}` }}>
               <p style={{ fontSize: 16, fontWeight: 700, color: T.ink, margin: '0 0 4px' }}>🎉 Khóa học đã sẵn sàng!</p>
               <p style={{ fontSize: 12, color: T.ink60, margin: '0 0 16px' }}>
-                {diagnosticStatus === 'done' ? 'Bài test chẩn đoán đã sẵn sàng!' : diagnosticStatus === 'error' ? 'Không tạo được bài test — bạn có thể làm sau.' : 'Bài test chẩn đoán đang được tạo...'}
+                {diagnosticStatus === 'done' ? 'Bài test chẩn đoán đã được chuẩn bị sẵn.' : 'Không tạo được bài test — bạn có thể bỏ qua trong khóa học.'}
               </p>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                  Học luôn →
+                  Vào bài test chẩn đoán →
                 </button>
                 <button onClick={handleGoBack} style={{ background: T.bgSolid, color: T.ink60, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: `1px solid ${T.ink10}` }}>
                   ← Quay về thư viện
                 </button>
               </div>
             </div>
-          ) : savedCourseId ? (
-            <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${T.ink10}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-                <div>
-                  <p style={{ fontSize: 14, fontWeight: 700, color: T.ink, margin: 0 }}>Đang biên soạn...</p>
-                  <p style={{ fontSize: 12, color: T.ink60, margin: '2px 0 0' }}>Bạn có thể học các chương đã hoàn thành ngay bây giờ.</p>
-                </div>
-                <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-                  Học ngay →
-                </button>
-              </div>
-            </div>
-          ) : null}
+          )}
         </div>
         <div style={{ padding: '28px', background: T.bgSoft, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
