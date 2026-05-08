@@ -4,11 +4,11 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 > **Cập nhật mỗi cuối tuần** (trước khi tạo PR). Không cần dài, chỉ cần thật.
 
+**Thành viên:** Nguyễn Bình Thành, Lê Kim Dũng, Lê Minh Hoàng
+
 ---
 
 ## Tuần 1 — 05/04/2026
-
-**Thành viên:** Nguyễn Bình Thành
 
 #### Đã làm
 - Setup Next.js 15 + Tailwind + TypeScript từ đầu
@@ -41,8 +41,6 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 ---
 
 ## Tuần 2 — 12/04/2026
-
-**Thành viên:** Nguyễn Bình Thành, Lê Kim Dũng
 
 ---
 
@@ -106,14 +104,40 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ## Tuần 3 — 19/04/2026
 
-**Thành viên:** Nguyễn Bình Thành, Lê Kim Dũng
-
 ---
 
 ### Nguyễn Bình Thành
 
 #### Đã làm
-- (Đang chờ cập nhật từ Thành)
+- Đổi model Gemini → OpenAI GPT-4o để giảm chi phí token, thêm debug pipeline
+- Xây dựng structure tree cho khóa học từ tài liệu PDF
+- **Đổi hướng sản phẩm:** chuyển từ "tạo slide" sang target cụ thể "học sinh ôn thi trong 1 đêm" — scope sâu hơn, painpoint chính xác hơn
+- Quyết định xóa toàn bộ tính năng slide (sau nhiều ngày phân vân giữa 3 hướng: closed API / JS-based / pptx native) — thay bằng ConceptCard text đơn giản hơn
+- Tối ưu số token trong pipeline: chuyển 2 stage sang GPT-4o-mini, thay `source_text` verbatim bằng `outline: string[]` (−79% completion tokens)
+- Implement ConceptCard: câu hỏi → ô input tự trả lời → Reveal → TL;DR + follow-ups + Anki mock buttons
+- Chuyển parser sang `content_list.json` + viết regex classifier + seen-set dedupe (72 marker → 8 `##` + 20 `###`)
+
+#### Khó nhất tuần này
+- Không biết chọn hướng nào để gen slide (closed API vs JS-based vs pptx native) — mất thời gian nghiên cứu trước khi quyết định bỏ slide hoàn toàn.
+- content_list naive emit `##` cho mọi `text_level=1` → LLM bị flood context, drop chapter, output sai ngôn ngữ. Fix bằng regex classifier + dedupe.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Viết regex classifier, content-list-converter, tái cấu trúc ConceptCard type + UI, tối ưu token | Hoàn thành trong sprint |
+
+#### Học được
+- Bỏ feature đúng thời điểm (xóa slide) giảm complexity lớn hơn là tối ưu feature đó.
+- Structural signal trong input (marker `##`) quan trọng hơn instruction trong prompt.
+- Đổi hướng sớm (tuần 3) tốt hơn đổi hướng muộn — pivot nhanh ít tốn công hơn.
+
+#### Nếu làm lại, sẽ làm khác
+- Quyết định bỏ slide từ tuần 2 thay vì mất 1 tuần phân vân giữa các hướng gen slide.
+
+#### Kế hoạch tuần tới
+- Learning Dashboard: lưu & browse khóa học đã tạo
+- Gamification: Streak, Heatmap, Mastery ring
+- Giao diện theo dõi tiến trình AI tạo bài
 
 ---
 
@@ -149,6 +173,132 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 #### Kế hoạch tuần tới
 - Hiện thực hóa phân quyền (Authorization) dựa trên Role người dùng.
 - Tích hợp thêm bước tự động deploy (CD) lên Railway hoặc Vercel ngay khi check-in code.
+
+---
+
+## Tuần 4 — 26/04/2026
+
+---
+
+### Nguyễn Bình Thành
+
+#### Đã làm
+- Xây Learning Dashboard (`/dashboard`): lưu và browse các khóa học đã tạo
+- Tích hợp Spaced Repetition System (SM2): theo dõi tiến độ từng thẻ, lên lịch ôn tập
+- Nâng cấp UX trang Study & Edit: phím tắt (E/A), dán nhãn nguồn (source badge)
+- Thêm Gamification ở trang Home: Streak (chuỗi ngày học), Heatmap 30 ngày, Mastery ring
+- Giao diện Pipeline Tracker: thanh tiến trình lúc đợi AI tạo khóa học
+- Cải tổ trang Browse: thêm rail điều hướng, cột lọc theo tiến độ
+- Refactor Browse theo Clean Architecture (Port/Adapter/Use case)
+- Fix log hook UTF-8 encoding trên Windows (PR #35)
+
+#### Khó nhất tuần này
+- UI/UX vẫn là điểm yếu — biết muốn cải thiện nhưng chưa có direction cụ thể để thực hiện.
+- Merge PR #30 xong GitHub tự động đóng PR #31 và #32 đang target vào branch đó — phải tạo lại thành PR #36, #37.
+- Điểm PR bị đánh thấp (~52/100) vì nhồi nhiều tính năng vào một PR, thiếu mô tả lý do và bằng chứng.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Build Dashboard, Gamification components, Browse refactor, fix UTF-8 hook | Hoàn thành 7 PR trong sprint |
+
+#### Học được
+- Atomic PR quan trọng: 1 PR = 1 concern. Nhồi tính năng vào 1 PR khó review và bị điểm thấp.
+- Không xóa branch trước khi chắc chắn không có PR nào đang target vào đó.
+
+#### Nếu làm lại, sẽ làm khác
+- Chia PR từ đầu theo 3 lớp (Structure → UI → Logic) thay vì commit xong mới chia.
+
+#### Kế hoạch tuần tới
+- Synapsy UI redesign
+- Tách CourseFlow thành component nhỏ hơn
+- Fix luồng diagnostic và generation bugs
+
+---
+
+### Lê Kim Dũng
+
+#### Đã làm
+- (Đang chờ cập nhật từ Dũng)
+
+---
+
+## Tuần 5 — 03/05/2026
+
+---
+
+### Nguyễn Bình Thành
+
+#### Đã làm
+- Synapsy UI redesign toàn bộ trang `/course/[id]`
+- Tách `CourseFlow` monolithic (~1973 dòng) thành state machine với các component riêng: `DiagnosticIntro`, `DiagnosticQuiz`, `CourseTree`, `LessonView`
+- Fix luồng diagnostic: dùng `localStorage` flag (`justGenerated_`) để chỉ hiện diagnostic khi user vào từ thư viện, không hiện sau redirect tự động từ generation
+- Dùng `useRef` guard chống React Strict Mode double-mount khiến flag bị tiêu thụ 2 lần
+- Fix generation: branch `fromCache` thiếu `saveCourse` → course không lưu vào thư viện, nút "Học ngay" không hoạt động
+- Fix redirect vào 404 khi course bị xóa rồi tạo lại cùng file
+- Thay auto-redirect bằng màn hình hoàn thành 2 nút: "Học luôn →" vs "← Quay về thư viện"
+
+#### Khó nhất tuần này
+- React Strict Mode mount component 2 lần → `useEffect` chạy 2 lần → flag `justGenerated_` bị đọc ở lần 1, lần 2 không còn flag và hiển thị diagnostic nhầm. Mất thời gian debug vì hành vi này chỉ xuất hiện trong dev mode.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Tách CourseFlow, debug double-mount, fix 4 bug generation | PR #46 hoàn thành trong sprint |
+
+#### Học được
+- `useRef` không bị reset giữa các lần mount của React Strict Mode — dùng làm "run-once guard" thay vì `useState`.
+- `await` trong Promise chain còn có tác dụng phụ là phá batch React update, ảnh hưởng thứ tự render.
+
+#### Nếu làm lại, sẽ làm khác
+- Viết integration test cho CourseFlow state machine trước khi refactor để phát hiện regression sớm hơn.
+
+#### Kế hoạch tuần tới
+- Redesign `/course/[id]` sang Master-Detail layout
+
+---
+
+### Lê Kim Dũng
+
+#### Đã làm
+- (Đang chờ cập nhật từ Dũng)
+
+---
+
+## Tuần 6 — 10/05/2026
+
+---
+
+### Nguyễn Bình Thành
+
+#### Đã làm
+- Redesign `/course/[id]` thành layout Master-Detail 2 cột: `CourseTree` (300px, navigation cố định) + Detail pane (flex-1)
+- Xóa `LessonView.tsx` và 3 tab Thẻ/Học/Sửa — thẻ hiện inline trong cây bài học, không cần màn hình trung gian
+- Thêm nút "Ôn X thẻ" ở header gom toàn bộ thẻ due trong 1 click
+- Chuyển `ProgressEntry` từ component UI ra `lib/types.ts` (domain type, không phụ thuộc UI)
+- Thêm `hideList` và `controlledCardId` vào `EditMode` để reuse mà không duplicate code
+- Fix diagnostic silent-skip: hiện `diagnostic-error` view thay vì skip thầm lặng khi API fail
+- Thêm UI retry/skip vào diagnostic-error state
+- Fix timing: hiện `DiagnosticIntro` trước quiz, đợi diagnostic xong mới chuyển sang ready state
+- Xóa nút Study xuất hiện giữa chừng generation — chỉ hiện CTA khi generation hoàn toàn xong
+
+#### Khó nhất tuần này
+- Hết quota Claude Design API giữa sprint — thiếu design reference để hoàn thiện learning interface, phải làm thủ công từ handoff cũ. Đây là lý do tiến độ tuần này chậm hơn dự kiến.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Implement Master-Detail layout, fix diagnostic flow, debug timing issues | PR #53–55, #59 và branch fix/diagnostic |
+| Claude Design | Thiết kế Synapsy Prototype (handoff cho implementation) | Hết quota giữa sprint |
+
+#### Học được
+- Dependency vào external design tool là bottleneck không lường trước — cần export đủ assets trước khi bắt đầu implement.
+
+#### Nếu làm lại, sẽ làm khác
+- Export đầy đủ design spec và assets từ Claude Design ngay khi có quota, trước khi bắt đầu code.
+
+#### Kế hoạch tuần tới
+- Hoàn thiện MVP: stabilize toàn bộ CourseFlow, merge diagnostic fixes, hoàn thiện learning interface
 
 ---
 
