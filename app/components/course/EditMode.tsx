@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { T } from '@/app/components/synapsy'
 import { FlatCard } from './types'
+import { PdfPanel } from './PdfPanel'
 
 const AI_CHIPS = ['💡 Giải thích dễ hơn', '📌 Thêm ví dụ lâm sàng', '🎯 Tại sao quan trọng?', '🧪 Câu hỏi biến thể', '🇬🇧 Dịch tiếng Anh']
 
@@ -20,6 +21,7 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
   const [aiInput, setAiInput] = useState('')
   const [aiProposal, setAiProposal] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
+  const [showSource, setShowSource] = useState(false)
   const aiInputRef = useRef<HTMLInputElement>(null)
 
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
@@ -82,9 +84,11 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
         })}
       </div>}
 
-      {/* Detail pane */}
-      <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
-        <div style={{ maxWidth: 660, margin: '0 auto', padding: '22px 28px 100px' }}>
+      {/* Detail pane + optional PdfPanel */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: T.bg }}>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ maxWidth: 660, margin: '0 auto', padding: '22px 28px 24px' }}>
 
           {/* Breadcrumb */}
           <div className="sy-mono" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: T.ink40, marginBottom: 16 }}>
@@ -123,6 +127,24 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
             </div>
           )}
 
+          {/* Source */}
+          {card.concept.sourceExcerpt && (
+            <div style={{ background: T.bgSoft, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '14px 22px', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Nguồn</span>
+                <button
+                  onClick={() => setShowSource(s => !s)}
+                  style={{ fontSize: 11, color: T.accent, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.fontSans }}
+                >
+                  {showSource ? '← Đóng' : 'Xem trang →'}
+                </button>
+              </div>
+              <p className="sy-serif" style={{ fontSize: 12.5, color: T.ink60, fontStyle: 'italic', margin: '6px 0 0', lineHeight: 1.55 }}>
+                &ldquo;{card.concept.sourceExcerpt}&rdquo;
+              </p>
+            </div>
+          )}
+
           {/* AI proposal */}
           {(aiProposal !== null || aiLoading) && (
             <div style={{ border: `1.5px solid ${T.ink20}`, background: T.bgSoft, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
@@ -157,9 +179,10 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
             </div>
           )}
         </div>
+      </div>{/* end scrollable content */}
 
         {/* AI dock */}
-        <div style={{ position: 'sticky', bottom: 0, background: T.bgSolid, borderTop: `1px solid ${T.ink10}`, padding: '12px 28px', boxShadow: '0 -4px 24px rgba(0,0,0,0.05)' }}>
+        <div style={{ flexShrink: 0, background: T.bgSolid, borderTop: `1px solid ${T.ink10}`, padding: '12px 28px', boxShadow: '0 -4px 24px rgba(0,0,0,0.05)' }}>
           <div style={{ maxWidth: 660, margin: '0 auto' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 9 }}>
               {AI_CHIPS.map(chip => (
@@ -178,7 +201,15 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
             </div>
           </div>
         </div>
-      </div>
+      </div>{/* end detail column */}
+      {showSource && card.concept.sourceExcerpt && (
+        <PdfPanel
+          sourceExcerpt={card.concept.sourceExcerpt}
+          chunkId={card.concept.source_chunk_id}
+          onClose={() => setShowSource(false)}
+        />
+      )}
+      </div>{/* end detail+panel wrapper */}
     </div>
   )
 }
