@@ -178,14 +178,14 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       );
       if (existing) {
         const check = await fetch(`/api/courses/${existing.id}`)
-        if (check.ok) {
+        if (check.ok && existing.courseContent) {
+          const map: Record<number, ChapterContent> = {}
+          existing.courseContent.chapters.forEach((ch, i) => { map[i] = ch })
+          setCourseContentMap(map)
           if (
             !localStorage.getItem(`diagnosticQuestions_${existing.id}`) &&
-            !localStorage.getItem(`diagnosticDone_${existing.id}`) &&
-            existing.courseContent
+            !localStorage.getItem(`diagnosticDone_${existing.id}`)
           ) {
-            const map: Record<number, ChapterContent> = {}
-            existing.courseContent.chapters.forEach((ch, i) => { map[i] = ch })
             runDiagnosticPrefetch(existing.id, buildMarkdown(existing.title, existing.course, map))
           }
           localStorage.setItem(`justGenerated_${existing.id}`, 'true')
@@ -193,7 +193,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           setStatus('done');
           return;
         }
-        // Course was deleted — fall through to regenerate
+        // Course was deleted or has no content — fall through to regenerate
       }
 
       const fromCache = data.fromCache;
