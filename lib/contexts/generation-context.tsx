@@ -178,7 +178,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       );
       if (existing) {
         const check = await fetch(`/api/courses/${existing.id}`)
-        if (check.ok && existing.courseContent) {
+        if (check.ok && existing.courseContent?.chapters?.length) {
           const map: Record<number, ChapterContent> = {}
           existing.courseContent.chapters.forEach((ch, i) => { map[i] = ch })
           setCourseContentMap(map)
@@ -202,7 +202,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       const accumulatedChapters: ChapterContent[] = [];
       let currentSavedId: string | null = null;
 
-      if (fromCache && data.courseContent) {
+      if (fromCache && data.courseContent?.chapters?.length) {
         const cachedChapters = data.courseContent.chapters as ChapterContent[] || [];
         const map: Record<number, ChapterContent> = {};
         cachedChapters.forEach((ch: ChapterContent, i: number) => { map[i] = ch; });
