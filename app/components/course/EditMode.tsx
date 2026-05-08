@@ -1,9 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { T } from '@/app/components/synapsy'
 import { FlatCard } from './types'
-import { PdfPanel } from './PdfPanel'
+
+const PdfPanel = dynamic(
+  () => import('./PdfPanel').then(m => m.PdfPanel),
+  { ssr: false, loading: () => null }
+)
 
 const AI_CHIPS = ['💡 Giải thích dễ hơn', '📌 Thêm ví dụ lâm sàng', '🎯 Tại sao quan trọng?', '🧪 Câu hỏi biến thể', '🇬🇧 Dịch tiếng Anh']
 
