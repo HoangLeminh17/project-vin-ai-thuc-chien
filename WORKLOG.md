@@ -12,6 +12,26 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 |---|---|---|
 | Redesign `/course/[id]` — Master-Detail CourseTree | Nguyễn Bình Thành | #53, #54, #55 |
 | Optimistic update cho xóa course ở thư viện | Nguyễn Bình Thành | #62 |
+| In-memory TTL cache cho VerifySessionUseCase | Nguyễn Bình Thành | #63 |
+
+---
+
+### [ADR-27] In-memory TTL cache cho VerifySessionUseCase — 08/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #63
+
+**Bối cảnh:** Mỗi API request đều gọi `VerifySessionUseCase.execute()` để xác thực session cookie. Mỗi lần verify gọi Firebase Admin `auth.verifySessionCookie()` tốn ~400–600ms. Với một trang như thư viện load đồng thời nhiều API (courses, progress/stats, progress/map…), mỗi request đều bị cộng thêm latency này.
+
+**Quyết định: Module-level Map cache với TTL 5 phút**
+
+- `sessionCache` là `Map<string, { user: User; expiresAt: number }>` khai báo ở module scope của `verify-session.usecase.ts` — sống theo Node.js process, clear khi restart server.
+- Cache key = session cookie value (chuỗi JWT dài, đủ unique theo session).
+- TTL = 5 phút: ngắn hơn nhiều so với Firebase session expiry (1 tuần), đủ an toàn nếu token bị revoke.
+- Cache hit: return `cached.user` ngay, không gọi Firebase.
+- Cache miss hoặc hết TTL: gọi Firebase → lưu kết quả mới.
+- Verify thất bại: `sessionCache.delete(key)` để evict entry cũ (tránh serve stale data nếu token vừa bị revoke).
+
+**Lý do đặt cache ở use case thay vì adapter:** Task yêu cầu cache "kết quả VerifySessionUseCase" — tức là cache ở tầng use case, không phải tầng infrastructure. `Map` là stdlib JavaScript, không vi phạm "no external deps" của core layer.
 
 ---
 
