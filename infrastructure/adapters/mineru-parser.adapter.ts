@@ -100,6 +100,7 @@ export class MineruParserAdapter implements IDocumentParser {
 
     let contentList: any[] = [];
     let markdown = '';
+    let pdfLocalPath: string | undefined;
 
     for (const [zipPath, entry] of Object.entries(zip.files)) {
       if (entry.dir) continue;
@@ -111,6 +112,10 @@ export class MineruParserAdapter implements IDocumentParser {
         : await entry.async('nodebuffer');
 
       await fs.writeFile(dest, data, typeof data === 'string' ? 'utf-8' : undefined);
+
+      if (zipPath.endsWith('_origin.pdf')) {
+        pdfLocalPath = dest;
+      }
 
       if (zipPath.endsWith('content_list.json') || zipPath.endsWith('_content_list_v2.json')) {
         try {
@@ -124,8 +129,8 @@ export class MineruParserAdapter implements IDocumentParser {
     }
 
     if (!markdown) throw new InfrastructureError('content_list.json not found or empty in zip archive');
-    console.log(`[parse-pdf] Saved to ${outDir}`);
-    return { markdown, contentList };
+    console.log(`[parse-pdf] Saved to ${outDir}${pdfLocalPath ? `, pdf: ${pdfLocalPath}` : ''}`);
+    return { markdown, contentList, pdfLocalPath };
   }
 
   async extractMarkdown(fileUrl: string, safeName: string): Promise<ParseResult> {
