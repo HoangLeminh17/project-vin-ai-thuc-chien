@@ -21,9 +21,9 @@ const handler = async (req: NextRequest) => {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  const { markdown, contentList } = await parseDocumentUseCase.execute(buffer, file.name)
+  const { markdown, contentList, pdfLocalPath } = await parseDocumentUseCase.execute(buffer, file.name)
 
-  return NextResponse.json({ success: true, markdown, contentList })
+  return NextResponse.json({ success: true, markdown, contentList, pdfLocalPath })
 }
 
 export const POST = withApiLogging('/api/parse-pdf', handler)

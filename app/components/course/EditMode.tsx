@@ -1,8 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import dynamic from 'next/dynamic'
 import { T } from '@/app/components/synapsy'
 import { FlatCard } from './types'
+
+const PdfPanel = dynamic(
+  () => import('./PdfPanel').then(m => m.PdfPanel),
+  { ssr: false, loading: () => null }
+)
 
 const AI_CHIPS = ['💡 Giải thích dễ hơn', '📌 Thêm ví dụ lâm sàng', '🎯 Tại sao quan trọng?', '🧪 Câu hỏi biến thể', '🇬🇧 Dịch tiếng Anh']
 
@@ -13,13 +19,17 @@ interface Props {
   controlledCardId?: string | null
   /** Hides the left card list — used when the tree nav IS the card list */
   hideList?: boolean
+  /** Local filesystem path to the origin PDF — enables the source panel */
+  pdfLocalPath?: string | null
 }
 
-export function EditMode({ cards, initialCardId, controlledCardId, hideList }: Props) {
+export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdfLocalPath }: Props) {
   const [selectedId, setSelectedId] = useState(controlledCardId ?? initialCardId ?? cards[0]?.id ?? null)
   const [aiInput, setAiInput] = useState('')
   const [aiProposal, setAiProposal] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
+  const [showSource, setShowSource] = useState(false)
+  const [citationOpen, setCitationOpen] = useState(false)
   const aiInputRef = useRef<HTMLInputElement>(null)
 
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
@@ -33,6 +43,11 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
       setSelectedId(cards[0].id)
     }
   }, [cards, selectedId])
+
+  useEffect(() => {
+    setCitationOpen(false)
+    setShowSource(false)
+  }, [selectedId])
 
   const runAI = (prompt: string) => {
     if (!card || aiLoading) return
@@ -82,9 +97,11 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
         })}
       </div>}
 
-      {/* Detail pane */}
-      <div style={{ flex: 1, overflow: 'auto', background: T.bg }}>
-        <div style={{ maxWidth: 660, margin: '0 auto', padding: '22px 28px 100px' }}>
+      {/* Detail pane + optional PdfPanel */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: T.bg }}>
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <div style={{ maxWidth: 660, margin: '0 auto', padding: '22px 28px 24px' }}>
 
           {/* Breadcrumb */}
           <div className="sy-mono" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: T.ink40, marginBottom: 16 }}>
@@ -106,20 +123,56 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
           {/* TL;DR */}
           <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
             <span className="sy-mono" style={{ fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>TL;DR</span>
-            <div contentEditable suppressContentEditableWarning className="sy-serif"
-              style={{ fontSize: 15, fontWeight: 500, color: T.ink, outline: 'none', marginTop: 6, lineHeight: 1.5 }}>
+            <p className="sy-serif" style={{ fontSize: 15, fontWeight: 500, color: T.ink, margin: '6px 0 0', lineHeight: 1.5 }}>
               {card.concept.answer}
-            </div>
+              {card.concept.sourceExcerpt && (
+                <sup
+                  onClick={() => setCitationOpen(v => !v)}
+                  title="Xem nguồn"
+                  style={{ cursor: 'pointer', color: T.accent, fontSize: 11, marginLeft: 3, fontWeight: 700 }}
+                >①</sup>
+              )}
+            </p>
           </div>
+
+          {/* Citation popover */}
+          {citationOpen && card.concept.sourceExcerpt && (
+            <div style={{ background: T.bgSoft, border: `1.5px solid ${T.accent}33`, borderRadius: 10, padding: '12px 16px', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span className="sy-mono" style={{ fontSize: 9, color: T.accent, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Nguồn ①</span>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  {pdfLocalPath && (
+                    <button
+                      onClick={() => { setCitationOpen(false); setShowSource(true) }}
+                      style={{ fontSize: 11, color: T.accent, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.fontSans }}
+                    >Xem PDF →</button>
+                  )}
+                  <button
+                    onClick={() => setCitationOpen(false)}
+                    style={{ fontSize: 14, color: T.ink40, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}
+                  >×</button>
+                </div>
+              </div>
+              <p className="sy-serif" style={{ fontSize: 12.5, color: T.ink60, fontStyle: 'italic', margin: 0, lineHeight: 1.55 }}>
+                &ldquo;{card.concept.sourceExcerpt}&rdquo;
+              </p>
+            </div>
+          )}
 
           {/* Detail */}
           {card.concept.detail && (
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
               <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Chi tiết</span>
-              <div contentEditable suppressContentEditableWarning className="sy-serif"
-                style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, outline: 'none', marginTop: 6 }}>
+              <p className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, margin: '6px 0 0' }}>
                 {card.concept.detail}
-              </div>
+                {card.concept.sourceExcerpt && (
+                  <sup
+                    onClick={() => setCitationOpen(v => !v)}
+                    title="Xem nguồn"
+                    style={{ cursor: 'pointer', color: T.accent, fontSize: 11, marginLeft: 3, fontWeight: 700 }}
+                  >①</sup>
+                )}
+              </p>
             </div>
           )}
 
@@ -157,9 +210,10 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
             </div>
           )}
         </div>
+      </div>{/* end scrollable content */}
 
         {/* AI dock */}
-        <div style={{ position: 'sticky', bottom: 0, background: T.bgSolid, borderTop: `1px solid ${T.ink10}`, padding: '12px 28px', boxShadow: '0 -4px 24px rgba(0,0,0,0.05)' }}>
+        <div style={{ flexShrink: 0, background: T.bgSolid, borderTop: `1px solid ${T.ink10}`, padding: '12px 28px', boxShadow: '0 -4px 24px rgba(0,0,0,0.05)' }}>
           <div style={{ maxWidth: 660, margin: '0 auto' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 9 }}>
               {AI_CHIPS.map(chip => (
@@ -178,7 +232,16 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList }: P
             </div>
           </div>
         </div>
-      </div>
+      </div>{/* end detail column */}
+      {showSource && card.concept.sourceExcerpt && pdfLocalPath && (
+        <PdfPanel
+          pdfLocalPath={pdfLocalPath}
+          sourceExcerpt={card.concept.sourceExcerpt}
+          chunkId={card.concept.source_chunk_id}
+          onClose={() => setShowSource(false)}
+        />
+      )}
+      </div>{/* end detail+panel wrapper */}
     </div>
   )
 }
