@@ -29,6 +29,7 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
   const [aiProposal, setAiProposal] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [showSource, setShowSource] = useState(false)
+  const [citationOpen, setCitationOpen] = useState(false)
   const aiInputRef = useRef<HTMLInputElement>(null)
 
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
@@ -42,6 +43,11 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
       setSelectedId(cards[0].id)
     }
   }, [cards, selectedId])
+
+  useEffect(() => {
+    setCitationOpen(false)
+    setShowSource(false)
+  }, [selectedId])
 
   const runAI = (prompt: string) => {
     if (!card || aiLoading) return
@@ -119,15 +125,39 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
             <span className="sy-mono" style={{ fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>TL;DR</span>
             <p className="sy-serif" style={{ fontSize: 15, fontWeight: 500, color: T.ink, margin: '6px 0 0', lineHeight: 1.5 }}>
               {card.concept.answer}
-              {card.concept.sourceExcerpt && pdfLocalPath && (
+              {card.concept.sourceExcerpt && (
                 <sup
-                  onClick={() => setShowSource(true)}
-                  title="Xem nguồn trong PDF"
+                  onClick={() => setCitationOpen(v => !v)}
+                  title="Xem nguồn"
                   style={{ cursor: 'pointer', color: T.accent, fontSize: 11, marginLeft: 3, fontWeight: 700 }}
                 >①</sup>
               )}
             </p>
           </div>
+
+          {/* Citation popover */}
+          {citationOpen && card.concept.sourceExcerpt && (
+            <div style={{ background: T.bgSoft, border: `1.5px solid ${T.accent}33`, borderRadius: 10, padding: '12px 16px', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <span className="sy-mono" style={{ fontSize: 9, color: T.accent, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Nguồn ①</span>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  {pdfLocalPath && (
+                    <button
+                      onClick={() => { setCitationOpen(false); setShowSource(true) }}
+                      style={{ fontSize: 11, color: T.accent, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.fontSans }}
+                    >Xem PDF →</button>
+                  )}
+                  <button
+                    onClick={() => setCitationOpen(false)}
+                    style={{ fontSize: 14, color: T.ink40, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1, padding: '0 2px' }}
+                  >×</button>
+                </div>
+              </div>
+              <p className="sy-serif" style={{ fontSize: 12.5, color: T.ink60, fontStyle: 'italic', margin: 0, lineHeight: 1.55 }}>
+                &ldquo;{card.concept.sourceExcerpt}&rdquo;
+              </p>
+            </div>
+          )}
 
           {/* Detail */}
           {card.concept.detail && (
@@ -135,33 +165,13 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
               <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Chi tiết</span>
               <p className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, margin: '6px 0 0' }}>
                 {card.concept.detail}
-                {card.concept.sourceExcerpt && pdfLocalPath && (
+                {card.concept.sourceExcerpt && (
                   <sup
-                    onClick={() => setShowSource(true)}
-                    title="Xem nguồn trong PDF"
+                    onClick={() => setCitationOpen(v => !v)}
+                    title="Xem nguồn"
                     style={{ cursor: 'pointer', color: T.accent, fontSize: 11, marginLeft: 3, fontWeight: 700 }}
                   >①</sup>
                 )}
-              </p>
-            </div>
-          )}
-
-          {/* Source excerpt — always visible; PDF toggle only when local path available */}
-          {card.concept.sourceExcerpt && (
-            <div style={{ background: T.bgSoft, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '14px 22px', marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Nguồn ①</span>
-                {pdfLocalPath && (
-                  <button
-                    onClick={() => setShowSource(s => !s)}
-                    style={{ fontSize: 11, color: T.accent, fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', fontFamily: T.fontSans }}
-                  >
-                    {showSource ? '← Đóng' : 'Xem PDF →'}
-                  </button>
-                )}
-              </div>
-              <p className="sy-serif" style={{ fontSize: 12.5, color: T.ink60, fontStyle: 'italic', margin: '6px 0 0', lineHeight: 1.55 }}>
-                &ldquo;{card.concept.sourceExcerpt}&rdquo;
               </p>
             </div>
           )}
