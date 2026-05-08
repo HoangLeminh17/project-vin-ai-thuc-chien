@@ -248,6 +248,37 @@ async function generateChapterContentLocal(chapter: Chapter, input: string): Pro
   return { ...raw, lessons }
 }
 
+async function generateChapterContentHuggingFace(chapter: Chapter, input: string): Promise<ChapterContent> {
+  const apiKey = process.env.HUGGINGFACE_API_KEY!
+  const model = process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.1-8B-Instruct'
+  const baseUrl = 'https://api-inference.huggingface.co/v1/chat/completions'
+  
+  const res = await fetch(baseUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model, temperature: 0.3, response_format: { type: 'json_object' },
+      messages: [{ role: 'system', content: STAGE2_CHAPTER_PROMPT }, { role: 'user', content: input }],
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(`Hugging Face error (${res.status}): ${JSON.stringify(body?.error || body?.message || 'Unknown')}`)
+  }
+  const data = await res.json()
+  const text = data.choices?.[0]?.message?.content
+  if (!text) throw new Error('Hugging Face returned no content')
+  const raw: ChapterContent = JSON.parse(text)
+  if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
+  const lessons = raw.lessons.map((l: any, i: number) => {
+    if (l.concept) return l
+    const src = chapter.lessons[i]
+    return { ...l, concept: { question: `${src?.title ?? l.lesson_title} là gì?`, answer: src?.outline.slice(0, 2).join('. ') ?? '', followUps: [] } }
+  })
+  return { ...raw, lessons }
+}
+
+
 export async function generateChapterContent(chapter: Chapter): Promise<ChapterContent> {
   const chapterInput = {
     chapter_title: chapter.title,
@@ -288,41 +319,85 @@ export async function generateChapterContent(chapter: Chapter): Promise<ChapterC
     }
   }
 
+  if (process.env.HUGGINGFACE_API_KEY) {
+    try {
+      console.log('[generate-content] Trying Hugging Face...')
+      return await generateChapterContentHuggingFace(chapter, input)
+    } catch (e) {
+      console.warn('[generate-content] Hugging Face failed:', e)
+      lastError = e
+    }
+  }
+
   throw new Error(`All chapter generation providers failed. Last error: ${lastError}`)
 }
 export async function extractFacts(content: string): Promise<string[]> {
-  try {
-    const res = await fetch(OPENAI_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0.7,
-        messages: [
-          { role: 'system', content: 'Extract 5 interesting, short, and surprising facts or key takeaways from the provided text. Return them as a JSON object with a "facts" array of strings. Keep each fact under 15 words and in Vietnamese.' },
-          { role: 'user', content: content.slice(0, 5000) }, 
-        ],
-        response_format: { type: 'json_object' },
-      }),
-    })
-    
-    if (!res.ok) throw new Error('AI extraction failed')
-    
-    const data = await res.json()
-    const text = data.choices?.[0]?.message?.content
-    const obj = JSON.parse(text)
-    return obj.facts || []
-  } catch (e) {
-    console.error('[extractFacts] Error:', e)
-    return [
-      "Hệ thống đang chắt lọc những kiến thức tinh túy nhất cho bạn...",
-      "Sắp có một hành trình khám phá tri thức thú vị dành riêng cho bạn!",
-      "Học tập là hạt giống của sự phát triển, hãy cùng kiên nhẫn nhé.",
-      "Mỗi trang sách là một cửa sổ mở ra thế giới mới.",
-      "Kiến thức sẽ giúp bạn đi xa hơn những gì bạn tưởng tượng."
-    ]
+  const messages = [
+    { role: 'system', content: 'Extract 5 interesting, short, and surprising facts or key takeaways from the provided text. Return them as a JSON object with a "facts" array of strings. Keep each fact under 15 words and in Vietnamese.' },
+    { role: 'user', content: content.slice(0, 5000) }, 
+  ]
+
+  // 1. Try OpenAI
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          temperature: 0.7,
+          messages,
+          response_format: { type: 'json_object' },
+        }),
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        const text = data.choices?.[0]?.message?.content
+        return JSON.parse(text).facts || []
+      }
+    } catch (e) {
+      console.error('[extractFacts] OpenAI failed:', e)
+    }
   }
+
+  // 2. Try Hugging Face
+  if (process.env.HUGGINGFACE_API_KEY) {
+    try {
+      const res = await fetch('https://api-inference.huggingface.co/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.1-8B-Instruct',
+          temperature: 0.7,
+          messages,
+          response_format: { type: 'json_object' },
+        }),
+      })
+      
+      if (res.ok) {
+        const data = await res.json()
+        const text = data.choices?.[0]?.message?.content
+        return JSON.parse(text).facts || []
+      }
+    } catch (e) {
+      console.error('[extractFacts] Hugging Face failed:', e)
+    }
+  }
+
+  // Fallback to static facts
+  return [
+    "Hệ thống đang chắt lọc những kiến thức tinh túy nhất cho bạn...",
+    "Sắp có một hành trình khám phá tri thức thú vị dành riêng cho bạn!",
+    "Học tập là hạt giống của sự phát triển, hãy cùng kiên nhẫn nhé.",
+    "Mỗi trang sách là một cửa sổ mở ra thế giới mới.",
+    "Kiến thức sẽ giúp bạn đi xa hơn những gì bạn tưởng tượng."
+  ]
 }
+
