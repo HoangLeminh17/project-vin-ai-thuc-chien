@@ -31,6 +31,16 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 **Lý do không tạo toast riêng:** Hook đã có `error` state được consumer đọc; reuse tránh thêm dependency và component mới không cần thiết.
 
+**Kết quả đo thực tế (network tab):**
+
+| | Trước PR #62 | Sau PR #62 |
+|---|---|---|
+| Network calls | DELETE (1623ms) → GET (700ms) | DELETE (840ms) |
+| Tổng latency user thấy | ~2.3s | ~0ms (optimistic) |
+| DELETE time | 1623ms | 840ms — giảm ~48% |
+
+Lý do DELETE nhanh hơn: bỏ được overhead chờ serial response chain (trước đây GET phải đợi DELETE xong mới fire, tạo head-of-line blocking trên cùng connection).
+
 ---
 
 ### [ADR-25] Redesign trang khóa học thành Master-Detail — 07/05/2026
