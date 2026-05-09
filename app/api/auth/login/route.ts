@@ -11,6 +11,10 @@ async function loginHandler(req: Request) {
 
     const sessionCookie = await createSessionUseCase.execute(idToken);
     
+    // Send notification to Discord
+    const { alertAdapter } = await import('@/infrastructure/di');
+    alertAdapter.sendSuccessAlert('A user has logged into the application').catch(() => {});
+
     // Set cookie
     const response = NextResponse.json({ status: 'success' });
     response.cookies.set('session', sessionCookie, {

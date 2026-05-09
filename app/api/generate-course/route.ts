@@ -26,6 +26,13 @@ const handler = async (req: NextRequest) => {
 
   const { course, tokens } = await generateCourseUseCase.execute(markdown)
   
+  // Send notification to Discord
+  const { alertAdapter } = await import('@/infrastructure/di')
+  alertAdapter.sendSuccessAlert(`New course generated: **${course.title}**`, {
+    lessons: course.chapters.reduce((acc, c) => acc + c.lessons.length, 0),
+    tokens: tokens?.totalTokens || 0
+  }).catch(e => logger.error('[alert] Notification failed:', { error: e }))
+
   // Save to cache asynchronously (fire-and-forget for speed)
   courseRepository.saveCourse(hash, course).catch(e => logger.error('[cache] Save failed:', { error: e }))
   

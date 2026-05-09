@@ -7,6 +7,7 @@ services:
     environment:
       - PORT=8000
       - UKT_CHECKPOINT_PATH=/app/model/checkpoints/latest.ckpt
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     ports:
       - "8000:8000"
     volumes:
@@ -39,6 +40,7 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - PDF_MINERU_BASE_URL=${PDF_MINERU_BASE_URL}
       - PDF_MINERU_API_KEY=${PDF_MINERU_API_KEY}
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     ports:
       - "3000:3000"
     depends_on:

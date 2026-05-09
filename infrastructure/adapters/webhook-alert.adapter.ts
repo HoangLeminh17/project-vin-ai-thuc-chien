@@ -69,4 +69,24 @@ export class WebhookAlertAdapter implements IAlertPort {
 
     await this.postToWebhook(payload);
   }
+
+  async sendSuccessAlert(message: string, context?: AlertContext): Promise<void> {
+    const payload = {
+      content: `✅ **SUCCESS:** ${message}`,
+      embeds: [
+        {
+          title: 'Event Details',
+          color: 3066993, // Green
+          fields: context ? Object.entries(context).map(([key, value]) => ({
+            name: key,
+            value: String(value),
+            inline: true
+          })) : [],
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+
+    await this.postToWebhook(payload);
+  }
 }

@@ -30,7 +30,7 @@ import { withUseCaseLogging } from '@/core/utils/use-case-logger';
 
 // Instantiate adapters
 export const logger = new PinoLoggerAdapter();
-const alertAdapter = new WebhookAlertAdapter(process.env.SLACK_WEBHOOK_URL || '');
+export const alertAdapter = new WebhookAlertAdapter(process.env.DISCORD_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL || '');
 export const monitoring = new ConsoleMonitoringAdapter(logger, alertAdapter);
 
 const storageAdapter = new FirebaseStorageAdapter(getBucket());

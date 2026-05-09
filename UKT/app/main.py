@@ -13,6 +13,7 @@ import logging
 from app.schemas import PredictRequest, PredictResponse, UpdateRequest, UpdateResponse
 from app.ukt_engine import UKTEngine
 from app.state_store import StateStore
+from app.notifications import notify_model_loaded, notify_error
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -25,9 +26,14 @@ store: StateStore = None
 async def lifespan(app: FastAPI):
     global engine, store
     logger.info("Loading UKT model...")
-    engine = UKTEngine()
-    store = StateStore()
-    logger.info("UKT model ready.")
+    try:
+        engine = UKTEngine()
+        store = StateStore()
+        logger.info("UKT model ready.")
+        await notify_model_loaded()
+    except Exception as e:
+        logger.error(f"Failed to load UKT model: {e}")
+        await notify_error(str(e))
     yield
     logger.info("Shutting down.")
 
