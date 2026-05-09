@@ -25,6 +25,7 @@ import { FirebaseProgressRepository } from './adapters/firebase-progress-reposit
 import { FirestoreCourseAdapter } from './adapters/firestore-course.adapter';
 import { UKTServiceAdapter } from './adapters/ukt-service.adapter';
 import { FirestoreUsageAdapter } from './adapters/firestore-usage.adapter';
+import { RedisRateLimitAdapter } from './adapters/redis-ratelimit.adapter';
 import { SaveCourseUseCase } from '@/core/use-cases/courses/save-course.usecase';
 import { ListCoursesUseCase } from '@/core/use-cases/courses/list-courses.usecase';
 import { getDb, getBucket, getFirebaseAdminAuth } from '@/lib/firebase-admin';
@@ -34,6 +35,15 @@ import { withUseCaseLogging } from '@/core/utils/use-case-logger';
 export const logger = new PinoLoggerAdapter();
 export const alertAdapter = new WebhookAlertAdapter(process.env.DISCORD_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL || '');
 export const monitoring = new ConsoleMonitoringAdapter(logger, alertAdapter);
+
+export const rateLimiter = process.env.REDIS_URL ? new RedisRateLimitAdapter({
+  url: process.env.REDIS_URL,
+  limits: {
+    'generate-course': { count: 5, windowSeconds: 3600 },
+    'generate-quiz': { count: 10, windowSeconds: 3600 },
+    'parse-pdf': { count: 15, windowSeconds: 3600 },
+  }
+}) : null;
 
 const storageAdapter = new FirebaseStorageAdapter(getBucket());
 const parserAdapter = new MineruParserAdapter({

@@ -1,10 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
-import { generateCourseUseCase, courseRepository, logger } from '@/infrastructure/di'
+import { generateCourseUseCase, courseRepository, logger, verifySessionUseCase, rateLimiter } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { getContentHash } from '@/lib/crypto-utils'
 
 const handler = async (req: NextRequest) => {
+  // 1. Verify User Session
+  const session = req.cookies.get('session')?.value;
+  const user = await verifySessionUseCase.execute(session);
+  if (!user) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // 2. Check Rate Limit
+  if (rateLimiter) {
+    const check = await rateLimiter.check(user.id, 'generate-course');
+    if (!check.success) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Rate limit exceeded',
+        remaining: check.remaining,
+        reset: check.reset 
+      }, { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': check.limit.toString(),
+          'X-RateLimit-Remaining': check.remaining.toString(),
+          'X-RateLimit-Reset': check.reset.toString(),
+        }
+      });
+    }
+  }
+
   const { markdown } = await req.json()
   
   if (!markdown || typeof markdown !== 'string') {
