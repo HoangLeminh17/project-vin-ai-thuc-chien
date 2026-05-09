@@ -73,6 +73,18 @@ export class LocalCourseAdapter implements ICourseRepository {
     return load().find(c => c.userId === userId && c.title === title) ?? null;
   }
 
+  async updatePdfUrl(id: string, pdfStorageUrl: string): Promise<void> {
+    const courses = load();
+    const index = courses.findIndex(c => c.id === id);
+    if (index !== -1) { courses[index].pdfStorageUrl = pdfStorageUrl; persist(courses); }
+  }
+
+  async updateLayoutUrl(id: string, layoutStorageUrl: string): Promise<void> {
+    const courses = load();
+    const index = courses.findIndex(c => c.id === id);
+    if (index !== -1) { courses[index].layoutStorageUrl = layoutStorageUrl; persist(courses); }
+  }
+
   // --- Caching Methods (Not really used for local persistence but required by interface) ---
 
   async saveCourse(): Promise<void> { /* no-op */ }

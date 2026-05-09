@@ -44,7 +44,9 @@ export function useCourses(userId: string | null) {
     title: string,
     course: Course,
     courseContent: CourseContent | null,
-    contentHash?: string
+    contentHash?: string,
+    pdfStorageUrl?: string,
+    layoutStorageUrl?: string
   ): Promise<SavedCourse | null> => {
     if (!userId) return null;
     try {
@@ -56,7 +58,7 @@ export function useCourses(userId: string | null) {
         const res = await fetch('/api/courses', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ title, course, courseContent, contentHash }),
+          body: JSON.stringify({ title, course, courseContent, contentHash, pdfStorageUrl, layoutStorageUrl }),
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);

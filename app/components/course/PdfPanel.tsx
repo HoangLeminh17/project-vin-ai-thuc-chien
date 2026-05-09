@@ -1,127 +1,238 @@
 'use client'
 
-import { useState, useCallback, useEffect } from 'react'
-import { Document, Page, pdfjs } from 'react-pdf'
-import 'react-pdf/dist/Page/TextLayer.css'
-import 'react-pdf/dist/Page/AnnotationLayer.css'
+import { useState, useEffect, useRef } from 'react'
 import { T } from '@/app/components/synapsy'
 
+interface ContentItem {
+  type: string
+  text?: string
+  text_level?: number
+  img_path?: string
+  table_body?: string
+  page_idx?: number
+}
+
 interface Props {
-  pdfLocalPath: string
-  sourceExcerpt: string
-  chunkId?: string
+  layoutStorageUrl: string
+  chunkStart?: string | null
+  chunkEnd?: string | null
   onClose: () => void
 }
 
-function parsePageFromChunkId(chunkId?: string): number {
-  const match = chunkId?.match(/^chunk-(\d+)-/)
-  return match ? parseInt(match[1]) + 1 : 1
+// Extract the flat-array global index from "chunk-{page}-{globalIdx}"
+function parseGlobalIdx(id: string): number {
+  const m = id.match(/chunk-\d+-(\d+)/)
+  return m ? parseInt(m[1]) : -1
 }
 
-function normalise(s: string) {
-  return s.replace(/\s+/g, ' ').trim().toLowerCase()
-}
-
-export function PdfPanel({ pdfLocalPath, sourceExcerpt, chunkId, onClose }: Props) {
-  const targetPage = parsePageFromChunkId(chunkId)
-  const [numPages, setNumPages] = useState<number | null>(null)
-  const [page, setPage] = useState(targetPage)
-  const [scale, setScale] = useState(1.2)
+export function PdfPanel({ layoutStorageUrl, chunkStart, chunkEnd, onClose }: Props) {
+  const [items, setItems] = useState<ContentItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      'pdfjs-dist/build/pdf.worker.min.mjs',
-      import.meta.url,
-    ).toString()
-  }, [])
+    setLoading(true)
+    setError('')
+    setItems([])
+    fetch(layoutStorageUrl)
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`)
+        return r.json()
+      })
+      .then((data: ContentItem[]) => {
+        setItems(Array.isArray(data) ? data : [])
+        setLoading(false)
+      })
+      .catch(e => {
+        setError(e instanceof Error ? e.message : 'Tải thất bại')
+        setLoading(false)
+      })
+  }, [layoutStorageUrl])
 
-  const pdfUrl = `/api/pdf-source?path=${encodeURIComponent(pdfLocalPath)}`
-
-  const highlightText = useCallback(({ str }: { str: string; itemIndex: number }) => {
-    const needle = normalise(sourceExcerpt)
-    const hay = normalise(str)
-    if (needle.includes(hay) || hay.includes(needle.slice(0, 20))) {
-      return `<mark style="background:#2563eb22;border-radius:2px;padding:1px 0">${str}</mark>`
-    }
-    return str
-  }, [sourceExcerpt])
+  // Scroll to the first highlighted chunk.
+  // Double-rAF guarantees the browser has fully painted before scrollIntoView fires.
+  useEffect(() => {
+    if (!items.length || !chunkStart) return
+    let raf2 = -1
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const el = containerRef.current?.querySelector(`[data-chunk-id="${chunkStart}"]`)
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      })
+    })
+    return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2) }
+  }, [items, chunkStart])
 
   return (
-    <div style={{
-      width: '40%', minWidth: 280, maxWidth: 420, flexShrink: 0,
-      display: 'flex', flexDirection: 'column',
-      background: '#f0efe9',
-      borderLeft: `1px solid ${T.ink10}`,
-      animation: 'sy-slideInRight 0.2s ease',
-    }}>
-      <style>{`@keyframes sy-slideInRight { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bgSolid, overflow: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 9, flexShrink: 0 }}>
-        <span style={{ fontSize: 14 }}>📄</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 11.5, fontWeight: 700, margin: 0, color: T.ink }}>Nguồn tài liệu</p>
-          {numPages && <p className="sy-mono" style={{ fontSize: 9, color: T.ink40, margin: 0 }}>Trang {page} / {numPages}</p>}
-        </div>
-        {/* Scale controls */}
-        <button onClick={() => setScale(s => Math.max(0.6, s - 0.2))} style={iconBtn}>−</button>
-        <button onClick={() => setScale(s => Math.min(2.5, s + 0.2))} style={iconBtn}>+</button>
+      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${T.ink10}`, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+        <span className="sy-mono" style={{ fontSize: 10, color: T.ink60, flex: 1, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          Tài liệu nguồn
+        </span>
         <button
           onClick={onClose}
-          style={{ ...iconBtn, marginLeft: 4 }}
-          onMouseEnter={e => (e.currentTarget.style.background = T.ink10)}
-          onMouseLeave={e => (e.currentTarget.style.background = T.bgSunken)}
-        >×</button>
+          style={{ fontSize: 16, color: T.ink40, background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px', lineHeight: 1 }}>
+          ×
+        </button>
       </div>
 
-      {/* PDF viewer */}
-      <div style={{ flex: 1, overflow: 'auto', padding: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-        <Document
-          file={pdfUrl}
-          onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-          onLoadError={err => console.error('[PdfPanel] load error', err)}
-          loading={<div style={loadingStyle}>Đang tải PDF...</div>}
-          error={<div style={loadingStyle}>Không tải được PDF.</div>}
-        >
-          <Page
-            pageNumber={page}
-            scale={scale}
-            customTextRenderer={highlightText}
-            renderAnnotationLayer={false}
-          />
-        </Document>
-      </div>
+      {/* Document body */}
+      <div ref={containerRef} style={{ flex: 1, overflowY: 'auto', padding: '16px 20px 40px' }}>
+        {loading && (
+          <p className="sy-mono" style={{ fontSize: 12, color: T.ink40, textAlign: 'center', padding: '40px 0' }}>
+            Đang tải tài liệu...
+          </p>
+        )}
 
-      {/* Page nav */}
-      {numPages && numPages > 1 && (
-        <div style={{ padding: '8px 14px', borderTop: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexShrink: 0 }}>
-          <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1} style={navBtn(page <= 1)}>‹</button>
-          <span className="sy-mono" style={{ fontSize: 11, color: T.ink60 }}>{page} / {numPages}</span>
-          <button onClick={() => setPage(p => Math.min(numPages, p + 1))} disabled={page >= numPages} style={navBtn(page >= numPages)}>›</button>
-        </div>
-      )}
+        {error && (
+          <p className="sy-mono" style={{ fontSize: 12, color: T.srsAgain, textAlign: 'center', padding: '40px 0' }}>
+            Không tải được tài liệu: {error}
+          </p>
+        )}
+
+        {!loading && !error && (
+          <DocBody items={items} chunkStart={chunkStart ?? null} chunkEnd={chunkEnd ?? null} />
+        )}
+      </div>
     </div>
   )
 }
 
-const iconBtn: React.CSSProperties = {
-  width: 24, height: 24, borderRadius: 5,
-  background: T.bgSunken, border: `1px solid ${T.ink10}`,
-  fontSize: 13, color: T.ink60,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  cursor: 'pointer', flexShrink: 0,
-}
+// ── DocBody ────────────────────────────────────────────────────────────────────
 
-const loadingStyle: React.CSSProperties = {
-  padding: '32px 0', textAlign: 'center',
-  fontSize: 12, color: T.ink40, fontFamily: T.fontSans,
-}
-
-function navBtn(disabled: boolean): React.CSSProperties {
-  return {
-    padding: '4px 10px', fontSize: 14, borderRadius: 5,
-    background: disabled ? T.bgSunken : T.ink,
-    color: disabled ? T.ink20 : T.bgSolid,
-    border: 'none', cursor: disabled ? 'default' : 'pointer',
+function DocBody({ items, chunkStart, chunkEnd }: {
+  items: ContentItem[]
+  chunkStart: string | null
+  chunkEnd: string | null
+}) {
+  if (items.length === 0) {
+    return (
+      <p className="sy-mono" style={{ fontSize: 12, color: T.ink40, textAlign: 'center', padding: '40px 0' }}>
+        Không có nội dung.
+      </p>
+    )
   }
+
+  // Compute highlight range from chunk IDs (both inclusive)
+  const startIdx = chunkStart ? parseGlobalIdx(chunkStart) : -1
+  const endIdx   = chunkEnd   ? parseGlobalIdx(chunkEnd)   : startIdx
+
+  // Pre-compute page break positions (no mutations during render)
+  const pageBreakAt = new Set<number>()
+  let prevPage = -1
+  items.forEach((item, i) => {
+    if (item.type === 'discarded') return
+    const p = item.page_idx ?? 0
+    if (prevPage !== -1 && p !== prevPage) pageBreakAt.add(i)
+    prevPage = p
+  })
+
+  return (
+    <>
+      {items.map((item, index) => {
+        if (item.type === 'discarded') return null
+
+        const itemChunkId  = `chunk-${item.page_idx ?? 0}-${index}`
+        const isHighlighted = startIdx >= 0 && index >= startIdx && index <= Math.max(startIdx, endIdx)
+        const showPageBreak = pageBreakAt.has(index)
+        const pageIdx = item.page_idx ?? 0
+
+        const hlStyle: React.CSSProperties = isHighlighted
+          ? { background: 'rgba(255, 226, 0, 0.45)', borderRadius: 4, padding: '2px 6px' }
+          : {}
+
+        if (item.type === 'text') {
+          const text = (item.text ?? '').trim()
+          if (!text) return null
+
+          if (item.text_level === 1) {
+            return (
+              <span key={index}>
+                {showPageBreak && <PageBreak page={pageIdx} />}
+                <h3
+                  data-chunk-id={itemChunkId}
+                  className="sy-serif"
+                  style={{ fontSize: 15, fontWeight: 700, color: T.ink, margin: '20px 0 6px', lineHeight: 1.4, ...hlStyle }}
+                >
+                  {text}
+                </h3>
+              </span>
+            )
+          }
+
+          return (
+            <span key={index}>
+              {showPageBreak && <PageBreak page={pageIdx} />}
+              <p
+                data-chunk-id={itemChunkId}
+                className="sy-serif"
+                style={{ fontSize: 13.5, color: T.ink80, lineHeight: 1.65, margin: '0 0 10px', ...hlStyle }}
+              >
+                {text}
+              </p>
+            </span>
+          )
+        }
+
+        if (item.type === 'table') {
+          const content = (item.table_body ?? item.text ?? '').trim()
+          if (!content) return null
+          return (
+            <span key={index}>
+              {showPageBreak && <PageBreak page={pageIdx} />}
+              <pre
+                data-chunk-id={itemChunkId}
+                className="sy-mono"
+                style={{
+                  fontSize: 11, color: T.ink80, lineHeight: 1.5,
+                  background: isHighlighted ? 'rgba(255, 226, 0, 0.45)' : T.bgSunken,
+                  border: `1px solid ${T.ink10}`, borderRadius: 6,
+                  padding: '8px 12px', margin: '8px 0',
+                  overflowX: 'auto', whiteSpace: 'pre',
+                }}
+              >
+                {content}
+              </pre>
+            </span>
+          )
+        }
+
+        if (item.type === 'image') {
+          return (
+            <span key={index}>
+              {showPageBreak && <PageBreak page={pageIdx} />}
+              <div
+                data-chunk-id={itemChunkId}
+                style={{
+                  margin: '8px 0', padding: '8px 12px',
+                  background: isHighlighted ? 'rgba(255, 226, 0, 0.45)' : T.bgSunken,
+                  border: `1px solid ${T.ink10}`, borderRadius: 6,
+                  fontSize: 11, color: T.ink40, fontFamily: T.fontSans,
+                }}
+              >
+                [Hình ảnh]
+              </div>
+            </span>
+          )
+        }
+
+        return null
+      })}
+    </>
+  )
+}
+
+function PageBreak({ page }: { page: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 12px' }}>
+      <div style={{ flex: 1, height: 1, background: T.ink10 }} />
+      <span className="sy-mono" style={{ fontSize: 9, color: T.ink40, letterSpacing: '0.08em' }}>
+        TRANG {page + 1}
+      </span>
+      <div style={{ flex: 1, height: 1, background: T.ink10 }} />
+    </div>
+  )
 }

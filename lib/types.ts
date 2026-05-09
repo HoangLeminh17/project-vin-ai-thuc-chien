@@ -3,6 +3,8 @@ export type Lesson = {
   title: string
   key_concept: string
   outline: string[]  // factual bullet points extracted by the planner; used by Stage 2 to generate slides
+  source_chunk_start?: string  // chunk-X-Y anchor marking the first item of this lesson in the source
+  source_chunk_end?: string    // chunk-X-Y anchor marking the last item of this lesson in the source
 }
 
 export type Quiz = {
@@ -26,7 +28,8 @@ export type ConceptCard = {
   answer: string      // TL;DR 2-3 câu
   detail?: string     // 3-5 câu, có analogy/ví dụ
   followUps: string[] // 2 follow-up questions
-  sourceExcerpt?: string  // verbatim outline bullet that grounds the answer; used for citation panel
+  source_chunk_start?: string  // attached post-generation from Stage 1 lesson
+  source_chunk_end?: string    // attached post-generation from Stage 1 lesson
 }
 
 export type QuizQuestion = {

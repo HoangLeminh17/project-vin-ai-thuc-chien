@@ -14,6 +14,36 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Optimistic update cho xóa course ở thư viện | Nguyễn Bình Thành | #62 |
 | In-memory TTL cache cho VerifySessionUseCase | Nguyễn Bình Thành | #63 |
 | Fix pipeline tracker stuck + lesson list trong GenerationScreen | Nguyễn Bình Thành | #64 |
+| Citation Phase 1 — Bug fixes (UI guard + client-side upload + layout JSON) | Nguyễn Bình Thành | #TBD |
+
+---
+
+### [ADR-29] Direct client-side Firebase upload cho PDF + layout JSON persistence — 09/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR fix/citation-ui-storage
+
+**Bối cảnh:** Sau PR #65 (citation source excerpt), phát hiện 2 bug độc lập chặn toàn bộ citation panel:
+
+**Bug 1 — UI Citation không hiện:** `hasCitation` dùng điều kiện `source_chunk_id || sourceExcerpt`. AI đôi khi không trả về `sourceExcerpt`, khiến button ① ẩn dù `source_chunk_id` hợp lệ.
+Fix: Đổi guard thành `!!card?.concept.source_chunk_id` — chỉ cần chunk ID là đủ để navigate.
+
+**Bug 2 — `pdfStorageUrl` không bao giờ được lưu vào Firestore:** `generation-context.tsx` tạo `URL.createObjectURL(file)` (blob URL trong browser) rồi gửi lên server trong JSON body. Server dùng `fs.readFile(blobUrl)` → Node.js không đọc được blob URL → ENOENT → silent fail → Firestore không có `pdfStorageUrl`.
+
+**Quyết định: Client-side upload thẳng lên Firebase Storage**
+
+Lý do chọn thay vì server-side:
+- Blob URL chỉ sống trong browser session — không thể gửi lên server
+- Vercel limit 4.5MB body cho API routes — không thể gửi file qua FormData + JSON
+- Client đã có Firebase Auth token → `uploadBytes()` trực tiếp không cần proxy
+
+Flow mới:
+1. `URL.createObjectURL(file)` → `pdfLocalPath` (blob URL, dùng trong session hiện tại)
+2. `uploadBytes(ref, file)` → `course-pdfs/{uid}/{uuid}.pdf` → `pdfStorageUrl = ref.fullPath`
+3. Sau `parse-pdf` trả về, upload `contentList` JSON → `course-layouts/{uid}/{uuid}.json` → `layoutStorageUrl`
+4. Cả `pdfStorageUrl` và `layoutStorageUrl` được lưu vào Firestore qua `updatePdfUrl` và `updateLayoutUrl`
+5. `/api/pdf-serve?courseId=X` proxy đọc `pdfStorageUrl` từ Firestore, download qua Admin SDK, stream về browser
+
+`layoutStorageUrl` chuẩn bị cho Phase 3 (bbox highlighting dùng MinerU `content_list.json`).
 
 ---
 

@@ -42,6 +42,22 @@ export class FirestoreCourseAdapter implements ICourseRepository {
     }
   }
 
+  async updatePdfUrl(id: string, pdfStorageUrl: string): Promise<void> {
+    try {
+      await this.db.collection(COLLECTION).doc(id).update({ pdfStorageUrl });
+    } catch (e) {
+      throw new InfrastructureError('Failed to update pdfStorageUrl in Firestore', e);
+    }
+  }
+
+  async updateLayoutUrl(id: string, layoutStorageUrl: string): Promise<void> {
+    try {
+      await this.db.collection(COLLECTION).doc(id).update({ layoutStorageUrl });
+    } catch (e) {
+      throw new InfrastructureError('Failed to update layoutStorageUrl in Firestore', e);
+    }
+  }
+
   async listByUser(userId: string): Promise<SavedCourse[]> {
     try {
       const snapshot = await this.db

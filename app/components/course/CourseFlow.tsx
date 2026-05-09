@@ -14,7 +14,8 @@ interface Props {
   course: SavedCourse
   progressMap: Record<string, ProgressEntry>
   onExit: () => void
-  pdfLocalPath?: string | null
+  pdfUrl?: string | null
+  layoutStorageUrl?: string | null
 }
 
 function courseToMarkdown(course: SavedCourse): string {
@@ -46,7 +47,7 @@ function LoadingOverlay({ label }: { label: string }) {
   )
 }
 
-export function CourseFlow({ course, progressMap, onExit, pdfLocalPath }: Props) {
+export function CourseFlow({ course, progressMap, onExit, pdfUrl, layoutStorageUrl }: Props) {
   const [view, setView] = useState<View>('init')
   const [diagnosticQuestions, setDiagnosticQuestions] = useState<DiagnosticQuestion[]>([])
   const [diagnosticState, setDiagnosticState] = useState<Record<string, number>>({})
@@ -153,7 +154,8 @@ export function CourseFlow({ course, progressMap, onExit, pdfLocalPath }: Props)
       progressMap={progressMap}
       diagnosticState={diagnosticState}
       onExit={onExit}
-      pdfLocalPath={pdfLocalPath}
+      pdfUrl={pdfUrl}
+      layoutStorageUrl={layoutStorageUrl}
     />
   )
 }

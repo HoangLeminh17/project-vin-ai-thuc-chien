@@ -8,4 +8,6 @@ export type SavedCourse = {
   course: Course;
   courseContent: CourseContent | null;
   contentHash?: string;
+  pdfStorageUrl?: string;
+  layoutStorageUrl?: string;
 };
