@@ -15,6 +15,44 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | In-memory TTL cache cho VerifySessionUseCase | Nguyễn Bình Thành | #63 |
 | Fix pipeline tracker stuck + lesson list trong GenerationScreen | Nguyễn Bình Thành | #64 |
 | Citation Phase 1 — Bug fixes (UI guard + client-side upload + layout JSON) | Nguyễn Bình Thành | #TBD |
+| OutlinePoint schema + Stage 2 inline citation markers (Phase 1+2) | Nguyễn Bình Thành | #70 |
+| Clickable citation markers trong ConceptCard (Phase 3 FE) | Nguyễn Bình Thành | #71 |
+
+---
+
+### [ADR-30] Citation marker per claim trong ConceptCard — 09/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #70, #71
+
+**Bối cảnh:** Người dùng không biết câu trả lời trong ConceptCard lấy từ đoạn nào trong PDF gốc. Cần cơ chế truy vết từng câu tuyên bố (`answer`, `detail`) về đúng chunk nguồn, đồng thời cho phép click vào để nhảy đến đoạn tương ứng trong `PdfPanel`.
+
+**Ba quyết định:**
+
+**1. `OutlinePoint` mang `chunks[]` xuyên Stage 1 → Stage 2**
+
+Thay vì `outline: string[]`, Stage 1 (planner) giờ trả về `outline: OutlinePoint[]` với `{ point: string; chunks: string[] }`. Mỗi điểm outline gắn với danh sách chunk ID mà nó xuất phát từ đó. Stage 2 (generator) nhận `chunks[]` làm "nguồn được phép trích dẫn" cho từng điểm — giúp LLM biết chính xác chunk nào hợp lệ để chèn marker, tránh tự bịa chunk ID.
+
+Lý do không truyền toàn bộ `content_list` vào prompt Stage 2: quá lớn, tốn token. Truyền chỉ `chunks[]` của outline là đủ và sạch hơn.
+
+**2. Marker `[chunk-X-Y]` nhúng inline thay vì mảng citations riêng**
+
+Marker được chèn trực tiếp sau mỗi câu tuyên bố trong `answer`/`detail` (ví dụ: `"Câu trả lời.[chunk-1-5]"`), không lưu thành một mảng `citations: []` tách biệt.
+
+Lý do chọn inline: (a) Giữ nguyên schema `ConceptCard` hiện tại — không thêm field mới; (b) Dễ render từng vị trí superscript đúng chỗ trong văn bản; (c) Backward compatible — text cũ không có marker vẫn render bình thường.
+
+Validation: Sau mỗi `generateChapterContent`, `validateCitationMarkers()` (trong `lib/citation-utils.ts`) kiểm tra từng marker. Marker không nằm trong `validChunkIds` → `console.warn`, giữ nguyên text (không throw, không xóa marker).
+
+**3. FE dùng single-chunk override lên lesson-range highlight**
+
+`PdfPanel` nhận hai nguồn highlight: (`chunkStart`, `chunkEnd`) từ lesson-level navigation và `selectedChunkId` từ click marker. Khi cả hai có giá trị, `selectedChunkId` thắng hoàn toàn:
+
+```ts
+const scrollTarget    = selectedChunkId ?? chunkStart ?? null
+const highlightStart  = selectedChunkId ?? chunkStart ?? null
+const highlightEnd    = selectedChunkId ?? chunkEnd   ?? null
+```
+
+Lý do: Lesson-range highlight hữu ích khi mở PdfPanel lần đầu (hiện toàn bộ đoạn nguồn). Khi user click marker cụ thể, họ muốn focus chính xác 1 chunk đó, không phải cả range.
 
 ---
 
