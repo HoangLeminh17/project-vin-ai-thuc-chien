@@ -17,8 +17,8 @@ export class HuggingFaceAdapter implements IAiService {
   constructor(config: HuggingFaceConfig) {
     this.apiKey = config.apiKey
     this.model = config.model || 'meta-llama/Llama-3.1-8B-Instruct'
-    // HF OpenAI-compatible endpoint
-    this.baseUrl = config.baseUrl || 'https://api-inference.huggingface.co/v1/chat/completions'
+    // HF OpenAI-compatible endpoint: requires model ID in the URL for Inference API
+    this.baseUrl = config.baseUrl || `https://api-inference.huggingface.co/models/${this.model}/v1/chat/completions`
   }
 
   async generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
