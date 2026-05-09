@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, Fragment } from 'react'
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react'
 import dynamic from 'next/dynamic'
 import { T } from '@/app/components/synapsy'
 import { FlatCard } from './types'
@@ -34,6 +34,8 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
   const aiInputRef = useRef<HTMLInputElement>(null)
 
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
+  // Shared display map so answer + detail citations share one numbering sequence per card
+  const cardCiteMap = useMemo(() => new Map<string, number>(), [card?.id])
   // New courses use source_chunk_start; legacy courses fall back to source_chunk_id
   const chunkStart = card?.concept.source_chunk_start ?? card?.concept.source_chunk_id ?? null
   const chunkEnd   = card?.concept.source_chunk_end   ?? card?.concept.source_chunk_id ?? null
@@ -156,7 +158,7 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
               )}
             </div>
             <div className="sy-serif" style={{ fontSize: 15, fontWeight: 500, color: T.ink, lineHeight: 1.5 }}>
-              <CitedText text={card.concept.answer} validChunkIds={validChunkIds} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true); setCitationOpen(false) }} />
+              <CitedText text={card.concept.answer} validChunkIds={validChunkIds} sharedMap={cardCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true); setCitationOpen(false) }} />
             </div>
             {/* Citation popover */}
             {hasCitation && citationOpen && (
@@ -181,7 +183,7 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
               <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Chi tiết</span>
               <div className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, marginTop: 6 }}>
-                <CitedText text={card.concept.detail!} validChunkIds={validChunkIds} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true) }} />
+                <CitedText text={card.concept.detail!} validChunkIds={validChunkIds} sharedMap={cardCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true) }} />
               </div>
             </div>
           )}
@@ -261,12 +263,13 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
   )
 }
 
-function CitedText({ text, validChunkIds, onCiteClick }: {
+function CitedText({ text, validChunkIds, sharedMap, onCiteClick }: {
   text: string
   validChunkIds: Set<string>
+  sharedMap?: Map<string, number>
   onCiteClick: (chunkId: string) => void
 }) {
-  const segments = parseCitations(text, validChunkIds)
+  const segments = parseCitations(text, validChunkIds, sharedMap)
   const layoutLoaded = validChunkIds.size > 0
   return (
     <>

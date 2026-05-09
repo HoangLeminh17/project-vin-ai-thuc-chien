@@ -78,7 +78,7 @@ function courseStats(saved: SavedCourse, map: ProgressMap) {
 function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal, allDone, diagnosticStatus }: {
   parsed: boolean; outlined: boolean; chaptersDone: number; chaptersTotal: number; allDone: boolean; diagnosticStatus: DiagnosticStatus
 }) {
-  const diagState = !allDone ? 'pending' : diagnosticStatus === 'done' ? 'done' : diagnosticStatus === 'loading' ? 'active' : diagnosticStatus === 'error' ? 'error' : 'pending'
+  const diagState = diagnosticStatus === 'done' ? 'done' : diagnosticStatus === 'loading' ? 'active' : diagnosticStatus === 'error' ? 'error' : 'pending'
   const stages: { label: string; state: 'done' | 'active' | 'pending' | 'error' }[] = [
     { label: 'Đọc PDF',            state: parsed ? 'done' : 'active' },
     { label: 'Phân tích cấu trúc', state: parsed ? (outlined ? 'done' : 'active') : 'pending' },

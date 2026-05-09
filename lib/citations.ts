@@ -4,10 +4,14 @@ export type Segment =
 
 const MARKER_RE = /\[(chunk-\d+-\d+)\]/g
 
-export function parseCitations(text: string, validChunkIds: Set<string>): Segment[] {
+export function parseCitations(
+  text: string,
+  validChunkIds: Set<string>,
+  sharedMap?: Map<string, number>
+): Segment[] {
   const segments: Segment[] = []
-  const displayMap = new Map<string, number>()
-  let counter = 0
+  const displayMap = sharedMap ?? new Map<string, number>()
+  let counter = displayMap.size
   let lastIndex = 0
 
   MARKER_RE.lastIndex = 0
