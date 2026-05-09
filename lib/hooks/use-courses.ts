@@ -33,7 +33,12 @@ export function useCourses(userId: string | null) {
     }
   }, [userId]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    const init = async () => {
+      await refresh();
+    };
+    init();
+  }, [refresh]);
 
   const saveCourse = useCallback(async (
     title: string,

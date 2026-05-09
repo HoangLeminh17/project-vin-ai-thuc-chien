@@ -5,8 +5,8 @@ redis==5.0.8
 python-multipart==0.0.9
 
 # PyTorch CPU (nhẹ hơn GPU build, đủ dùng cho inference)
-# Thay bằng torch==2.4.0+cu121 nếu deploy trên GPU
-torch==2.4.0
+# Hỗ trợ Python 3.13+ yêu cầu torch >= 2.5.0
+torch>=2.5.0
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Test
