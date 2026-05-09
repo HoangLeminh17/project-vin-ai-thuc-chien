@@ -1,10 +1,57 @@
 global:
-  scrape_interval: 15s
-  evaluation_interval: 15s
+  scrape_interval: 15s       # Tần suất scrape metrics
+  evaluation_interval: 15s   # Tần suất evaluate rules
+  scrape_timeout: 10s
 
+  external_labels:
+    project: "synapsy"
+    environment: "production"
+
+# =============================================
+# ALERTING (tuỳ chọn - bỏ qua nếu chưa cần)
+# =============================================
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ["alertmanager.railway.internal:9093"]
+
+# rule_files:
+#   - "alerts/*.yml"
+
+# =============================================
+# SCRAPE CONFIGS
+# =============================================
 scrape_configs:
-  - job_name: 'synapsy-app'
-    metrics_path: '/api/metrics'
-    scheme: 'https' # Use https for public URL or http for internal
+
+  # --- Prometheus tự monitor chính nó ---
+  - job_name: "prometheus"
     static_configs:
-      - targets: ['20a-app-046.up.railway.app'] # Thay bằng domain thật của bạn hoặc internal URL
+      - targets: ["localhost:9090"]
+    metrics_path: /metrics
+
+  # --- Next.js Web App ---
+  # Cần cài thêm prom-client trong Next.js và expose /metrics endpoint
+  - job_name: "web"
+    static_configs:
+      - targets: ["web.railway.internal:3000"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+    # Nếu /metrics chưa có, dùng tạm healthcheck để biết app còn sống
+    # metrics_path: /api/health
+
+  # --- UKT Python Microservice ---
+  # FastAPI/Flask thường dùng prometheus_client để expose /metrics
+  - job_name: "ukt-service"
+    static_configs:
+      - targets: ["ukt-service.railway.internal:8000"]
+    metrics_path: /metrics
+    scrape_interval: 30s
+
+  # --- Redis ---
+  # Redis không tự expose Prometheus metrics
+  # Cần redis_exporter (xem ghi chú bên dưới)
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis-exporter.railway.internal:9121"]
+    metrics_path: /metrics
+    scrape_interval: 30s
