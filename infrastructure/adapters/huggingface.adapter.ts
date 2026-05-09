@@ -22,9 +22,9 @@ export class HuggingFaceAdapter implements IAiService {
     }
     this.apiKey = config.apiKey
     this.model = config.model || 'meta-llama/Llama-3.1-8B-Instruct'
-    // Linh hoạt giữa Inference API chuẩn và Dedicated Endpoints
-    this.baseUrl = config.baseUrl || `https://api-inference.huggingface.co/models/${this.model}/v1/chat/completions`
-    this.timeoutMs = config.timeoutMs || 60000 // Mặc định 60s
+    // Serverless Inference API chuẩn không có /v1/chat/completions
+    this.baseUrl = config.baseUrl || `https://api-inference.huggingface.co/models/${this.model}`
+    this.timeoutMs = config.timeoutMs || 60000 
   }
 
   /**
@@ -35,6 +35,9 @@ export class HuggingFaceAdapter implements IAiService {
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
 
     try {
+      // Kết hợp thành chuỗi duy nhất cho Serverless API (không phải Chat-compatible)
+      const fullPrompt = `<|system|>\n${systemPrompt}\n<|user|>\n${userContent}\n<|assistant|>`
+
       const res = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
@@ -43,13 +46,12 @@ export class HuggingFaceAdapter implements IAiService {
         },
         signal: controller.signal,
         body: JSON.stringify({
-          model: this.model,
-          temperature: 0.2,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userContent },
-          ],
+          inputs: fullPrompt,
+          parameters: {
+            max_new_tokens: 4096,
+            temperature: 0.2,
+            return_full_text: false
+          }
         }),
       })
 
@@ -60,17 +62,15 @@ export class HuggingFaceAdapter implements IAiService {
       }
 
       const data = await res.json()
-      const text = data.choices?.[0]?.message?.content
-      if (!text) throw new InfrastructureError('Hugging Face returned empty content')
+      
+      // HF Serverless trả về mảng [{ generated_text: "..." }] hoặc object { generated_text: "..." }
+      const text = Array.isArray(data) ? data[0]?.generated_text : data.generated_text
+      
+      if (!text) {
+        throw new InfrastructureError(`Hugging Face returned no content: ${JSON.stringify(data)}`)
+      }
 
-      const usage = data.usage
-      const tokens = usage ? {
-        promptTokens: usage.prompt_tokens,
-        completionTokens: usage.completion_tokens,
-        totalTokens: usage.total_tokens,
-      } : null
-
-      return { text, tokens }
+      return { text, tokens: null }
     } catch (e: any) {
       if (e.name === 'AbortError') throw new InfrastructureError(`Hugging Face request timed out after ${this.timeoutMs}ms`)
       throw e instanceof InfrastructureError ? e : new InfrastructureError('Network failure calling Hugging Face', e)
