@@ -81,10 +81,18 @@ export class OpenAiAdapter implements IAiService {
       throw new InfrastructureError(`Invalid course structure: missing chapters array`)
     }
 
-    // Healer: Ensure lessons exists in each chapter
+    // Healer: Ensure lessons exists in each chapter and outline is OutlinePoint[]
     course.chapters = course.chapters.map(ch => ({
       ...ch,
-      lessons: ch.lessons || (ch as any).lesson || []
+      lessons: (ch.lessons || (ch as any).lesson || []).map((lesson: any) => {
+        if (Array.isArray(lesson.outline) && (lesson.outline.length === 0 || typeof lesson.outline[0] === 'string')) {
+          return {
+            ...lesson,
+            outline: lesson.outline.map((point: string) => ({ point, chunks: [] }))
+          }
+        }
+        return lesson
+      })
     }))
 
     return { course, tokens }

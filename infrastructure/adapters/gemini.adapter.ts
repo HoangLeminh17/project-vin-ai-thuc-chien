@@ -96,7 +96,15 @@ export class GeminiAdapter implements IAiService {
 
     course.chapters = course.chapters.map(ch => ({
       ...ch,
-      lessons: ch.lessons || (ch as any).lesson || [],
+      lessons: (ch.lessons || (ch as any).lesson || []).map((lesson: any) => {
+        if (Array.isArray(lesson.outline) && (lesson.outline.length === 0 || typeof lesson.outline[0] === 'string')) {
+          return {
+            ...lesson,
+            outline: lesson.outline.map((point: string) => ({ point, chunks: [] }))
+          }
+        }
+        return lesson
+      })
     }))
 
     return { course, tokens }
