@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { T } from '@/app/components/synapsy'
 import { FlatCard, RATING_META, submitRating } from './types'
+import { parseCitations } from '@/lib/citations'
 
 interface Props {
   cards: FlatCard[]
@@ -123,12 +124,16 @@ export function StudyMode({ cards, onExit }: Props) {
               {/* TL;DR */}
               <div style={{ padding: '16px 18px', background: T.accentSoft, borderRadius: 10, marginBottom: 14, borderLeft: `3px solid ${T.accent}` }}>
                 <p style={{ fontSize: 10, fontWeight: 700, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 5px' }}>TL;DR</p>
-                <p className="sy-serif" style={{ fontSize: 16, fontWeight: 500, margin: 0, lineHeight: 1.45, color: T.ink }}>{card.concept.answer}</p>
+                <p className="sy-serif" style={{ fontSize: 16, fontWeight: 500, margin: 0, lineHeight: 1.45, color: T.ink }}>
+                  <CitedText text={card.concept.answer} />
+                </p>
               </div>
 
               {/* Detail */}
               {card.concept.detail && (
-                <p className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, margin: '0 0 16px' }}>{card.concept.detail}</p>
+                <p className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, margin: '0 0 16px' }}>
+                  <CitedText text={card.concept.detail} />
+                </p>
               )}
 
               {/* Follow-ups */}
@@ -170,5 +175,20 @@ export function StudyMode({ cards, onExit }: Props) {
         ))}
       </div>
     </div>
+  )
+}
+
+// Renders text with inline [chunk-X-Y] markers stripped to plain superscript numbers.
+// StudyMode doesn't have a PdfPanel so markers are display-only (no click).
+function CitedText({ text }: { text: string }) {
+  const segments = parseCitations(text, new Set())
+  return (
+    <>
+      {segments.map((seg, i) =>
+        seg.type === 'text'
+          ? <Fragment key={i}>{seg.value}</Fragment>
+          : <sup key={i} style={{ color: T.ink40, fontSize: 10, fontWeight: 700, marginLeft: 1 }}>[{seg.displayNum}]</sup>
+      )}
+    </>
   )
 }

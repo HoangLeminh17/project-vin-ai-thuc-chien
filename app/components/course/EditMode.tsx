@@ -1,9 +1,11 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, Fragment } from 'react'
 import dynamic from 'next/dynamic'
 import { T } from '@/app/components/synapsy'
 import { FlatCard } from './types'
+import { parseCitations } from '@/lib/citations'
+import { buildValidChunkIds } from '@/lib/citation-utils'
 
 const PdfPanel = dynamic(() => import('./PdfPanel').then(m => ({ default: m.PdfPanel })), { ssr: false })
 
@@ -27,6 +29,8 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
   const [aiLoading, setAiLoading] = useState(false)
   const [citationOpen, setCitationOpen] = useState(false)
   const [showSource, setShowSource] = useState(false)
+  const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null)
+  const [validChunkIds, setValidChunkIds] = useState<Set<string>>(new Set())
   const aiInputRef = useRef<HTMLInputElement>(null)
 
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
@@ -45,10 +49,20 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
     }
   }, [cards, selectedId])
 
+  // Fetch layout JSON to build valid chunk ID set for citation rendering
+  useEffect(() => {
+    if (!layoutStorageUrl) return
+    fetch(layoutStorageUrl)
+      .then(r => r.json())
+      .then((items: Array<{ type?: string; page_idx?: number }>) => setValidChunkIds(buildValidChunkIds(items)))
+      .catch(() => {})
+  }, [layoutStorageUrl])
+
   // Reset citation state when active card changes
   useEffect(() => {
     setCitationOpen(false)
     setShowSource(false)
+    setSelectedChunkId(null)
   }, [selectedId])
 
   const runAI = (prompt: string) => {
@@ -141,9 +155,8 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
                 </button>
               )}
             </div>
-            <div contentEditable suppressContentEditableWarning className="sy-serif"
-              style={{ fontSize: 15, fontWeight: 500, color: T.ink, outline: 'none', lineHeight: 1.5 }}>
-              {card.concept.answer}
+            <div className="sy-serif" style={{ fontSize: 15, fontWeight: 500, color: T.ink, lineHeight: 1.5 }}>
+              <CitedText text={card.concept.answer} validChunkIds={validChunkIds} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true); setCitationOpen(false) }} />
             </div>
             {/* Citation popover */}
             {hasCitation && citationOpen && (
@@ -167,9 +180,8 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
           {card.concept.detail && (
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
               <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Chi tiết</span>
-              <div contentEditable suppressContentEditableWarning className="sy-serif"
-                style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, outline: 'none', marginTop: 6 }}>
-                {card.concept.detail}
+              <div className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, marginTop: 6 }}>
+                <CitedText text={card.concept.detail!} validChunkIds={validChunkIds} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true) }} />
               </div>
             </div>
           )}
@@ -239,11 +251,37 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
             layoutStorageUrl={layoutStorageUrl}
             chunkStart={chunkStart}
             chunkEnd={chunkEnd}
-            onClose={() => setShowSource(false)}
+            selectedChunkId={selectedChunkId}
+            onClose={() => { setShowSource(false); setSelectedChunkId(null) }}
           />
         </div>
       )}
     </div>
     </div>
+  )
+}
+
+function CitedText({ text, validChunkIds, onCiteClick }: {
+  text: string
+  validChunkIds: Set<string>
+  onCiteClick: (chunkId: string) => void
+}) {
+  const segments = parseCitations(text, validChunkIds)
+  return (
+    <>
+      {segments.map((seg, i) => {
+        if (seg.type === 'text') return <Fragment key={i}>{seg.value}</Fragment>
+        if (seg.valid) return (
+          <sup key={i} onClick={() => onCiteClick(seg.chunkId)} style={{ cursor: 'pointer', color: T.accent, fontSize: 10, fontWeight: 700, marginLeft: 1, userSelect: 'none' }}>
+            [{seg.displayNum}]
+          </sup>
+        )
+        return (
+          <sup key={i} style={{ color: T.ink40, fontSize: 10, fontWeight: 700, marginLeft: 1 }}>
+            [?]
+          </sup>
+        )
+      })}
+    </>
   )
 }

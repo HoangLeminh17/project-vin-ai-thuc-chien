@@ -16,6 +16,7 @@ interface Props {
   layoutStorageUrl: string
   chunkStart?: string | null
   chunkEnd?: string | null
+  selectedChunkId?: string | null
   onClose: () => void
 }
 
@@ -25,7 +26,7 @@ function parseGlobalIdx(id: string): number {
   return m ? parseInt(m[1]) : -1
 }
 
-export function PdfPanel({ layoutStorageUrl, chunkStart, chunkEnd, onClose }: Props) {
+export function PdfPanel({ layoutStorageUrl, chunkStart, chunkEnd, selectedChunkId, onClose }: Props) {
   const [items, setItems] = useState<ContentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -50,19 +51,23 @@ export function PdfPanel({ layoutStorageUrl, chunkStart, chunkEnd, onClose }: Pr
       })
   }, [layoutStorageUrl])
 
-  // Scroll to the first highlighted chunk.
-  // Double-rAF guarantees the browser has fully painted before scrollIntoView fires.
+  // selectedChunkId (single-click from marker) overrides lesson-level range highlight
+  const scrollTarget = selectedChunkId ?? chunkStart ?? null
+  const highlightStart = selectedChunkId ?? chunkStart ?? null
+  const highlightEnd   = selectedChunkId ?? chunkEnd   ?? null
+
+  // Double-rAF: guarantees browser has fully painted before scrollIntoView fires.
   useEffect(() => {
-    if (!items.length || !chunkStart) return
+    if (!items.length || !scrollTarget) return
     let raf2 = -1
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        const el = containerRef.current?.querySelector(`[data-chunk-id="${chunkStart}"]`)
+        const el = containerRef.current?.querySelector(`[data-chunk-id="${scrollTarget}"]`)
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       })
     })
     return () => { cancelAnimationFrame(raf1); cancelAnimationFrame(raf2) }
-  }, [items, chunkStart])
+  }, [items, scrollTarget])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: T.bgSolid, overflow: 'hidden' }}>
@@ -94,7 +99,7 @@ export function PdfPanel({ layoutStorageUrl, chunkStart, chunkEnd, onClose }: Pr
         )}
 
         {!loading && !error && (
-          <DocBody items={items} chunkStart={chunkStart ?? null} chunkEnd={chunkEnd ?? null} />
+          <DocBody items={items} chunkStart={highlightStart} chunkEnd={highlightEnd} />
         )}
       </div>
     </div>

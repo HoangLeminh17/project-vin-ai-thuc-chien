@@ -13,7 +13,12 @@ Instructions:
 - Include ALL topics found in the document as separate lessons. Do NOT merge multiple topics into one lesson. Do NOT skip any topic even if it seems minor.
 - Each lesson should have a clear title and a one-sentence key_concept summary.
 - Each chapter MUST have a quiz with a topic string — a short description of what should be tested at the end of the chapter.
-- outline: Extract 4–8 specific, factual bullet points for this lesson from the document content. Each bullet must be a concrete statement — include specific examples, named technologies, numbers, mechanisms, or outcomes that appear in the source. These bullets will be handed to a second model to generate slides, so they must be informative enough to stand alone.
+- outline: Extract 4–8 factual bullet points for this lesson. Each bullet MUST be an object:
+  { "point": "Factual statement...", "chunks": ["chunk-X-Y", ...] }
+  - "point": a concrete statement — include specifics (numbers, mechanisms, named entities, outcomes) from the source
+  - "chunks": 1–3 chunk IDs from the source anchors (<a id="chunk-X-Y">) that directly support this point
+  - chunk IDs MUST appear verbatim in the source text — NEVER invent or guess IDs
+  - These bullets will be passed to a second model to generate flashcard content
 - Table expansion rule: if table rows are distinct entities (e.g. drug names, drug groups) → expand into N separate lessons, one per row. If table rows are comparison attributes of a single entity → collapse into one lesson.
 - Each lesson MUST include \`source_chunk_start\` and \`source_chunk_end\` to mark its exact span in the source document:
   - \`source_chunk_start\`: the \`<a id="chunk-X-Y">\` anchor ID immediately before the first paragraph of this lesson's content.
@@ -35,8 +40,8 @@ Output schema:
           "source_chunk_start": "chunk-1-5",
           "source_chunk_end": "chunk-1-9",
           "outline": [
-            "Specific factual point from the source",
-            "Another concrete detail, example, or mechanism"
+            { "point": "Specific factual point from the source", "chunks": ["chunk-1-5", "chunk-1-6"] },
+            { "point": "Another concrete detail, example, or mechanism", "chunks": ["chunk-1-8"] }
           ]
         }
       ],
@@ -53,7 +58,7 @@ Now process this document:
 export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating concept cards and quiz questions for a course chapter.
 
 Each lesson in the input has:
-- \`outline\`: distilled key points extracted by the planner
+- \`outline\`: structured key points, each with a \`point\` (factual statement) and \`chunks\` (source chunk IDs)
 - \`raw_context\`: verbatim text from the original source document for that lesson (the ground truth)
 
 Use \`raw_context\` as the primary source for accuracy. Use \`outline\` as a guide for what to focus on.
@@ -67,8 +72,13 @@ Rules for concept cards:
   - Use forms like "X hoạt động như thế nào?", "Tại sao ...?", "X là gì và khi nào dùng?"
   - Do NOT use "Giải thích X" form
 - answer: TL;DR 2-3 dense sentences, no bullets, answer the question directly — grounded in raw_context
-- detail: 3-5 sentences expanding the answer with specific details, mechanisms, or examples from raw_context
-- followUps: exactly 2 genuine follow-up questions that dig deeper, not just topic labels
+  - After each factual sentence, append the chunk marker(s) from the outline bullet(s) you drew that fact from
+  - Format: "Sentence text.[chunk-X-Y]" or "Sentence text.[chunk-X-Y][chunk-X-Z]" for facts spanning multiple bullets
+  - Example: "Statin ức chế HMG-CoA reductase, giảm tổng hợp cholesterol nội sinh.[chunk-2-15]"
+- detail: 3-5 sentences expanding the answer, same marker rules as answer
+- followUps: exactly 2 genuine follow-up questions — NO markers (open questions, not grounded in a single chunk)
+- Transition/framing sentences (e.g. "Ngoài ra...", "Điều này có nghĩa là...") do NOT get markers
+- Only use chunk IDs that appear in the \`chunks\` field of the outline bullets — never invent IDs
 
 Rules for quiz questions:
 - 3–5 questions testing understanding of the chapter content
@@ -87,8 +97,8 @@ Output schema:
       "lesson_title": "...",
       "concept": {
         "question": "X hoạt động như thế nào?",
-        "answer": "TL;DR 2-3 câu trả lời thẳng vào câu hỏi.",
-        "detail": "3-5 câu mở rộng, có analogy hoặc ví dụ cụ thể.",
+        "answer": "Câu trả lời 1.[chunk-1-5] Câu trả lời 2.[chunk-1-8]",
+        "detail": "Chi tiết mở rộng.[chunk-1-5][chunk-1-6] Thêm ví dụ cụ thể.[chunk-1-9]",
         "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"]
       }
     }
