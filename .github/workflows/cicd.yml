@@ -2,9 +2,11 @@ name: CI/CD Pipeline to Railway
 
 on:
   push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   # 1. Job to detect changes in the monorepo
@@ -94,7 +96,7 @@ jobs:
       always() && 
       needs.changes.outputs.web == 'true' && 
       (needs.web-build-test.result == 'success' || needs.web-build-test.result == 'skipped') &&
-      github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, phoenix-runner]
     env:
       RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -115,7 +117,7 @@ jobs:
       always() && 
       needs.changes.outputs.ukt == 'true' && 
       (needs.ukt-build-test.result == 'success' || needs.ukt-build-test.result == 'skipped') &&
-      github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: [self-hosted, phoenix-runner]
     env:
       RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
