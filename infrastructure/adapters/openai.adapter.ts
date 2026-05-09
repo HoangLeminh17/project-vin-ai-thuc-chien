@@ -1,4 +1,4 @@
-import { IAiService, TokenUsage } from '@/core/ports/ai.port'
+import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
 import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
 import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
@@ -90,10 +90,14 @@ export class OpenAiAdapter implements IAiService {
     return { course, tokens }
   }
 
-  async generateDiagnosticQuiz(markdown: string): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
+  async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
     if (!this.apiKey) {
       throw new InfrastructureError('Missing OPENAI_API_KEY')
     }
+
+    const formattedContent = chunks
+      .map(chunk => `[[SOURCE_CHUNK_ID: ${chunk.id}]]\n${chunk.text}`)
+      .join('\n\n---\n\n')
 
     let res: Response;
     try {
@@ -109,7 +113,7 @@ export class OpenAiAdapter implements IAiService {
           response_format: { type: 'json_object' },
           messages: [
             { role: 'system', content: DIAGNOSTIC_QUIZ_PROMPT },
-            { role: 'user', content: markdown },
+            { role: 'user', content: formattedContent },
           ],
         }),
       })

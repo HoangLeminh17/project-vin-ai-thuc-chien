@@ -1,4 +1,4 @@
-import { IAiService, TokenUsage } from '@/core/ports/ai.port'
+import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
 import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
 import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
@@ -102,10 +102,14 @@ export class GeminiAdapter implements IAiService {
     return { course, tokens }
   }
 
-  async generateDiagnosticQuiz(markdown: string): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
+  async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
     if (!this.apiKey) {
       throw new InfrastructureError('Missing GEMINI_API_KEY')
     }
+
+    const formattedContent = chunks
+      .map(chunk => `[[SOURCE_CHUNK_ID: ${chunk.id}]]\n${chunk.text}`)
+      .join('\n\n---\n\n')
 
     const url = `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`
 
@@ -127,7 +131,7 @@ export class GeminiAdapter implements IAiService {
           contents: [
             {
               role: 'user',
-              parts: [{ text: markdown }],
+              parts: [{ text: formattedContent }],
             },
           ],
         }),

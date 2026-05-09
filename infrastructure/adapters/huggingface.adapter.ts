@@ -1,4 +1,4 @@
-import { IAiService, TokenUsage } from '@/core/ports/ai.port'
+import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
 import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
 import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
@@ -109,8 +109,13 @@ export class HuggingFaceAdapter implements IAiService {
     return { course, tokens }
   }
 
-  async generateDiagnosticQuiz(markdown: string): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
-    const { text, tokens } = await this.safeFetch(DIAGNOSTIC_QUIZ_PROMPT, markdown)
+  async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
+    // Format chunks for AI to maintain traceability
+    const formattedContent = chunks
+      .map(chunk => `[[SOURCE_CHUNK_ID: ${chunk.id}]]\n${chunk.text}`)
+      .join('\n\n---\n\n')
+
+    const { text, tokens } = await this.safeFetch(DIAGNOSTIC_QUIZ_PROMPT, formattedContent)
     const quiz = this.parseSecureJson<DiagnosticQuiz>(text)
     return { quiz, tokens }
   }

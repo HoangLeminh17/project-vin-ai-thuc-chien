@@ -22,9 +22,10 @@ describe('GenerateDiagnosticQuizUseCase', () => {
 
     const useCase = new GenerateDiagnosticQuizUseCase(mockAiService);
     
-    const result = await useCase.execute('test markdown content');
+    const chunks = [{ id: '1', text: 'test markdown content' }];
+    const result = await useCase.execute(chunks);
 
-    expect(mockAiService.generateDiagnosticQuiz).toHaveBeenCalledWith('test markdown content');
+    expect(mockAiService.generateDiagnosticQuiz).toHaveBeenCalledWith(chunks);
     expect(result).toEqual({ quiz: mockQuiz, tokens: null });
   });
 });
