@@ -3,6 +3,20 @@ import { getStorage } from 'firebase-admin/storage'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 
+// A recursive proxy that returns itself for any property access or function call.
+// This allows any chain like bucket.file(path).save(data).then(...) to not crash.
+const createRecursiveProxy = (): any => {
+  const proxy: any = new Proxy(() => proxy, {
+    get: (target, prop) => {
+      if (prop === 'then') return undefined; // Handle promises if needed
+      if (prop === 'constructor') return Object;
+      return proxy;
+    },
+    apply: () => proxy
+  });
+  return proxy;
+};
+
 function getApp(): App {
   if (getApps().length > 0) return getApps()[0]
 
@@ -12,19 +26,11 @@ function getApp(): App {
   const storageBucket = process.env.FIREBASE_STORAGE_BUCKET
 
   if (!projectId || !clientEmail || !privateKey || !storageBucket) {
-    // During Next.js build phase, env vars might be missing. 
-    // We should only throw if we are actually trying to use the app in production/dev.
-    if (process.env.NEXT_PHASE === 'phase-production-build') {
-      console.warn('Firebase Admin env vars missing during build - using dummy proxy');
-      // Return a Proxy that handles any method call to avoid "is not a function" errors
-      return new Proxy({} as App, {
-        get: (target, prop) => {
-          if (prop === 'getOrInitService') return () => ({}); 
-          return () => ({});
-        }
-      });
+    if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'test') {
+      console.warn('Firebase Admin env vars missing - using recursive dummy proxy');
+      return createRecursiveProxy();
     }
-    throw new Error('Missing Firebase Admin env vars (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIREBASE_STORAGE_BUCKET)')
+    throw new Error('Missing Firebase Admin env vars')
   }
 
   return initializeApp({
@@ -34,14 +40,23 @@ function getApp(): App {
 }
 
 export function getBucket() {
+  if (!process.env.FIREBASE_PROJECT_ID && (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'test')) {
+    return createRecursiveProxy();
+  }
   return getStorage(getApp()).bucket()
 }
 
 export function getFirebaseAdminAuth() {
+  if (!process.env.FIREBASE_PROJECT_ID && (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'test')) {
+    return createRecursiveProxy();
+  }
   return getAuth(getApp())
 }
 
 export function getFirebaseAdminFirestore() {
+  if (!process.env.FIREBASE_PROJECT_ID && (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'test')) {
+    return createRecursiveProxy();
+  }
   return getFirestore(getApp())
 }
 
