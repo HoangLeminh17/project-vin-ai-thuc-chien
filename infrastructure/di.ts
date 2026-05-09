@@ -9,13 +9,14 @@ import { GetProgressMapUseCase } from '@/core/use-cases/spaced-repetition/get-pr
 import { GenerateDiagnosticQuizUseCase } from '@/core/use-cases/diagnostic/generate-diagnostic-quiz.usecase';
 import { GetPrioritizedDueCardsUseCase } from '@/core/use-cases/spaced-repetition/get-prioritized-due-cards.usecase';
 
+import { GeminiAdapter } from './adapters/gemini.adapter';
+import { HuggingFaceAdapter } from './adapters/huggingface.adapter';
+import { ChainAiAdapter } from './adapters/fallback-ai.adapter';
+import type { IAiService } from '@/core/ports/ai.port';
+
 import { OpenAiAdapter } from './adapters/openai.adapter';
 import { MineruParserAdapter } from './adapters/mineru-parser.adapter';
-
-// Comment this out to disable Firebase
 import { FirebaseStorageAdapter } from './adapters/firebase-storage.adapter';
-// import { LocalFsStorageAdapter } from './adapters/local-storage.adapter';
-
 import { PinoLoggerAdapter } from './adapters/pino-logger.adapter';
 import { WebhookAlertAdapter } from './adapters/webhook-alert.adapter';
 import { ConsoleMonitoringAdapter } from './adapters/console-monitoring.adapter';
@@ -38,9 +39,38 @@ const parserAdapter = new MineruParserAdapter({
   baseUrl: process.env.PDF_MINERU_BASE_URL!,
   apiKey: process.env.PDF_MINERU_API_KEY!,
 });
-const aiAdapter = new OpenAiAdapter({
-  apiKey: process.env.OPENAI_API_KEY!,
-});
+
+// Setup AI Adapters with fallback chain
+const provider = process.env.AI_PROVIDER?.toLowerCase();
+const aiAdapters: IAiService[] = [];
+
+const gemini = process.env.GEMINI_API_KEY ? new GeminiAdapter({
+  apiKey: process.env.GEMINI_API_KEY,
+  model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+}) : null;
+
+const openai = process.env.OPENAI_API_KEY ? new OpenAiAdapter({
+  apiKey: process.env.OPENAI_API_KEY,
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+}) : null;
+
+const huggingface = process.env.HUGGINGFACE_API_KEY ? new HuggingFaceAdapter({
+  apiKey: process.env.HUGGINGFACE_API_KEY,
+  model: process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.1-8B-Instruct',
+}) : null;
+
+// Add by priority: 1. Specified provider, 2. Others as fallback
+if (provider === 'gemini' && gemini) aiAdapters.push(gemini);
+else if (provider === 'openai' && openai) aiAdapters.push(openai);
+else if (provider === 'huggingface' && huggingface) aiAdapters.push(huggingface);
+
+// Add remainders if they weren't already added (if AI_PROVIDER is not set or to provide fallback)
+if (gemini && !aiAdapters.includes(gemini)) aiAdapters.push(gemini);
+if (openai && !aiAdapters.includes(openai)) aiAdapters.push(openai);
+if (huggingface && !aiAdapters.includes(huggingface)) aiAdapters.push(huggingface);
+
+export const aiAdapter = new ChainAiAdapter(aiAdapters);
+
 const authAdapter = new FirebaseAuthAdapter(getFirebaseAdminAuth());
 const progressRepository = new FirebaseProgressRepository();
 export const courseRepository = new FirestoreCourseAdapter(getDb());
