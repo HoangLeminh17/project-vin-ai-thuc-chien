@@ -50,8 +50,11 @@ jobs:
       - name: Run lint
         run: npm run lint
 
-      - name: Run Node tests
-        run: npx vitest run
+      - name: Run Build Safety Smoke Tests
+        run: NEXT_PHASE=phase-production-build npx vitest run tests/smoke tests/lib
+
+      - name: Run Unit tests
+        run: npm run test
 
   # 3. UKT Service CI (Build & Test)
   ukt-build-test:

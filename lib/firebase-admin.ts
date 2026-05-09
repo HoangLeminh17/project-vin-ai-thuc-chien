@@ -15,8 +15,14 @@ function getApp(): App {
     // During Next.js build phase, env vars might be missing. 
     // We should only throw if we are actually trying to use the app in production/dev.
     if (process.env.NEXT_PHASE === 'phase-production-build') {
-      console.warn('Firebase Admin env vars missing during build - skipping initialization');
-      return {} as App; 
+      console.warn('Firebase Admin env vars missing during build - using dummy proxy');
+      // Return a Proxy that handles any method call to avoid "is not a function" errors
+      return new Proxy({} as App, {
+        get: (target, prop) => {
+          if (prop === 'getOrInitService') return () => ({}); 
+          return () => ({});
+        }
+      });
     }
     throw new Error('Missing Firebase Admin env vars (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIREBASE_STORAGE_BUCKET)')
   }

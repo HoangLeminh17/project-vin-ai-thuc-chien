@@ -2,7 +2,6 @@
 
 import { SynapsyLogo, T } from '@/app/components/synapsy'
 import { DiagnosticQuestion } from '@/core/models/learning-model'
-import { SavedCourse } from '@/core/models/saved-course'
 
 interface Props {
   questions: DiagnosticQuestion[]

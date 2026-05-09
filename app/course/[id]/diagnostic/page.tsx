@@ -4,7 +4,7 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/contexts/auth-context';
-import { DiagnosticQuiz, DiagnosticQuestion } from '@/core/models/learning-model';
+import { DiagnosticQuiz } from '@/core/models/learning-model';
 
 export default function DiagnosticPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
