@@ -41,7 +41,7 @@ export class GetPrioritizedDueCardsUseCase {
         if (idxB !== -1) return 1;  // b has priority
         return 0; // both unknown, keep original order
       });
-    } catch (e) {
+    } catch {
       return dueCards;
     }
   }

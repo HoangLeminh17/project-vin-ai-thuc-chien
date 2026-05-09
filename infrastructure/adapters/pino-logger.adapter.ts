@@ -2,7 +2,6 @@ import pino from 'pino';
 import { ILoggerPort } from '@/core/ports/logger.port';
 import { logStore } from '../log-store';
 
-const isDev = process.env.NODE_ENV === 'development';
 
 export class PinoLoggerAdapter implements ILoggerPort {
   private logger;

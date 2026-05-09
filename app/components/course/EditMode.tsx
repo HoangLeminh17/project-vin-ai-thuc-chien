@@ -18,11 +18,10 @@ interface Props {
   controlledCardId?: string | null
   /** Hides the left card list — used when the tree nav IS the card list */
   hideList?: boolean
-  pdfUrl?: string | null
   layoutStorageUrl?: string | null
 }
 
-export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdfUrl, layoutStorageUrl }: Props) {
+export function EditMode({ cards, initialCardId, controlledCardId, hideList, layoutStorageUrl }: Props) {
   const [selectedId, setSelectedId] = useState(controlledCardId ?? initialCardId ?? cards[0]?.id ?? null)
   const [aiInput, setAiInput] = useState('')
   const [aiProposal, setAiProposal] = useState<string | null>(null)
@@ -35,7 +34,11 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
 
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
   // Shared display map so answer + detail citations share one numbering sequence per card
-  const cardCiteMap = useMemo(() => new Map<string, number>(), [card?.id])
+  const cardCiteMap = useMemo(() => {
+    // Reset map when card changes
+    void selectedId; 
+    return new Map<string, number>();
+  }, [selectedId])
   // New courses use source_chunk_start; legacy courses fall back to source_chunk_id
   const chunkStart = card?.concept.source_chunk_start ?? card?.concept.source_chunk_id ?? null
   const chunkEnd   = card?.concept.source_chunk_end   ?? card?.concept.source_chunk_id ?? null

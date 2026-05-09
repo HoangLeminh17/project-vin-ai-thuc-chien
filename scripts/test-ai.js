@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const fs = require('fs');
 const path = require('path');
 
@@ -24,7 +25,7 @@ async function testHuggingFaceOnly() {
             const [key, ...val] = line.split('=');
             if (key && val.length) env[key.trim()] = val.join('=').replace(/"/g, '').trim();
         });
-    } catch (e) {
+    } catch {
         console.error("❌ Không tìm thấy tệp .env tại:", envPath);
         return;
     }

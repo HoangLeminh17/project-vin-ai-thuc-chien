@@ -38,7 +38,7 @@ export class ReviewCardUseCase {
           kc_id: nextProgress.topic,
           rating: uktRating
         });
-      } catch (e) {
+      } catch {
         // Ignored
       }
     }

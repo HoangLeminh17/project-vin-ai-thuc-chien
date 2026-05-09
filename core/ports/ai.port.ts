@@ -1,4 +1,4 @@
-import type { Course, ChapterContent, DiagnosticQuiz } from '../models/learning-model'
+import type { Course, DiagnosticQuiz } from '../models/learning-model'
 
 export type TokenUsage = { promptTokens: number; completionTokens: number; totalTokens: number }
 

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, useMemo, type DragEvent } from 'react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { FlashFactGallery, Spinner } from '@/app/components'
@@ -325,7 +326,7 @@ export default function Home() {
               <a href="/review" style={{ color: T.ink60, fontWeight: 500, textDecoration: 'none' }}>Ôn tập</a>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {user.photoURL
-                  ? <img src={user.photoURL} alt="" style={{ width: 30, height: 30, borderRadius: '50%', border: `1px solid ${T.ink10}` }} />
+                  ? <Image src={user.photoURL} alt="" width={30} height={30} unoptimized style={{ borderRadius: '50%', border: `1px solid ${T.ink10}` }} />
                   : <div style={{ width: 30, height: 30, borderRadius: '50%', background: T.ink, color: T.bgSolid, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11 }}>
                       {(user.displayName || user.email || 'U')[0].toUpperCase()}
                     </div>
