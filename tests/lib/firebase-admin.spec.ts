@@ -34,7 +34,7 @@ describe('Firebase Admin Build Safety', () => {
   it('should throw error when env vars are missing in non-build, non-test phase', async () => {
     // Simulate runtime
     process.env.NEXT_PHASE = 'runtime';
-    process.env.NODE_ENV = 'production';
+    (process.env as any).NODE_ENV = 'production';
     
     delete process.env.FIREBASE_PROJECT_ID;
     delete process.env.FIREBASE_CLIENT_EMAIL;
