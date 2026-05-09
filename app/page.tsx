@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/contexts/auth-context'
 import { FlashFactGallery, Spinner } from '@/app/components'
 import { useCourses } from '@/lib/hooks/use-courses'
 import { SavedCourse } from '@/core/models/saved-course'
-import { Course, CourseContent, ChapterContent } from '@/core/models/learning-model'
+import { Course, ChapterContent } from '@/core/models/learning-model'
 import { useGeneration, type DiagnosticStatus } from '@/lib/contexts/generation-context'
 import { SynapsyLogo, SynapsyRing, GeoDecoration, T } from '@/app/components/synapsy'
 
@@ -218,7 +218,7 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
 // ── Main home ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { status, course, courseContentMap, stage2Loading, stage2Errors, error, rawMarkdown, savedCourseId, isFromCache, diagnosticStatus, startGeneration, resetGeneration, fetchChapter } = useGeneration()
+  const { status, course, courseContentMap, stage2Loading, stage2Errors, error, rawMarkdown, savedCourseId, diagnosticStatus, startGeneration, resetGeneration, fetchChapter } = useGeneration()
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)

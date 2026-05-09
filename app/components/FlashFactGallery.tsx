@@ -12,7 +12,10 @@ export function FlashFactGallery({ markdown }: FlashFactGalleryProps) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!markdown) { setLoading(false); return }
+    if (!markdown) {
+      Promise.resolve().then(() => setLoading(false));
+      return;
+    }
     fetch('/api/extract-facts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

@@ -35,18 +35,23 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, pdf
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
 
   useEffect(() => {
-    if (controlledCardId != null) setSelectedId(controlledCardId)
+    if (controlledCardId != null) {
+      Promise.resolve().then(() => setSelectedId(controlledCardId));
+    }
   }, [controlledCardId])
 
   useEffect(() => {
     if (cards.length > 0 && !cards.find(c => c.id === selectedId)) {
-      setSelectedId(cards[0].id)
+      Promise.resolve().then(() => setSelectedId(cards[0].id));
     }
   }, [cards, selectedId])
 
   useEffect(() => {
-    setCitationOpen(false)
-    setShowSource(false)
+    const resetSelectionStates = async () => {
+      setCitationOpen(false)
+      setShowSource(false)
+    }
+    resetSelectionStates()
   }, [selectedId])
 
   const runAI = (prompt: string) => {

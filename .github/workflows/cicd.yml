@@ -7,9 +7,33 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-and-test:
+  # 1. Job to detect changes in the monorepo
+  changes:
     runs-on: [self-hosted, phoenix-runner]
+    outputs:
+      web: ${{ steps.filter.outputs.web }}
+      ukt: ${{ steps.filter.outputs.ukt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - '!(UKT/**)'
+              - 'package.json'
+              - 'next.config.ts'
+              - 'tsconfig.json'
+              - '.github/workflows/cicd.yml'
+            ukt:
+              - 'UKT/**'
+              - '.github/workflows/cicd.yml'
 
+  # 2. Web Service CI (Build & Test)
+  web-build-test:
+    needs: changes
+    if: ${{ needs.changes.outputs.web == 'true' }}
+    runs-on: [self-hosted, phoenix-runner]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -28,6 +52,15 @@ jobs:
 
       - name: Run Node tests
         run: npx vitest run
+
+  # 3. UKT Service CI (Build & Test)
+  ukt-build-test:
+    needs: changes
+    if: ${{ needs.changes.outputs.ukt == 'true' }}
+    runs-on: [self-hosted, phoenix-runner]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -48,9 +81,14 @@ jobs:
           cd UKT
           pytest test_api.py -v
 
-  deploy:
-    needs: build-and-test
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+  # 4. Deploy Jobs
+  deploy-web:
+    needs: [changes, web-build-test]
+    if: |
+      always() && 
+      needs.changes.outputs.web == 'true' && 
+      (needs.web-build-test.result == 'success' || needs.web-build-test.result == 'skipped') &&
+      github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: [self-hosted, phoenix-runner]
     env:
       RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
@@ -62,9 +100,26 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
-      - name: Deploy UKT Service to Railway
-        run: npx railway up --service ukt-service --environment production --detach
-      
       - name: Deploy Web App to Railway
         run: npx railway up --service web --environment production --detach
+
+  deploy-ukt:
+    needs: [changes, ukt-build-test]
+    if: |
+      always() && 
+      needs.changes.outputs.ukt == 'true' && 
+      (needs.ukt-build-test.result == 'success' || needs.ukt-build-test.result == 'skipped') &&
+      github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: [self-hosted, phoenix-runner]
+    env:
+      RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Deploy UKT Service to Railway
+        run: npx railway up --service ukt-service --environment production --detach

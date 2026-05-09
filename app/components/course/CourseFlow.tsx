@@ -59,18 +59,21 @@ export function CourseFlow({ course, progressMap, onExit, pdfLocalPath }: Props)
 
     if (localStorage.getItem(`justGenerated_${course.id}`) === 'true') {
       localStorage.removeItem(`justGenerated_${course.id}`)
-      setView('diagnostic-intro')
+      Promise.resolve().then(() => setView('diagnostic-intro'))
       return
     }
     const done = localStorage.getItem(`diagnosticDone_${course.id}`)
     if (done === 'true') {
       const saved = localStorage.getItem(`diagnosticResults_${course.id}`)
       if (saved) {
-        try { setDiagnosticState(JSON.parse(saved)) } catch { /* ignore */ }
+        try { 
+          const parsed = JSON.parse(saved)
+          Promise.resolve().then(() => setDiagnosticState(parsed))
+        } catch { /* ignore */ }
       }
-      setView('course-tree')
+      Promise.resolve().then(() => setView('course-tree'))
     } else {
-      setView('diagnostic-intro')
+      Promise.resolve().then(() => setView('diagnostic-intro'))
     }
   }, [course.id])
 

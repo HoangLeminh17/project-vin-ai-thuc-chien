@@ -55,7 +55,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       }
     }
     load()
-  }, [id, user, authLoading])
+  }, [id, user, authLoading, router])
 
   // Merge streaming content with saved content during generation
   const effectiveCourse = useMemo(() => {

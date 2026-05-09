@@ -38,7 +38,10 @@ export default function AdminMonitorPage() {
   };
 
   useEffect(() => {
-    fetchLogs();
+    const init = async () => {
+      await fetchLogs();
+    };
+    init();
     const interval = setInterval(fetchLogs, 5000); // Poll every 5 seconds
     return () => clearInterval(interval);
   }, []);

@@ -12,6 +12,12 @@ function getApp(): App {
   const storageBucket = process.env.FIREBASE_STORAGE_BUCKET
 
   if (!projectId || !clientEmail || !privateKey || !storageBucket) {
+    // During Next.js build phase, env vars might be missing. 
+    // We should only throw if we are actually trying to use the app in production/dev.
+    if (process.env.NEXT_PHASE === 'phase-production-build') {
+      console.warn('Firebase Admin env vars missing during build - skipping initialization');
+      return {} as App; 
+    }
     throw new Error('Missing Firebase Admin env vars (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIREBASE_STORAGE_BUCKET)')
   }
 

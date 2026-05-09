@@ -2,7 +2,6 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { Course, ChapterContent, CourseContent } from '@/core/models/learning-model';
-import { SavedCourse } from '@/core/models/saved-course';
 import { useAuth } from './auth-context';
 import { useCourses } from '../hooks/use-courses';
 

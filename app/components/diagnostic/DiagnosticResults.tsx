@@ -5,7 +5,6 @@ import { DiagnosticQuestion } from '@/core/models/learning-model'
 import { SavedCourse } from '@/core/models/saved-course'
 
 interface Props {
-  course: SavedCourse
   questions: DiagnosticQuestion[]
   answers: Record<number, number>
   onComplete: (results: Record<string, number>) => void
@@ -27,7 +26,7 @@ function buildResults(questions: DiagnosticQuestion[], answers: Record<number, n
   return out
 }
 
-export function DiagnosticResults({ course, questions, answers, onComplete }: Props) {
+export function DiagnosticResults({ questions, answers, onComplete }: Props) {
   const scored = questions.map((q, i) => ({ ...q, userAnswer: answers[i], isCorrect: answers[i] === q.answer }))
   const totalCorrect = scored.filter(q => q.isCorrect).length
   const pct = Math.round((totalCorrect / questions.length) * 100)

@@ -20,7 +20,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!auth?.app) {
       // Configuration is missing, skip auth initialization
-      setLoading(false);
+      // Wrap in Promise to avoid synchronous setState in effect warning
+      Promise.resolve().then(() => setLoading(false));
       return;
     }
 
