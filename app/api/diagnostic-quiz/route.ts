@@ -11,9 +11,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing markdown content' }, { status: 400 })
     }
 
-    const quiz = await generateDiagnosticQuizUseCase.execute(markdown)
+    const { quiz, tokens } = await generateDiagnosticQuizUseCase.execute(markdown)
 
-    return NextResponse.json(quiz)
+    return NextResponse.json({ quiz, tokens })
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
   }

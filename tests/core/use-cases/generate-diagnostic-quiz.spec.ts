@@ -25,6 +25,6 @@ describe('GenerateDiagnosticQuizUseCase', () => {
     const result = await useCase.execute('test markdown content');
 
     expect(mockAiService.generateDiagnosticQuiz).toHaveBeenCalledWith('test markdown content');
-    expect(result).toEqual(mockQuiz);
+    expect(result).toEqual({ quiz: mockQuiz, tokens: null });
   });
 });

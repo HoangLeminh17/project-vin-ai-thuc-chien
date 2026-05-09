@@ -24,6 +24,7 @@ import { FirebaseAuthAdapter } from './adapters/firebase-auth.adapter';
 import { FirebaseProgressRepository } from './adapters/firebase-progress-repository.adapter';
 import { FirestoreCourseAdapter } from './adapters/firestore-course.adapter';
 import { UKTServiceAdapter } from './adapters/ukt-service.adapter';
+import { FirestoreUsageAdapter } from './adapters/firestore-usage.adapter';
 import { SaveCourseUseCase } from '@/core/use-cases/courses/save-course.usecase';
 import { ListCoursesUseCase } from '@/core/use-cases/courses/list-courses.usecase';
 import { getDb, getBucket, getFirebaseAdminAuth } from '@/lib/firebase-admin';
@@ -74,13 +75,14 @@ export const aiAdapter = new ChainAiAdapter(aiAdapters);
 const authAdapter = new FirebaseAuthAdapter(getFirebaseAdminAuth());
 const progressRepository = new FirebaseProgressRepository();
 export const courseRepository = new FirestoreCourseAdapter(getDb());
+export const usageRepository = new FirestoreUsageAdapter(getDb());
 export const uktService = new UKTServiceAdapter(process.env.UKT_SERVICE_URL || 'http://localhost:8000');
 
 // Instantiate Use Cases
 const rawParseDocumentUseCase = new ParseDocumentUseCase(storageAdapter, parserAdapter);
 export const parseDocumentUseCase = withUseCaseLogging(rawParseDocumentUseCase, 'ParseDocumentUseCase', logger, monitoring);
 
-const rawGenerateCourseUseCase = new GenerateCourseUseCase(aiAdapter);
+const rawGenerateCourseUseCase = new GenerateCourseUseCase(aiAdapter, usageRepository);
 export const generateCourseUseCase = withUseCaseLogging(rawGenerateCourseUseCase, 'GenerateCourseUseCase', logger, monitoring);
 
 const rawVerifySessionUseCase = new VerifySessionUseCase(authAdapter);
@@ -100,7 +102,7 @@ const rawGetPrioritizedDueCardsUseCase = new GetPrioritizedDueCardsUseCase(progr
 export const getPrioritizedDueCardsUseCase = withUseCaseLogging(rawGetPrioritizedDueCardsUseCase, 'GetPrioritizedDueCardsUseCase', logger, monitoring);
 
 // Diagnostic Loop
-const rawGenerateDiagnosticQuizUseCase = new GenerateDiagnosticQuizUseCase(aiAdapter);
+const rawGenerateDiagnosticQuizUseCase = new GenerateDiagnosticQuizUseCase(aiAdapter, usageRepository);
 export const generateDiagnosticQuizUseCase = withUseCaseLogging(rawGenerateDiagnosticQuizUseCase, 'GenerateDiagnosticQuizUseCase', logger, monitoring);
 
 const rawGetSRSStatsUseCase = new GetSRSStatsUseCase(progressRepository);
