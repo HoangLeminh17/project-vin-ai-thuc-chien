@@ -7,87 +7,100 @@ export interface HuggingFaceConfig {
   apiKey: string
   model?: string
   baseUrl?: string
+  timeoutMs?: number
 }
 
 export class HuggingFaceAdapter implements IAiService {
   private readonly apiKey: string
   private readonly model: string
   private readonly baseUrl: string
+  private readonly timeoutMs: number
 
   constructor(config: HuggingFaceConfig) {
+    if (!config.apiKey) {
+      throw new InfrastructureError('HUGGINGFACE_API_KEY is required at initialization')
+    }
     this.apiKey = config.apiKey
     this.model = config.model || 'meta-llama/Llama-3.1-8B-Instruct'
-    // HF OpenAI-compatible endpoint: requires model ID in the URL for Inference API
+    // Linh hoạt giữa Inference API chuẩn và Dedicated Endpoints
     this.baseUrl = config.baseUrl || `https://api-inference.huggingface.co/models/${this.model}/v1/chat/completions`
+    this.timeoutMs = config.timeoutMs || 60000 // Mặc định 60s
   }
 
-  async generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
-    if (!this.apiKey) {
-      throw new InfrastructureError('Missing HUGGINGFACE_API_KEY')
-    }
+  /**
+   * Phương thức chung để gọi HuggingFace Inference API
+   */
+  private async safeFetch(systemPrompt: string, userContent: string): Promise<{ text: string; tokens: TokenUsage | null }> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
 
-    let res: Response
     try {
-      res = await fetch(this.baseUrl, {
+      const res = await fetch(this.baseUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`,
         },
+        signal: controller.signal,
         body: JSON.stringify({
           model: this.model,
           temperature: 0.2,
-          // Note: Some HF models might not support json_object response format
-          // but many modern ones (like Llama 3) do via TGI
           response_format: { type: 'json_object' },
           messages: [
-            { role: 'system', content: PLANNER_PROMPT },
-            { role: 'user', content: markdown },
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userContent },
           ],
         }),
       })
-    } catch (e) {
-      throw new InfrastructureError('Failed to connect to Hugging Face API', e)
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        const errorDetail = JSON.stringify(body?.error || body?.message || `HTTP ${res.status}`)
+        throw new InfrastructureError(`Hugging Face API error (${res.status}): ${errorDetail}`)
+      }
+
+      const data = await res.json()
+      const text = data.choices?.[0]?.message?.content
+      if (!text) throw new InfrastructureError('Hugging Face returned empty content')
+
+      const usage = data.usage
+      const tokens = usage ? {
+        promptTokens: usage.prompt_tokens,
+        completionTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens,
+      } : null
+
+      return { text, tokens }
+    } catch (e: any) {
+      if (e.name === 'AbortError') throw new InfrastructureError(`Hugging Face request timed out after ${this.timeoutMs}ms`)
+      throw e instanceof InfrastructureError ? e : new InfrastructureError('Network failure calling Hugging Face', e)
+    } finally {
+      clearTimeout(timeout)
     }
+  }
 
-    if (!res.ok) {
-      const body = await res.json().catch(() => null)
-      const msg = body?.error || body?.message || `HTTP ${res.status}`
-      throw new InfrastructureError(`Hugging Face API error (${res.status}): ${JSON.stringify(msg)}`)
-    }
-
-    const data = await res.json()
-
-    // HF OpenAI-compatible endpoint returns usage similar to OpenAI
-    const usage = data.usage
-    const tokens: TokenUsage | null = usage
-      ? {
-          promptTokens: usage.prompt_tokens,
-          completionTokens: usage.completion_tokens,
-          totalTokens: usage.total_tokens,
-        }
-      : null
-
-    if (tokens) {
-      console.log(`[hf-adapter] Tokens — prompt: ${tokens.promptTokens}, completion: ${tokens.completionTokens}, total: ${tokens.totalTokens}`)
-    }
-
-    const text = data.choices?.[0]?.message?.content
-    if (!text) {
-      throw new InfrastructureError(`Hugging Face returned no content: ${JSON.stringify(data)}`)
-    }
-
-    let course: Course
+  /**
+   * Tiện ích bóc tách JSON từ chuỗi có thể chứa Markdown
+   */
+  private parseSecureJson<T>(rawText: string): T {
     try {
-      course = JSON.parse(text)
+      // Loại bỏ markdown code blocks nếu AI trả về nhầm
+      const cleanJson = rawText.replace(/```json\n?|```/g, '').trim()
+      return JSON.parse(cleanJson)
     } catch (e) {
-      throw new InfrastructureError(`Failed to parse Hugging Face JSON response: ${text.slice(0, 500)}`, e)
+      throw new InfrastructureError(`Failed to parse AI JSON response. Raw snippet: ${rawText.slice(0, 100)}...`, e)
     }
+  }
+
+  async generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
+    const { text, tokens } = await this.safeFetch(PLANNER_PROMPT, markdown)
+    const course = this.parseSecureJson<Course>(text)
 
     if (!course.chapters || !Array.isArray(course.chapters)) {
-      throw new InfrastructureError('Invalid course structure: missing chapters array')
+      throw new InfrastructureError('Invalid course structure: missing chapters')
     }
 
+    // Đảm bảo tính nhất quán của schema
     course.chapters = course.chapters.map(ch => ({
       ...ch,
       lessons: ch.lessons || (ch as any).lesson || [],
@@ -97,61 +110,8 @@ export class HuggingFaceAdapter implements IAiService {
   }
 
   async generateDiagnosticQuiz(markdown: string): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
-    if (!this.apiKey) {
-      throw new InfrastructureError('Missing HUGGINGFACE_API_KEY')
-    }
-
-    let res: Response
-    try {
-      res = await fetch(this.baseUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: this.model,
-          temperature: 0.2,
-          response_format: { type: 'json_object' },
-          messages: [
-            { role: 'system', content: DIAGNOSTIC_QUIZ_PROMPT },
-            { role: 'user', content: markdown },
-          ],
-        }),
-      })
-    } catch (e) {
-      throw new InfrastructureError('Failed to connect to Hugging Face API for diagnostic quiz', e)
-    }
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => null)
-      const msg = body?.error || body?.message || `HTTP ${res.status}`
-      throw new InfrastructureError(`Hugging Face API error (${res.status}): ${JSON.stringify(msg)}`)
-    }
-
-    const data = await res.json()
-
-    const usage = data.usage
-    const tokens: TokenUsage | null = usage
-      ? {
-          promptTokens: usage.prompt_tokens,
-          completionTokens: usage.completion_tokens,
-          totalTokens: usage.total_tokens,
-        }
-      : null
-
-    const text = data.choices?.[0]?.message?.content
-    if (!text) {
-      throw new InfrastructureError(`Hugging Face returned no content for diagnostic quiz: ${JSON.stringify(data)}`)
-    }
-
-    let quiz: DiagnosticQuiz
-    try {
-      quiz = JSON.parse(text)
-    } catch (e) {
-      throw new InfrastructureError(`Failed to parse Hugging Face JSON response for diagnostic quiz: ${text.slice(0, 500)}`, e)
-    }
-
+    const { text, tokens } = await this.safeFetch(DIAGNOSTIC_QUIZ_PROMPT, markdown)
+    const quiz = this.parseSecureJson<DiagnosticQuiz>(text)
     return { quiz, tokens }
   }
 }
