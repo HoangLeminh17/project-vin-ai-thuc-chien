@@ -98,13 +98,12 @@ export interface Props {
   progressMap: Record<string, ProgressEntry>
   diagnosticState: Record<string, number>
   onExit: () => void
-  pdfUrl?: string | null
   layoutStorageUrl?: string | null
 }
 
 // ── CourseTree ─────────────────────────────────────────────────────────────────
 
-export function CourseTree({ course, progressMap, diagnosticState, onExit, pdfUrl, layoutStorageUrl }: Props) {
+export function CourseTree({ course, progressMap, diagnosticState, onExit, layoutStorageUrl }: Props) {
   const chapters = course.course.chapters
   const allCards = useMemo(() => flattenCards(course), [course])
 
@@ -412,7 +411,6 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, pdfUr
                 cards={allCards.filter(c => c.ci === activeCard.ci && c.li === activeCard.li)}
                 controlledCardId={activeCard.id}
                 hideList
-                pdfUrl={pdfUrl}
                 layoutStorageUrl={layoutStorageUrl}
               />
             </>

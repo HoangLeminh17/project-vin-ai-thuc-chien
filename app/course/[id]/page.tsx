@@ -20,7 +20,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const { id } = use(params)
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
-  const { savedCourseId: generatingId, status: genStatus, courseContentMap: genContentMap, course: genCourse, pdfLocalPath } = useGeneration()
+  const { savedCourseId: generatingId, status: genStatus, courseContentMap: genContentMap, course: genCourse } = useGeneration()
 
   const [saved, setSaved] = useState<SavedCourse | null>(null)
   const [fetchError, setFetchError] = useState('')
@@ -57,12 +57,6 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     load()
   }, [id, user, authLoading, router])
 
-  // Prefer server-stored PDF URL; fall back to same-session blob URL
-  const pdfUrl = useMemo(() => {
-    if (saved?.pdfStorageUrl) return `/api/pdf-serve?courseId=${id}`
-    if (pdfLocalPath) return pdfLocalPath
-    return null
-  }, [saved?.pdfStorageUrl, id, pdfLocalPath])
 
   // Layout JSON URL — proxied through API to keep Firebase auth server-side
   const layoutStorageUrl = useMemo(() => {
@@ -104,7 +98,6 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           course={effectiveCourse}
           progressMap={progressMap}
           onExit={() => router.push('/')}
-          pdfUrl={pdfUrl}
           layoutStorageUrl={layoutStorageUrl}
         />
       </div>
