@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { verifySessionUseCase, reviewCardUseCase } from '@/infrastructure/di';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { verifySessionUseCase, getCourseUseCase, deleteCourseUseCase, updateCourseUseCase } from '@/infrastructure/registry';
 import { handleApiError } from '@/lib/api-utils';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
