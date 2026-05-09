@@ -57,7 +57,7 @@ export class FirebaseProgressRepository implements IProgressRepository {
       .orderBy('nextReviewDate', 'asc')
       .get();
 
-    return snapshot.docs.map(doc => this.mapToEntity(doc.id, doc.data()));
+    return snapshot.docs.map((doc: any) => this.mapToEntity(doc.id, doc.data()));
   }
 
   async getAllForUser(userId: string): Promise<CardProgress[]> {
@@ -65,7 +65,7 @@ export class FirebaseProgressRepository implements IProgressRepository {
       .collection(this.collectionName)
       .where('userId', '==', userId)
       .get();
-    return snapshot.docs.map(doc => this.mapToEntity(doc.id, doc.data()));
+    return snapshot.docs.map((doc: any) => this.mapToEntity(doc.id, doc.data()));
   }
 
   async getStats(userId: string): Promise<{ new: number; learning: number; due: number; streak: number }> {
@@ -78,7 +78,7 @@ export class FirebaseProgressRepository implements IProgressRepository {
     const stats = { new: 0, learning: 0, due: 0, streak: 0 };
     const reviewDays = new Set<string>(); // YYYY-MM-DD, local time
 
-    snapshot.docs.forEach(doc => {
+    snapshot.docs.forEach((doc: any) => {
       const data = doc.data();
       if (data.status === 'NEW') stats.new++;
       else if (data.status === 'LEARNING') stats.learning++;
