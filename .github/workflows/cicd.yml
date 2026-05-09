@@ -64,7 +64,7 @@ jobs:
           node-version: '20'
       
       - name: Deploy UKT Service to Railway
-        run: npx railway up --service ukt-service --detach
+        run: npx railway up --service ukt-service --environment production --detach
       
       - name: Deploy Web App to Railway
-        run: npx railway up --service web --detach
+        run: npx railway up --service web --environment production --detach
