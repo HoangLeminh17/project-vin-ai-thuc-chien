@@ -1,0 +1,10 @@
+FROM grafana/grafana:latest
+
+# Copy cấu hình datasource
+COPY grafana-datasource.yml /etc/grafana/provisioning/datasources/datasource.yml
+
+# Tắt wizard cài đặt ban đầu vì mình đã cấu hình rồi
+ENV GF_AUTH_ANONYMOUS_ENABLED=false
+ENV GF_SECURITY_ADMIN_PASSWORD=admin
+
+EXPOSE 3000
