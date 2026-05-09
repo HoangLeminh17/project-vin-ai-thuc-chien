@@ -14,9 +14,11 @@
     "firebase-admin": "^13.7.0",
     "jszip": "^3.10.1",
     "next": "^15.3.1",
+    "pdfjs-dist": "^5.7.284",
     "pino": "^10.3.1",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "react-pdf": "^10.4.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.2",
