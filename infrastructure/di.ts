@@ -19,13 +19,15 @@ import { MineruParserAdapter } from './adapters/mineru-parser.adapter';
 import { FirebaseStorageAdapter } from './adapters/firebase-storage.adapter';
 import { PinoLoggerAdapter } from './adapters/pino-logger.adapter';
 import { WebhookAlertAdapter } from './adapters/webhook-alert.adapter';
+import { RedisRateLimitAdapter } from './adapters/redis-ratelimit.adapter';
+import { CompositeMonitoringAdapter } from './adapters/composite-monitoring.adapter';
 import { ConsoleMonitoringAdapter } from './adapters/console-monitoring.adapter';
+import { prometheusRegistry } from './adapters/prometheus.adapter';
 import { FirebaseAuthAdapter } from './adapters/firebase-auth.adapter';
 import { FirebaseProgressRepository } from './adapters/firebase-progress-repository.adapter';
 import { FirestoreCourseAdapter } from './adapters/firestore-course.adapter';
 import { UKTServiceAdapter } from './adapters/ukt-service.adapter';
 import { FirestoreUsageAdapter } from './adapters/firestore-usage.adapter';
-import { RedisRateLimitAdapter } from './adapters/redis-ratelimit.adapter';
 import { SaveCourseUseCase } from '@/core/use-cases/courses/save-course.usecase';
 import { ListCoursesUseCase } from '@/core/use-cases/courses/list-courses.usecase';
 import { getDb, getBucket, getFirebaseAdminAuth } from '@/lib/firebase-admin';
@@ -34,7 +36,8 @@ import { withUseCaseLogging } from '@/core/utils/use-case-logger';
 // Instantiate adapters
 export const logger = new PinoLoggerAdapter();
 export const alertAdapter = new WebhookAlertAdapter(process.env.DISCORD_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL || '');
-export const monitoring = new ConsoleMonitoringAdapter(logger, alertAdapter);
+const consoleMonitoring = new ConsoleMonitoringAdapter(logger, alertAdapter);
+export const monitoring = new CompositeMonitoringAdapter([consoleMonitoring, prometheusRegistry]);
 
 export const rateLimiter = process.env.REDIS_URL ? new RedisRateLimitAdapter({
   url: process.env.REDIS_URL,
