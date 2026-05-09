@@ -2,8 +2,4 @@ FROM prom/prometheus:latest
 
 COPY prometheus.yml /etc/prometheus/prometheus.yml
 
-ENTRYPOINT ["/bin/sh", "-c", "chmod 777 /prometheus && /bin/prometheus"]
-CMD [ "--config.file=/etc/prometheus/prometheus.yml", \
-      "--storage.tsdb.path=/prometheus", \
-      "--web.console.libraries=/usr/share/prometheus/console_libraries", \
-      "--web.console.templates=/usr/share/prometheus/consoles" ]
+ENTRYPOINT ["/bin/sh", "-c", "chmod 777 /prometheus && /bin/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus --web.console.libraries=/usr/share/prometheus/console_libraries --web.console.templates=/usr/share/prometheus/consoles"]
