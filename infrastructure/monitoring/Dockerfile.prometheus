@@ -2,10 +2,7 @@ FROM prom/prometheus:latest
 
 COPY prometheus.yml /etc/prometheus/prometheus.yml
 
-# Thêm flag để cho phép reload config qua HTTP nếu cần
-RUN chown -R nobody:nobody /prometheus && chmod 755 /prometheus
-
-ENTRYPOINT [ "/bin/prometheus" ]
+ENTRYPOINT ["/bin/sh", "-c", "chmod 777 /prometheus && /bin/prometheus"]
 CMD [ "--config.file=/etc/prometheus/prometheus.yml", \
       "--storage.tsdb.path=/prometheus", \
       "--web.console.libraries=/usr/share/prometheus/console_libraries", \
