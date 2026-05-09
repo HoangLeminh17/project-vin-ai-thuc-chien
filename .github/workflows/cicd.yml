@@ -59,7 +59,9 @@ jobs:
           node-version: '20'
       
       - name: Login to Railway
-        run: npx railway login --token ${{ secrets.RAILWAY_TOKEN }}
+        run: npx railway login
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
       
       - name: Deploy UKT Service to Railway
         run: npx railway up --service ukt-service --detach
