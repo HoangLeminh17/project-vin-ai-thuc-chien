@@ -1,5 +1,6 @@
 import { PLANNER_PROMPT, STAGE2_CHAPTER_PROMPT } from './prompts'
 import type { Chapter, ChapterContent, Course } from './types'
+import { isLegacyOutline } from './types'
 import { resolveAiProvider, type AiProvider } from './ai-provider'
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
@@ -283,7 +284,9 @@ export async function generateChapterContent(chapter: Chapter, rawContexts?: str
     lessons: chapter.lessons.map((l, i) => ({
       title: l.title,
       key_concept: l.key_concept,
-      outline: l.outline,
+      outline: isLegacyOutline(l.outline)
+        ? l.outline.map(p => ({ point: p, chunks: [] }))
+        : l.outline,
       ...(rawContexts?.[i] ? { raw_context: rawContexts[i] } : {}),
     })),
   }

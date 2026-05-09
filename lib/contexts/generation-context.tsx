@@ -6,6 +6,7 @@ import { Course, ChapterContent, CourseContent } from '@/core/models/learning-mo
 import { useAuth } from './auth-context';
 import { useCourses } from '../hooks/use-courses';
 import { storage } from '@/lib/firebase-client';
+import { buildValidChunkIds, validateCitationMarkers } from '@/lib/citation-utils';
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -178,8 +179,9 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
 
     let markdown = '';
     let layoutStorageUrl: string | undefined;
-    // Kept in outer scope so fetchChapter calls can build rawContexts from it
+    // Kept in outer scope so fetchChapter calls can build rawContexts and validate markers
     let contentList: Array<{ type?: string; text?: string; table_body?: string; page_idx?: number }> = [];
+    let validChunkIds = new Set<string>();
     try {
       const res = await fetch('/api/parse-pdf', { method: 'POST', body: form });
       const data = await res.json();
@@ -193,6 +195,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
 
       // Upload MinerU contentList JSON for layout serving
       contentList = data.contentList ?? [];
+      validChunkIds = buildValidChunkIds(contentList);
       if (user?.uid && contentList.length > 0) {
         try {
           const layoutBlob = new Blob([JSON.stringify(contentList)], { type: 'application/json' });
@@ -282,6 +285,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           const rawContexts = chapterLessons.map(l => extractRawContext(contentList, l.source_chunk_start, l.source_chunk_end))
           return fetchChapter(i, resolvedCourse || undefined, hash, rawContexts)
         }));
+        results.forEach(ch => { if (ch && validChunkIds.size > 0) validateCitationMarkers(ch, validChunkIds) });
         if (user && resolvedCourse) {
           const chapterList = results.filter(Boolean) as ChapterContent[]
           const content: CourseContent = { chapters: chapterList };
@@ -301,6 +305,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           const rawContexts = chapterLessons.map(l => extractRawContext(contentList, l.source_chunk_start, l.source_chunk_end))
           const ch = await fetchChapter(i, resolvedCourse || undefined, hash, rawContexts);
           if (ch) {
+            if (validChunkIds.size > 0) validateCitationMarkers(ch, validChunkIds)
             accumulatedChapters.push(ch);
             if (user && resolvedCourse) {
               const content: CourseContent = { chapters: [...accumulatedChapters] };

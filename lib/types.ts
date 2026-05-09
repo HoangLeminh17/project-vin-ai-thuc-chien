@@ -1,10 +1,20 @@
 // Stage 1 — Course outline
+export type OutlinePoint = {
+  point: string      // factual statement
+  chunks: string[]   // chunk-X-Y IDs from the source that support this point
+}
+
 export type Lesson = {
   title: string
   key_concept: string
-  outline: string[]  // factual bullet points extracted by the planner; used by Stage 2 to generate slides
+  outline: OutlinePoint[]  // structured bullets with source references; Stage 2 reads chunks to emit markers
   source_chunk_start?: string  // chunk-X-Y anchor marking the first item of this lesson in the source
   source_chunk_end?: string    // chunk-X-Y anchor marking the last item of this lesson in the source
+}
+
+// Type guard: old courses saved before OutlinePoint had plain string[] outlines
+export function isLegacyOutline(outline: unknown): outline is string[] {
+  return Array.isArray(outline) && (outline.length === 0 || typeof outline[0] === 'string')
 }
 
 export type Quiz = {

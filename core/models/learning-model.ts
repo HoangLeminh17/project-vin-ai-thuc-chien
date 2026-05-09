@@ -3,12 +3,21 @@
  * Located in Core to prevent leakage of Infrastructure/External schemas.
  */
 
+export type OutlinePoint = {
+  point: string
+  chunks: string[]
+}
+
 export type Lesson = {
   title: string
   key_concept: string
-  outline: string[]
-  source_chunk_start?: string  // chunk-X-Y anchor marking the first item of this lesson in the source
-  source_chunk_end?: string    // chunk-X-Y anchor marking the last item of this lesson in the source
+  outline: OutlinePoint[]
+  source_chunk_start?: string
+  source_chunk_end?: string
+}
+
+export function isLegacyOutline(outline: unknown): outline is string[] {
+  return Array.isArray(outline) && (outline.length === 0 || typeof outline[0] === 'string')
 }
 
 export type Quiz = {
