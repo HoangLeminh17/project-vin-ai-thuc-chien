@@ -53,24 +53,16 @@ jobs:
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: [self-hosted, phoenix-runner]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-
-      # No need for global install if using npx
-
-      # Deploy UKT Service
+      
+      - name: Login to Railway
+        run: npx railway login --token ${{ secrets.RAILWAY_TOKEN }}
+      
       - name: Deploy UKT Service to Railway
         run: npx railway up --service ukt-service --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
-      # Deploy Web App
+      
       - name: Deploy Web App to Railway
         run: npx railway up --service web --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
