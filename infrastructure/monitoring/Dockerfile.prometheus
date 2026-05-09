@@ -3,6 +3,8 @@ FROM prom/prometheus:latest
 COPY prometheus.yml /etc/prometheus/prometheus.yml
 
 # Thêm flag để cho phép reload config qua HTTP nếu cần
+RUN chmod 777 /prometheus
+
 ENTRYPOINT [ "/bin/prometheus" ]
 CMD [ "--config.file=/etc/prometheus/prometheus.yml", \
       "--storage.tsdb.path=/prometheus", \
