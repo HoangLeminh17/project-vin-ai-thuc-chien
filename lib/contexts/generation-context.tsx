@@ -1,9 +1,11 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import { ref as storageRef, uploadBytes } from 'firebase/storage';
 import { Course, ChapterContent, CourseContent } from '@/core/models/learning-model';
 import { useAuth } from './auth-context';
 import { useCourses } from '../hooks/use-courses';
+import { storage } from '@/lib/firebase-client';
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -25,7 +27,7 @@ interface GenerationState {
 interface GenerationContextType extends GenerationState {
   startGeneration: (file: File) => Promise<void>;
   resetGeneration: () => void;
-  fetchChapter: (i: number, overrideCourse?: Course, overrideHash?: string) => Promise<ChapterContent | null>;
+  fetchChapter: (i: number, overrideCourse?: Course, overrideHash?: string, rawContexts?: string[]) => Promise<ChapterContent | null>;
 }
 
 const GenerationContext = createContext<GenerationContextType | undefined>(undefined);
@@ -97,7 +99,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       .catch(() => { setDiagnosticStatus('error') })
   }, [])
 
-  const fetchChapter = useCallback(async (i: number, overrideCourse?: Course, overrideHash?: string): Promise<ChapterContent | null> => {
+  const fetchChapter = useCallback(async (i: number, overrideCourse?: Course, overrideHash?: string, rawContexts?: string[]): Promise<ChapterContent | null> => {
     const activeCourse = overrideCourse || course;
     const activeHash = overrideHash || currentHash;
     if (!activeCourse) return null;
@@ -112,7 +114,8 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         body: JSON.stringify({
           course: activeCourse,
           chapterIndex: i,
-          hash: activeHash
+          hash: activeHash,
+          ...(rawContexts?.length ? { rawContexts } : {}),
         }),
       });
       const data = await res.json();
@@ -129,14 +132,54 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     }
   }, [course, currentHash]);
 
+  // Extract verbatim source text for a lesson's chunk range from the flat contentList.
+  // Chunk ID format: chunk-{page_idx}-{globalIndex} — globalIndex is the flat array position.
+  function extractRawContext(
+    contentList: Array<{ type?: string; text?: string; table_body?: string; page_idx?: number }>,
+    start: string | undefined,
+    end: string | undefined,
+  ): string {
+    if (!start) return ''
+    const idx = (id: string) => parseInt(id.match(/chunk-\d+-(\d+)/)?.[1] ?? '-1')
+    const s = idx(start)
+    const e = end ? idx(end) : s
+    if (s < 0) return ''
+    return contentList
+      .slice(s, Math.max(s, e) + 1)
+      .filter(item => item.type !== 'discarded' && item.type !== 'image')
+      .map(item => item.text ?? item.table_body ?? '')
+      .filter(Boolean)
+      .join('\n\n')
+  }
+
   const startGeneration = useCallback(async (file: File) => {
     resetGeneration();
     setStatus('parsing');
+
+    // Create blob URL for same-session preview
+    const localPath = URL.createObjectURL(file);
+    setPdfLocalPath(localPath);
+
+    // Upload PDF to Firebase Storage (client-side); get storage path for persistent reference
+    let pdfStorageUrl: string | undefined;
+    if (user?.uid) {
+      try {
+        const filename = `${crypto.randomUUID()}.pdf`;
+        const uploadRef = storageRef(storage, `course-pdfs/${user.uid}/${filename}`);
+        const result = await uploadBytes(uploadRef, file);
+        pdfStorageUrl = result.ref.fullPath;
+      } catch {
+        // Upload failed — citation panel won't work for this course, generation continues
+      }
+    }
 
     const form = new FormData();
     form.append('file', file);
 
     let markdown = '';
+    let layoutStorageUrl: string | undefined;
+    // Kept in outer scope so fetchChapter calls can build rawContexts from it
+    let contentList: Array<{ type?: string; text?: string; table_body?: string; page_idx?: number }> = [];
     try {
       const res = await fetch('/api/parse-pdf', { method: 'POST', body: form });
       const data = await res.json();
@@ -147,7 +190,20 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       }
       markdown = data.markdown ?? '';
       setRawMarkdown(markdown);
-      if (data.pdfLocalPath) setPdfLocalPath(data.pdfLocalPath);
+
+      // Upload MinerU contentList JSON for layout serving
+      contentList = data.contentList ?? [];
+      if (user?.uid && contentList.length > 0) {
+        try {
+          const layoutBlob = new Blob([JSON.stringify(contentList)], { type: 'application/json' });
+          const layoutFilename = `${crypto.randomUUID()}.json`;
+          const layoutRef = storageRef(storage, `course-layouts/${user.uid}/${layoutFilename}`);
+          const layoutResult = await uploadBytes(layoutRef, layoutBlob);
+          layoutStorageUrl = layoutResult.ref.fullPath;
+        } catch {
+          // Layout upload failed — bbox highlighting won't work, generation continues
+        }
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
@@ -212,7 +268,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         setCourseContentMap(map);
         if (user && resolvedCourse) {
           const content: CourseContent = { chapters: cachedChapters };
-          const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash);
+          const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl);
           if (saved) {
             setSavedCourseId(saved.id);
             localStorage.setItem(`justGenerated_${saved.id}`, 'true')
@@ -221,11 +277,15 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         }
         setStatus('done');
       } else if (fromCache) {
-        const results = await Promise.all(chapters.map(i => fetchChapter(i, resolvedCourse || undefined, hash)));
+        const results = await Promise.all(chapters.map(i => {
+          const chapterLessons = resolvedCourse!.chapters[i]?.lessons ?? []
+          const rawContexts = chapterLessons.map(l => extractRawContext(contentList, l.source_chunk_start, l.source_chunk_end))
+          return fetchChapter(i, resolvedCourse || undefined, hash, rawContexts)
+        }));
         if (user && resolvedCourse) {
           const chapterList = results.filter(Boolean) as ChapterContent[]
           const content: CourseContent = { chapters: chapterList };
-          const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash);
+          const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl);
           if (saved) {
             setSavedCourseId(saved.id);
             localStorage.setItem(`justGenerated_${saved.id}`, 'true')
@@ -237,13 +297,15 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         setStatus('done');
       } else {
         for (const i of chapters) {
-          const ch = await fetchChapter(i, resolvedCourse || undefined, hash);
+          const chapterLessons = resolvedCourse!.chapters[i]?.lessons ?? []
+          const rawContexts = chapterLessons.map(l => extractRawContext(contentList, l.source_chunk_start, l.source_chunk_end))
+          const ch = await fetchChapter(i, resolvedCourse || undefined, hash, rawContexts);
           if (ch) {
             accumulatedChapters.push(ch);
             if (user && resolvedCourse) {
               const content: CourseContent = { chapters: [...accumulatedChapters] };
               if (!currentSavedId) {
-                const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash);
+                const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl);
                 if (saved) {
                   currentSavedId = saved.id;
                   setSavedCourseId(saved.id);

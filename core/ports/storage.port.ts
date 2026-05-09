@@ -6,4 +6,5 @@ export interface UploadResult {
 export interface IStorageService {
   upload(file: Buffer, safeName: string): Promise<UploadResult>;
   delete(filePath: string): Promise<void>;
+  uploadPermanent(fileBuffer: Buffer, destPath: string): Promise<string>;
 }

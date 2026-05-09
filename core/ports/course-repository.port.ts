@@ -13,6 +13,8 @@ export interface ICourseRepository {
   // Persistence methods (User-based)
   save(input: CreateCourseInput): Promise<SavedCourse>;
   update(id: string, userId: string, content: CourseContent): Promise<void>;
+  updatePdfUrl(id: string, pdfStorageUrl: string): Promise<void>;
+  updateLayoutUrl(id: string, layoutStorageUrl: string): Promise<void>;
   listByUser(userId: string): Promise<SavedCourse[]>;
   getById(id: string, userId: string): Promise<SavedCourse>;
   delete(id: string, userId: string): Promise<void>;

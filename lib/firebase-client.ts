@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as firebaseSignOut } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -14,17 +15,20 @@ const firebaseConfig = {
 // Initialize Firebase only if API key is present
 let app;
 let auth: ReturnType<typeof getAuth> | any;
+let storage: ReturnType<typeof getStorage> | any;
 
 if (firebaseConfig.apiKey) {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
   auth = getAuth(app);
+  storage = getStorage(app);
 } else {
   console.warn('Firebase Client API Key is missing. Please add NEXT_PUBLIC_FIREBASE_API_KEY to your .env file.');
   // Create a dummy auth object to prevent immediate crashes during SSR/render
   auth = {} as any;
+  storage = {} as any;
 }
 
-export { auth };
+export { auth, storage };
 const googleProvider = new GoogleAuthProvider();
 
 export async function signInWithGoogle() {

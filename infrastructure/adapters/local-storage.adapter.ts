@@ -32,4 +32,11 @@ export class LocalFsStorageAdapter implements IStorageService {
       // non-critical, ignore
     }
   }
+
+  async uploadPermanent(fileBuffer: Buffer, destPath: string): Promise<string> {
+    const filePath = path.join(UPLOADS_DIR, destPath.replace(/\//g, '_'));
+    await fs.mkdir(UPLOADS_DIR, { recursive: true });
+    await fs.writeFile(filePath, fileBuffer);
+    return destPath;
+  }
 }

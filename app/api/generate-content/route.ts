@@ -6,7 +6,7 @@ import { logger, courseRepository } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 const handler = async (req: NextRequest) => {
-  const { course, chapterIndex, hash } = (await req.json()) as { course?: Course; chapterIndex?: number; hash?: string }
+  const { course, provider, chapterIndex, hash, rawContexts } = (await req.json()) as { course?: Course; provider?: string; chapterIndex?: number; hash?: string; rawContexts?: string[] }
   if (!course?.chapters?.length) {
     return NextResponse.json({ success: false, error: 'Missing course' }, { status: 400 })
   }
@@ -25,7 +25,7 @@ const handler = async (req: NextRequest) => {
       }
     }
 
-    const chapter = await generateChapterContent(course.chapters[chapterIndex])
+    const chapter = await generateChapterContent(course.chapters[chapterIndex], rawContexts)
 
     // Save to cache asynchronously
     if (hash) {

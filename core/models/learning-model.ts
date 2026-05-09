@@ -7,7 +7,8 @@ export type Lesson = {
   title: string
   key_concept: string
   outline: string[]
-  source_chunk_id?: string
+  source_chunk_start?: string  // chunk-X-Y anchor marking the first item of this lesson in the source
+  source_chunk_end?: string    // chunk-X-Y anchor marking the last item of this lesson in the source
 }
 
 export type Quiz = {
@@ -30,8 +31,11 @@ export type ConceptCard = {
   answer: string
   detail?: string
   followUps: string[]
+  source_chunk_start?: string  // attached post-generation from Stage 1 lesson
+  source_chunk_end?: string    // attached post-generation from Stage 1 lesson
+  // Legacy fields kept for backward-compat with older saved courses
   source_chunk_id?: string
-  sourceExcerpt?: string  // verbatim outline bullet that grounds the answer; used for citation panel
+  sourceExcerpt?: string
 }
 
 export type QuizQuestion = {

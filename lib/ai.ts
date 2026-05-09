@@ -164,6 +164,26 @@ export async function generateCourse_UNUSED(
 }
 
 
+// ── Shared post-processing ────────────────────────────────────────────────────
+
+function attachChunkRange(raw: ChapterContent, chapter: Chapter): ChapterContent {
+  const lessons = raw.lessons.map((l, i) => {
+    const src = chapter.lessons[i]
+    if (!l.concept) {
+      return { ...l, concept: { question: `${src?.title ?? l.lesson_title} là gì?`, answer: src?.outline.slice(0, 2).join('. ') ?? '', followUps: [] } }
+    }
+    return {
+      ...l,
+      concept: {
+        ...l.concept,
+        source_chunk_start: src?.source_chunk_start,
+        source_chunk_end: src?.source_chunk_end,
+      },
+    }
+  })
+  return { ...raw, lessons }
+}
+
 async function generateChapterContentGemini(chapter: Chapter, input: string): Promise<ChapterContent> {
   const { apiKey, model } = getGeminiConfig()
   const res = await fetch(`${GEMINI_BASE_URL}/models/${model}:generateContent?key=${apiKey}`, {
@@ -184,12 +204,7 @@ async function generateChapterContentGemini(chapter: Chapter, input: string): Pr
   if (!text) throw new Error('Gemini returned no content')
   const raw: ChapterContent = JSON.parse(text)
   if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
-  const lessons = raw.lessons.map((l: any, i: number) => {
-    if (l.concept) return l
-    const src = chapter.lessons[i]
-    return { ...l, concept: { question: `${src?.title ?? l.lesson_title} là gì?`, answer: src?.outline.slice(0, 2).join('. ') ?? '', followUps: [] } }
-  })
-  return { ...raw, lessons }
+  return attachChunkRange(raw, chapter)
 }
 
 async function generateChapterContentOpenAI(chapter: Chapter, input: string): Promise<ChapterContent> {
@@ -211,12 +226,7 @@ async function generateChapterContentOpenAI(chapter: Chapter, input: string): Pr
   if (!text) throw new Error('OpenAI returned no content')
   const raw: ChapterContent = JSON.parse(text)
   if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
-  const lessons = raw.lessons.map((l: any, i: number) => {
-    if (l.concept) return l
-    const src = chapter.lessons[i]
-    return { ...l, concept: { question: `${src?.title ?? l.lesson_title} là gì?`, answer: src?.outline.slice(0, 2).join('. ') ?? '', followUps: [] } }
-  })
-  return { ...raw, lessons }
+  return attachChunkRange(raw, chapter)
 }
 
 async function generateChapterContentLocal(chapter: Chapter, input: string): Promise<ChapterContent> {
@@ -240,20 +250,13 @@ async function generateChapterContentLocal(chapter: Chapter, input: string): Pro
   if (!text) throw new Error('Local AI returned no content')
   const raw: ChapterContent = JSON.parse(text)
   if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
-  const lessons = raw.lessons.map((l: any, i: number) => {
-    if (l.concept) return l
-    const src = chapter.lessons[i]
-    return { ...l, concept: { question: `${src?.title ?? l.lesson_title} là gì?`, answer: src?.outline.slice(0, 2).join('. ') ?? '', followUps: [] } }
-  })
-  return { ...raw, lessons }
+  return attachChunkRange(raw, chapter)
 }
 
 async function generateChapterContentHuggingFace(chapter: Chapter, input: string): Promise<ChapterContent> {
   const apiKey = process.env.HUGGINGFACE_API_KEY!
   const model = process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.1-8B-Instruct'
-  const baseUrl = 'https://api-inference.huggingface.co/v1/chat/completions'
-  
-  const res = await fetch(baseUrl, {
+  const res = await fetch('https://api-inference.huggingface.co/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -270,20 +273,19 @@ async function generateChapterContentHuggingFace(chapter: Chapter, input: string
   if (!text) throw new Error('Hugging Face returned no content')
   const raw: ChapterContent = JSON.parse(text)
   if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
-  const lessons = raw.lessons.map((l: any, i: number) => {
-    if (l.concept) return l
-    const src = chapter.lessons[i]
-    return { ...l, concept: { question: `${src?.title ?? l.lesson_title} là gì?`, answer: src?.outline.slice(0, 2).join('. ') ?? '', followUps: [] } }
-  })
-  return { ...raw, lessons }
+  return attachChunkRange(raw, chapter)
 }
 
-
-export async function generateChapterContent(chapter: Chapter): Promise<ChapterContent> {
+export async function generateChapterContent(chapter: Chapter, rawContexts?: string[]): Promise<ChapterContent> {
   const chapterInput = {
     chapter_title: chapter.title,
     quiz_topic: chapter.quiz.topic,
-    lessons: chapter.lessons.map(l => ({ title: l.title, key_concept: l.key_concept, outline: l.outline })),
+    lessons: chapter.lessons.map((l, i) => ({
+      title: l.title,
+      key_concept: l.key_concept,
+      outline: l.outline,
+      ...(rawContexts?.[i] ? { raw_context: rawContexts[i] } : {}),
+    })),
   }
   const input = JSON.stringify(chapterInput)
 

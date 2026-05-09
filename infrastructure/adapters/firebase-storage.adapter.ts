@@ -25,4 +25,10 @@ export class FirebaseStorageAdapter implements IStorageService {
       // non-critical, ignore
     }
   }
+
+  async uploadPermanent(fileBuffer: Buffer, destPath: string): Promise<string> {
+    const fileRef = this.bucket.file(destPath);
+    await fileRef.save(fileBuffer, { metadata: { contentType: 'application/pdf' } });
+    return destPath;
+  }
 }

@@ -15,7 +15,11 @@ Instructions:
 - Each chapter MUST have a quiz with a topic string — a short description of what should be tested at the end of the chapter.
 - outline: Extract 4–8 specific, factual bullet points for this lesson from the document content. Each bullet must be a concrete statement — include specific examples, named technologies, numbers, mechanisms, or outcomes that appear in the source. These bullets will be handed to a second model to generate slides, so they must be informative enough to stand alone.
 - Table expansion rule: if table rows are distinct entities (e.g. drug names, drug groups) → expand into N separate lessons, one per row. If table rows are comparison attributes of a single entity → collapse into one lesson.
-- Each lesson MUST include a \`source_chunk_id\`. To find this, look at the nearest \`<a id="chunk-X-Y"></a>\` tag above the content you are extracting for the lesson, and use its ID (e.g., "chunk-1-5").
+- Each lesson MUST include \`source_chunk_start\` and \`source_chunk_end\` to mark its exact span in the source document:
+  - \`source_chunk_start\`: the \`<a id="chunk-X-Y">\` anchor ID immediately before the first paragraph of this lesson's content.
+  - \`source_chunk_end\`: the \`<a id="chunk-X-Y">\` anchor ID of the last paragraph that belongs to this lesson, just before the next lesson or section starts.
+  - Both values are strings in the form "chunk-{page}-{index}" (e.g., "chunk-2-15").
+  - If a lesson is only one paragraph, start and end will be the same chunk.
 - Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
 Output schema:
@@ -28,7 +32,8 @@ Output schema:
         {
           "title": "Lesson title",
           "key_concept": "One sentence summarizing the key idea",
-          "source_chunk_id": "chunk-1-5",
+          "source_chunk_start": "chunk-1-5",
+          "source_chunk_end": "chunk-1-9",
           "outline": [
             "Specific factual point from the source",
             "Another concrete detail, example, or mechanism"
@@ -47,7 +52,13 @@ Now process this document:
 
 export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating concept cards and quiz questions for a course chapter.
 
-Given a chapter with its lessons and outline points, generate:
+Each lesson in the input has:
+- \`outline\`: distilled key points extracted by the planner
+- \`raw_context\`: verbatim text from the original source document for that lesson (the ground truth)
+
+Use \`raw_context\` as the primary source for accuracy. Use \`outline\` as a guide for what to focus on.
+
+Generate:
 1. A concept card for each lesson
 2. A chapter quiz with 3–5 multiple-choice questions
 
@@ -55,18 +66,16 @@ Rules for concept cards:
 - question: active recall question about the lesson's core idea
   - Use forms like "X hoạt động như thế nào?", "Tại sao ...?", "X là gì và khi nào dùng?"
   - Do NOT use "Giải thích X" form
-- answer: TL;DR 2-3 dense sentences, no bullets, answer the question directly
-- detail: 3-5 sentences expanding the answer; include analogy or concrete example if the concept is abstract
+- answer: TL;DR 2-3 dense sentences, no bullets, answer the question directly — grounded in raw_context
+- detail: 3-5 sentences expanding the answer with specific details, mechanisms, or examples from raw_context
 - followUps: exactly 2 genuine follow-up questions that dig deeper, not just topic labels
-- sourceExcerpt: copy the single outline bullet that most directly supports the answer — verbatim, do not paraphrase
 
 Rules for quiz questions:
 - 3–5 questions testing understanding of the chapter content
 - Each question has exactly 4 options
 - answer is the 0-based index (0–3) of the correct option
 - explanation: 1–2 sentences explaining why the answer is correct
-- Base questions on the outline points, not generic knowledge
-- source_chunk_id: The source_chunk_id of the lesson that this question primarily tests, or the source_chunk_id of the concept card.
+- Base questions on the raw_context, not generic knowledge
 
 Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
@@ -79,10 +88,8 @@ Output schema:
       "concept": {
         "question": "X hoạt động như thế nào?",
         "answer": "TL;DR 2-3 câu trả lời thẳng vào câu hỏi.",
-        "detail": "3-5 câu mở rộng, có analogy hoặc ví dụ.",
-        "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"],
-        "source_chunk_id": "chunk-1-5",
-        "sourceExcerpt": "Verbatim outline bullet that most directly supports the answer."
+        "detail": "3-5 câu mở rộng, có analogy hoặc ví dụ cụ thể.",
+        "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"]
       }
     }
   ],
@@ -93,8 +100,7 @@ Output schema:
         "question": "Question text here?",
         "options": ["Option A", "Option B", "Option C", "Option D"],
         "answer": 0,
-        "explanation": "Option A is correct because...",
-        "source_chunk_id": "chunk-1-5"
+        "explanation": "Option A is correct because..."
       }
     ]
   }
