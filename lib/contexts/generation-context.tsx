@@ -230,8 +230,21 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       }
       resolvedCourse = data.course;
       hash = data.hash ?? '';
+
+      // If Stage 1 cache returned a legacy string[] outline, force a fresh Stage 1 run so
+      // the new OutlinePoint[] outline carries actual chunk IDs for Stage 2 to cite from.
+      if (resolvedCourse?.chapters.some(ch => ch.lessons.some(l => isLegacyOutline(l.outline)))) {
+        const forceRes = await fetch('/api/generate-course', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ markdown, force: true }),
+        })
+        const forceData = await forceRes.json()
+        if (forceData.success) resolvedCourse = forceData.course
+      }
+
       setCurrentHash(hash);
-      setCourse(data.course);
+      setCourse(resolvedCourse);
 
       if (!resolvedCourse) return;
 

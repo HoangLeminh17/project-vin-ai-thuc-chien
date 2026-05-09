@@ -32,23 +32,24 @@ const handler = async (req: NextRequest) => {
     }
   }
 
-  const { markdown } = await req.json()
-  
+  const { markdown, force } = await req.json()
+
   if (!markdown || typeof markdown !== 'string') {
     return NextResponse.json({ success: false, error: 'Missing or invalid markdown' }, { status: 400 })
   }
 
   const hash = getContentHash(markdown)
-  const cached = await courseRepository.getFullCachedCourse(hash)
-  
-  if (cached) {
-    return NextResponse.json({ 
-      success: true, 
-      course: cached.course, 
-      courseContent: cached.content, 
-      fromCache: true,
-      hash 
-    })
+  if (!force) {
+    const cached = await courseRepository.getFullCachedCourse(hash)
+    if (cached) {
+      return NextResponse.json({
+        success: true,
+        course: cached.course,
+        courseContent: cached.content,
+        fromCache: true,
+        hash
+      })
+    }
   }
 
   const { course, tokens } = await generateCourseUseCase.execute(markdown)
