@@ -54,6 +54,7 @@ jobs:
     runs-on: [self-hosted, phoenix-runner]
     env:
       RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
