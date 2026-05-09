@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { generateCourseUseCase, courseRepository, logger } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { getContentHash } from '@/lib/crypto-utils'

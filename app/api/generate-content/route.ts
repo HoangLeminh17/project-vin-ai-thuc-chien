@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+export const dynamic = 'force-dynamic'
 import { generateChapterContent } from '@/lib/ai'
 import type { Course, ChapterContent, CourseContent } from '@/lib/types'
 import { logger, courseRepository } from '@/infrastructure/di'
