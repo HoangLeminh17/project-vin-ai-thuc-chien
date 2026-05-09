@@ -13,6 +13,7 @@ import { GeminiAdapter } from './adapters/gemini.adapter';
 import { HuggingFaceAdapter } from './adapters/huggingface.adapter';
 import { ChainAiAdapter } from './adapters/fallback-ai.adapter';
 import type { IAiService } from '@/core/ports/ai.port';
+import type { IMonitoringPort } from '@/core/ports/monitoring.port';
 
 import { OpenAiAdapter } from './adapters/openai.adapter';
 import { MineruParserAdapter } from './adapters/mineru-parser.adapter';
@@ -36,17 +37,33 @@ import { withUseCaseLogging } from '@/core/utils/use-case-logger';
 // Instantiate adapters
 export const logger = new PinoLoggerAdapter();
 export const alertAdapter = new WebhookAlertAdapter(process.env.DISCORD_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL || '');
-const consoleMonitoring = new ConsoleMonitoringAdapter(logger, alertAdapter);
-export const monitoring = new CompositeMonitoringAdapter([consoleMonitoring, prometheusRegistry]);
 
-export const rateLimiter = process.env.REDIS_URL ? new RedisRateLimitAdapter({
-  url: process.env.REDIS_URL,
-  limits: {
-    'generate-course': { count: 5, windowSeconds: 3600 },
-    'generate-quiz': { count: 10, windowSeconds: 3600 },
-    'parse-pdf': { count: 15, windowSeconds: 3600 },
+let monitoringInstance: IMonitoringPort;
+try {
+  const consoleMonitoring = new ConsoleMonitoringAdapter(logger, alertAdapter);
+  monitoringInstance = new CompositeMonitoringAdapter([consoleMonitoring, prometheusRegistry]);
+} catch (e) {
+  console.error('[DI] Failed to initialize Monitoring:', e);
+  monitoringInstance = new ConsoleMonitoringAdapter(logger, alertAdapter);
+}
+export const monitoring = monitoringInstance;
+
+let rateLimiterInstance = null;
+if (process.env.REDIS_URL) {
+  try {
+    rateLimiterInstance = new RedisRateLimitAdapter({
+      url: process.env.REDIS_URL,
+      limits: {
+        'generate-course': { count: 5, windowSeconds: 3600 },
+        'generate-quiz': { count: 10, windowSeconds: 3600 },
+        'parse-pdf': { count: 15, windowSeconds: 3600 },
+      }
+    });
+  } catch (e) {
+    console.error('[DI] Failed to initialize Redis Rate Limiter:', e);
   }
-}) : null;
+}
+export const rateLimiter = rateLimiterInstance;
 
 const storageAdapter = new FirebaseStorageAdapter(getBucket());
 const parserAdapter = new MineruParserAdapter({

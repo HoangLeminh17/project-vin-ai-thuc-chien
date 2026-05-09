@@ -22,60 +22,62 @@ export class HuggingFaceAdapter implements IAiService {
     }
     this.apiKey = config.apiKey
     this.model = config.model || 'meta-llama/Llama-3.1-8B-Instruct'
-    // Serverless Inference API chuẩn không có /v1/chat/completions
-    this.baseUrl = config.baseUrl || `https://api-inference.huggingface.co/models/${this.model}`
-    this.timeoutMs = config.timeoutMs || 60000 
+    // Sử dụng Hugging Face Router API (OpenAI compatible)
+    this.baseUrl = 'https://router.huggingface.co/v1/chat/completions'
+    this.timeoutMs = config.timeoutMs || 60000
   }
 
   /**
-   * Phương thức chung để gọi HuggingFace Inference API
+   * Phương thức chung để gọi HuggingFace Router API (OpenAI Compatible)
    */
   private async safeFetch(systemPrompt: string, userContent: string): Promise<{ text: string; tokens: TokenUsage | null }> {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), this.timeoutMs)
+    const url = this.baseUrl
+    console.log(`[HuggingFace] Calling Router API for model: ${this.model}`)
 
     try {
-      // Kết hợp thành chuỗi duy nhất cho Serverless API (không phải Chat-compatible)
-      const fullPrompt = `<|system|>\n${systemPrompt}\n<|user|>\n${userContent}\n<|assistant|>`
-
-      const res = await fetch(this.baseUrl, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
         },
-        signal: controller.signal,
         body: JSON.stringify({
-          inputs: fullPrompt,
-          parameters: {
-            max_new_tokens: 4096,
-            temperature: 0.2,
-            return_full_text: false
-          }
+          model: this.model,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userContent }
+          ],
+          max_tokens: 8192,
+          temperature: 0.2,
+          stream: false
         }),
       })
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => null)
-        const errorDetail = JSON.stringify(body?.error || body?.message || `HTTP ${res.status}`)
-        throw new InfrastructureError(`Hugging Face API error (${res.status}): ${errorDetail}`)
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error')
+        if (errorText.trim().startsWith('<!DOCTYPE')) {
+          throw new InfrastructureError(`Hugging Face Router returned HTML. Status: ${response.status}`)
+        }
+        throw new InfrastructureError(`Hugging Face API error (${response.status}): ${errorText}`)
       }
 
-      const data = await res.json()
-      
-      // HF Serverless trả về mảng [{ generated_text: "..." }] hoặc object { generated_text: "..." }
-      const text = Array.isArray(data) ? data[0]?.generated_text : data.generated_text
-      
+      const data = await response.json()
+      const text = data.choices?.[0]?.message?.content?.trim()
+
       if (!text) {
-        throw new InfrastructureError(`Hugging Face returned no content: ${JSON.stringify(data)}`)
+        throw new InfrastructureError('Hugging Face returned empty content')
       }
 
-      return { text, tokens: null }
+      const usage = data.usage
+      const tokens: TokenUsage | null = usage ? {
+        promptTokens: usage.prompt_tokens,
+        completionTokens: usage.completion_tokens,
+        totalTokens: usage.total_tokens
+      } : null
+
+      return { text, tokens }
     } catch (e: any) {
-      if (e.name === 'AbortError') throw new InfrastructureError(`Hugging Face request timed out after ${this.timeoutMs}ms`)
       throw e instanceof InfrastructureError ? e : new InfrastructureError('Network failure calling Hugging Face', e)
-    } finally {
-      clearTimeout(timeout)
     }
   }
 
@@ -84,7 +86,6 @@ export class HuggingFaceAdapter implements IAiService {
    */
   private parseSecureJson<T>(rawText: string): T {
     try {
-      // Loại bỏ markdown code blocks nếu AI trả về nhầm
       const cleanJson = rawText.replace(/```json\n?|```/g, '').trim()
       return JSON.parse(cleanJson)
     } catch (e) {
@@ -100,11 +101,9 @@ export class HuggingFaceAdapter implements IAiService {
       throw new InfrastructureError('Invalid course structure: missing chapters')
     }
 
-    // Đảm bảo tính nhất quán của schema
     course.chapters = course.chapters.map(ch => ({
       ...ch,
       lessons: (ch.lessons || (ch as any).lesson || []).map((lesson: any) => {
-        // Heal outline: convert string[] to OutlinePoint[] if necessary
         if (Array.isArray(lesson.outline) && (lesson.outline.length === 0 || typeof lesson.outline[0] === 'string')) {
           return {
             ...lesson,
@@ -119,10 +118,17 @@ export class HuggingFaceAdapter implements IAiService {
   }
 
   async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
-    // Format chunks for AI to maintain traceability
+    const maxChars = 15000;
+    let currentChars = 0;
+
     const formattedContent = chunks
-      .map(chunk => `[[SOURCE_CHUNK_ID: ${chunk.id}]]\n${chunk.text}`)
-      .join('\n\n---\n\n')
+      .filter(chunk => {
+        if (currentChars >= maxChars) return false;
+        currentChars += chunk.text.length;
+        return true;
+      })
+      .map(chunk => `[ID:${chunk.id}] ${chunk.text}`)
+      .join('\n');
 
     const { text, tokens } = await this.safeFetch(DIAGNOSTIC_QUIZ_PROMPT, formattedContent)
     const quiz = this.parseSecureJson<DiagnosticQuiz>(text)

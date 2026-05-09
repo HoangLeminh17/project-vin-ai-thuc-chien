@@ -1,4 +1,10 @@
 services:
+  # Redis for Rate Limiting
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
   # UKT Knowledge Tracing Microservice (Python)
   ukt-service:
     build:
@@ -35,8 +41,11 @@ services:
       - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
       - NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
       - NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID}
       - FIREBASE_PRIVATE_KEY=${FIREBASE_PRIVATE_KEY}
       - FIREBASE_CLIENT_EMAIL=${FIREBASE_CLIENT_EMAIL}
+      - FIREBASE_STORAGE_BUCKET=${FIREBASE_STORAGE_BUCKET}
+      - REDIS_URL=${REDIS_URL}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - HUGGINGFACE_API_KEY=${HUGGINGFACE_API_KEY}
@@ -50,6 +59,8 @@ services:
     depends_on:
       ukt-service:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   # Prometheus for metrics collection
   prometheus:
