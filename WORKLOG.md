@@ -17,6 +17,35 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Citation Phase 1 — Bug fixes (UI guard + client-side upload + layout JSON) | Nguyễn Bình Thành | #TBD |
 | OutlinePoint schema + Stage 2 inline citation markers (Phase 1+2) | Nguyễn Bình Thành | #70 |
 | Clickable citation markers trong ConceptCard (Phase 3 FE) | Nguyễn Bình Thành | #71 |
+| Fix diagnostic quiz + stale cache + citation [?] display + parallel diagnostic | Nguyễn Bình Thành | #73, #74 |
+| Force Stage 1 regen khi cached outline là legacy string[] | Nguyễn Bình Thành | #76 |
+
+---
+
+### [ADR-31] Legacy outline cache bypass — 09/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #73, #76
+
+**Bối cảnh:** Sau khi deploy OutlinePoint schema (PR #70), user re-upload PDF cũ vẫn nhận concept cards không có `[chunk-X-Y]` markers. Hai cache layer độc lập cùng gây ra vấn đề.
+
+**Ba bug được tìm và fix:**
+
+**Bug 1 — Stage 2 cache bypass không đủ (PR #73):**
+`generate-content` vẫn trả cached chapter cũ dù frontend detect legacy outline. Fix: thêm `isLegacyOutline` check trong route — nếu chapter's lessons có legacy outline → skip `getChapter()` cache.
+
+**Bug 2 — Stage 1 cache vẫn trả outline rỗng (PR #76 — root cause):**
+Ngay cả khi Stage 2 được regenerate, `generate-course` vẫn trả cached Course với `string[]` outline. Khi normalize → `OutlinePoint[]{chunks:[]}` → AI Stage 2 không có chunk IDs nào để cite → cards generate ra không có markers.
+Fix: sau khi nhận response từ `generate-course`, nếu detect `isLegacyOutline` → gọi lại ngay với `force:true` để bypass Stage 1 cache và chạy Planner AI lại → outline mới có chunk IDs thực.
+
+**Bug 3 — Diagnostic quiz không bao giờ save (PR #73):**
+`runDiagnosticPrefetch` check `data.questions?.length` nhưng API trả `{ quiz: { questions: [] }, tokens }`. Fix: đổi thành `data.quiz?.questions?.length`.
+
+**Quyết định thiết kế:**
+- Không xóa cache cũ thủ công — detect và bypass tự động
+- `force:true` trong `generate-course` là escape hatch dùng lại được cho các trường hợp khác
+- Stage 2 cache vẫn hữu ích cho courses mới (OutlinePoint format) — chỉ bypass khi legacy
+
+⚠️ **Known issue còn lại:** Cache bypass đang không hoàn toàn reliable trong một số edge case — cần theo dõi thêm.
 
 ---
 

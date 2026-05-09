@@ -15,7 +15,7 @@ Course viewer uses a **master-detail layout**: a fixed tree nav on the left (cha
 - **AI Stage 2**: OpenAI GPT-4o-mini (Generator — expands outlines into ConceptCards)
 - **Auth**: Firebase Auth (Google sign-in)
 - **Database**: Firebase Firestore (course + SRS progress persistence)
-- **Storage**: Firebase Storage (temporary PDF upload for MinerU)
+- **Storage**: Firebase Storage (PDF + layout JSON; client-side upload, server-side Admin proxy)
 - **PDF parsing**: MinerU Precision API
 
 ## Getting Started
@@ -99,9 +99,31 @@ Copy that link from the terminal, open it in your browser → Firebase Console w
 
 Firebase Console → Project Settings → Service Accounts → Generate new private key → download JSON → copy values into `.env`.
 
-**f) Enable Firebase Storage**
+**f) Enable Firebase Storage + deploy rules**
 
-Firebase Console → Storage → Get started → choose test mode.
+Firebase Console → Storage → Get started → choose **production mode** → select the same region as Firestore.
+
+Then deploy the Storage security rules (allows authenticated browser uploads to `course-pdfs/` and `course-layouts/`):
+
+```bash
+firebase login          # one-time, opens browser
+firebase deploy --only storage
+```
+
+> If `firebase` CLI is not installed: `npm install -g firebase-tools`
+
+**g) Add client-side Firebase env vars**
+
+Beside the server-side `FIREBASE_*` vars (from service account), you also need browser-side vars. Go to Firebase Console → Project Settings → General → Your apps → Web app → SDK setup and configuration → copy the `firebaseConfig` values into `.env`:
+
+```
+NEXT_PUBLIC_FIREBASE_API_KEY=
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+NEXT_PUBLIC_FIREBASE_APP_ID=
+```
 
 ### 5. Run (Recommended: Docker)
 
@@ -142,5 +164,6 @@ Prompts and tool calls are automatically logged when you use any supported AI to
 ## Docs
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Clean Architecture guide (ports, use cases, adapters, DI, testing)
+- [PIPELINE.md](PIPELINE.md) — File map, key types, generation flow, caching, UI state machine
 - [WORKLOG.md](WORKLOG.md) — ADRs, sprint log, technical decisions
 - [JOURNAL.md](JOURNAL.md) — Weekly learning journal

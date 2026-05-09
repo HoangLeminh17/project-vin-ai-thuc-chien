@@ -23,12 +23,18 @@ core/
 ```
 infrastructure/
   di.ts
+  registry.ts                   ← re-exports all di/* for non-DI routes
   adapters/
+    content-list-converter.ts   ← contentListToMarkdown() + chunk anchor injection
+    fallback-ai.adapter.ts      ← ChainAiAdapter (Gemini → OpenAI fallback)
     firebase-auth.adapter.ts
     firebase-storage.adapter.ts
     firestore-course.adapter.ts
+    gemini.adapter.ts
+    huggingface.adapter.ts
     mineru-parser.adapter.ts
     openai.adapter.ts
+    redis-ratelimit.adapter.ts  ← RedisRateLimitAdapter (REDIS_URL)
     ukt-service.adapter.ts
 ```
 
@@ -38,8 +44,8 @@ infrastructure/
 POST /api/auth/login            → app/api/auth/login/route.ts
 POST /api/auth/logout           → app/api/auth/logout/route.ts
 POST /api/parse-pdf             → app/api/parse-pdf/route.ts
-POST /api/generate-course       → app/api/generate-course/route.ts
-POST /api/generate-content      → app/api/generate-content/route.ts
+POST /api/generate-course       → app/api/generate-course/route.ts  (force:true = bypass Stage 1 cache)
+POST /api/generate-content      → app/api/generate-content/route.ts (skips Stage 2 cache for legacy outlines)
 POST /api/extract-facts         → app/api/extract-facts/route.ts
 POST /api/diagnostic-quiz       → app/api/diagnostic-quiz/route.ts
 POST /api/progress/review       → app/api/progress/review/route.ts
@@ -48,6 +54,9 @@ GET  /api/courses/[id]          → app/api/courses/[id]/route.ts
 GET  /api/progress/map          → app/api/progress/map/route.ts
 GET  /api/progress/stats        → app/api/progress/stats/route.ts
 GET  /api/progress/due          → app/api/progress/due/route.ts
+GET  /api/pdf-serve             → app/api/pdf-serve/route.ts        (Admin SDK proxy → PDF bytes)
+GET  /api/layout-serve          → app/api/layout-serve/route.ts     (Admin SDK proxy → layout JSON)
+GET  /api/metrics               → app/api/metrics/route.ts          (Prometheus metrics)
 GET  /api/admin/logs            → app/api/admin/logs/route.ts
 ```
 
@@ -73,8 +82,9 @@ app/components/
   course/                       ← CourseFlow orchestrates views bên dưới
     CourseFlow.tsx              ← state machine (init → diagnostic → course-tree)
     CourseTree.tsx              ← master-detail: tree nav (trái 300px) + card detail pane (phải)
-    StudyMode.tsx
-    EditMode.tsx
+    StudyMode.tsx               ← SRS study deck; citations display-only (no click)
+    EditMode.tsx                ← card detail; clickable [N] citation markers → PdfPanel
+    PdfPanel.tsx                ← layout JSON viewer; highlight + scroll to source chunk
 
   diagnostic/
     DiagnosticIntro.tsx
@@ -86,13 +96,15 @@ app/components/
 
 ```
 lib/
-  types.ts
-  ai.ts
-  prompts.ts
-  parsers/
-    content-list-converter.ts
+  types.ts                      ← OutlinePoint, isLegacyOutline, Course, Lesson, ConceptCard...
+  ai.ts                         ← generateChapterContent (normalises legacy outlines)
+  prompts.ts                    ← PLANNER_PROMPT (OutlinePoint schema), STAGE2_CHAPTER_PROMPT (citation rules)
+  citations.ts                  ← parseCitations() → Segment[] (text | cite)
+  citation-utils.ts             ← buildValidChunkIds(), validateCitationMarkers()
   contexts/
-    generation-context.tsx
+    generation-context.tsx      ← startGeneration, fetchChapter, diagnosticStatus
+  hooks/
+    use-courses.ts
 ```
 
 ---
@@ -111,17 +123,25 @@ type Chapter = {
   lessons: Lesson[]
   quiz: { topic: string; questions: QuizQuestion[] }
 }
+
+// OutlinePoint — Stage 1 output; carries chunk IDs for Stage 2 to cite
+type OutlinePoint = {
+  point: string        // factual statement
+  chunks: string[]     // 1–3 chunk IDs from source anchors, e.g. ["chunk-0-5", "chunk-0-6"]
+}
 type Lesson = {
   title: string
   key_concept: string
-  outline: string[]          // 4–8 bullet (Stage 1 output)
-  concept?: ConceptCard      // populated after Stage 2
+  outline: OutlinePoint[]    // 4–8 bullets (Stage 1 output, replaces old string[])
+  source_chunk_start?: string
+  source_chunk_end?: string
 }
+// isLegacyOutline(outline) — true when outline is the old string[] format (backward compat)
 
-// ConceptCard (active recall)
+// ConceptCard (active recall) — answer/detail may contain [chunk-X-Y] inline citation markers
 type ConceptCard = {
   question: string
-  answer: string
+  answer: string       // may include markers: "Text.[chunk-0-5] More text.[chunk-1-8]"
   detail?: string
   followUps: string[]
 }
@@ -156,27 +176,31 @@ type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error'
 ```
 Upload PDF
     │
+    ├── uploadBytes → Firebase Storage course-pdfs/{uid}/{uuid}.pdf   (pdfStorageUrl)
+    │
     ▼
 POST /api/parse-pdf              (MinerU Precision API)
+    │    → markdown (có <a id="chunk-P-I"> anchors)
+    │    → contentList JSON
     │
-    ▼
-Markdown source
-    │
-    ├── POST /api/extract-facts  (song song, để animate Flash Facts)
+    ├── uploadBytes → Firebase Storage course-layouts/{uid}/{uuid}.json  (layoutStorageUrl)
+    ├── POST /api/extract-facts  (song song, animate Flash Facts)
     │
     ▼
 POST /api/generate-course        Stage 1: GPT-4o (Planner)
-    │    → Course JSON: chapters[].lessons[].{title, outline[]}
+    │    → Course JSON: chapters[].lessons[].{title, outline: OutlinePoint[]}
     │    → cache vào Firestore `course_cache/{hash}`
+    │    ⚠ Nếu cache trả về outline string[] (legacy): tự động gọi lại với force:true
+    │      để Stage 1 AI chạy lại → outline mới có chunk IDs
     │
     ▼ (sequential, từng chapter một)
 POST /api/generate-content       Stage 2: GPT-4o-mini (Generator)
-    │    → ChapterContent: lessons[].concept + quiz
+    │    → ChapterContent: lessons[].concept{answer/detail có [chunk-X-Y] markers} + quiz
     │    → cache vào `course_cache/{hash}/chapters/{i}`
+    │      (bỏ qua cache nếu outline chapter là legacy string[])
     │    → partial save vào `courses/` (SavedCourse) sau mỗi chapter
     │
-    ▼
-POST /api/diagnostic-quiz        (prefetch ngầm sau chapter đầu tiên)
+    ├── [sau chapter đầu tiên] POST /api/diagnostic-quiz  (song song, không chặn)
     │    → localStorage `diagnosticQuestions_{id}`
     │
     ▼
@@ -185,11 +209,18 @@ setStatus('done')
 
 ### Caching (2 tầng)
 
-| Collection | Key | Nội dung | Dùng để |
+| Collection | Key | Nội dung | Bypass khi |
 | :--- | :--- | :--- | :--- |
-| `course_cache/{hash}` | content hash của markdown | Course JSON (Stage 1) | Bỏ qua Stage 1 nếu cùng PDF |
-| `course_cache/{hash}/chapters/{i}` | chapter index | ChapterContent (Stage 2) | Bỏ qua Stage 2 per chapter |
-| `courses/{id}` | Firestore doc ID | SavedCourse (full) | Library + SRS |
+| `course_cache/{hash}` | content hash của markdown | Course JSON (Stage 1, OutlinePoint[]) | `force:true` — khi cache có legacy `string[]` outline |
+| `course_cache/{hash}/chapters/{i}` | chapter index | ChapterContent (Stage 2) | Chapter có `isLegacyOutline` (không có chunk IDs để cite) |
+| `courses/{id}` | Firestore doc ID | SavedCourse (full) | — |
+
+**Storage:**
+
+| Path | Nội dung | Dùng để |
+| :--- | :--- | :--- |
+| `course-pdfs/{uid}/{uuid}.pdf` | File PDF gốc | `/api/pdf-serve` proxy → PDF viewer |
+| `course-layouts/{uid}/{uuid}.json` | MinerU contentList JSON | `/api/layout-serve` proxy → PdfPanel source highlight |
 
 ### Status machine (`generation-context.tsx`)
 
@@ -201,30 +232,31 @@ Bốn nhánh trong `startGeneration()`:
 
 | Nhánh | Điều kiện | Hành động |
 | :--- | :--- | :--- |
-| **existing** | Firestore có course trùng hash + `chapters.length > 0` + API alive | Restore `courseContentMap` từ `existing.courseContent`, `setStatus('done')` |
-| **fromCache + content** | `fromCache: true` từ generate-course + `courseContent.chapters.length > 0` | Load map từ cache, saveCourse, runDiagnosticPrefetch, `setStatus('done')` |
-| **fromCache fallback** | `fromCache: true` nhưng chapters rỗng | Sequential `fetchChapter` per chapter (Stage 2 chưa cache) |
-| **fresh** | Không có cache Stage 1 | Sequential `fetchChapter`, save từng chapter, prefetch diagnostic sau cùng |
+| **existing** | Firestore có course trùng hash + `chapters.length > 0` + API alive | Restore `courseContentMap`, `setStatus('done')` |
+| **fromCache + content** | `fromCache: true` + `chapters.length > 0` + `!hasLegacyOutline` | Load map từ cache, saveCourse, runDiagnosticPrefetch, `setStatus('done')` |
+| **fromCache fallback** | `fromCache: true` nhưng chapters rỗng hoặc legacy outline | Sequential `fetchChapter` per chapter (Stage 2 regen) |
+| **fresh** | Không có cache Stage 1 | Sequential `fetchChapter`, save từng chapter, diagnostic sau chapter đầu |
 
-> **Guard quan trọng:** Cả hai nhánh "existing" và "fromCache + content" đều check `chapters.length > 0` trước khi early return — tránh skip Stage 2 khi cache chỉ có Stage 1 outline rỗng.
+> **Legacy detection:** `isLegacyOutline(lesson.outline)` = `true` khi outline là `string[]` cũ (trước OutlinePoint schema). Cả Stage 1 và Stage 2 cache đều bị bypass để tái tạo với markers.
 
-`runDiagnosticPrefetch(courseId, markdown)`:
-- Set `diagnosticStatus = 'loading'`
-- POST markdown → `/api/diagnostic-quiz`
+`runDiagnosticPrefetch(courseId, rawMarkdown)`:
+- Fire-and-forget ngay sau khi chapter đầu tiên save xong (có courseId)
+- Set `diagnosticStatus = 'loading'` → PipelineTracker hiện `◉` song song với concept cards
+- POST rawMarkdown → `/api/diagnostic-quiz` → `{ quiz: { questions: [] } }`
 - Success: lưu `diagnosticQuestions_{id}` vào localStorage, status = `'done'`
 - Fail/empty: status = `'error'`
 
 `buildMarkdown` đánh dấu lesson theo `### [ci-li] Tên bài`
 → AI trả `source_chunk_id: "0-2"` khớp với `lessonMastery()` lookup.
 
-**PipelineTracker** — 4 bước hiển thị trên UI:
+**PipelineTracker** — 4 bước hiển thị trên UI (concept cards và diagnostic chạy song song):
 
-| Bước | Done khi |
-| :--- | :--- |
-| Đọc PDF | `rawMarkdown` có nội dung |
-| Phân tích cấu trúc | `course` JSON resolve từ Stage 1 |
-| Tạo concept cards · X/N | tất cả chapter trong `courseContentMap` |
-| Tạo bài test chẩn đoán | `diagnosticStatus` = `'done'` hoặc `'error'` |
+| Bước | Active khi | Done khi |
+| :--- | :--- | :--- |
+| Đọc PDF | parse-pdf đang chạy | `rawMarkdown` có nội dung |
+| Phân tích cấu trúc | Stage 1 đang chạy | `course` JSON resolve |
+| Tạo concept cards · X/N | Stage 2 đang chạy | tất cả chapter trong `courseContentMap` |
+| Tạo bài test chẩn đoán | `diagnosticStatus = 'loading'` (song song!) | `diagnosticStatus = 'done'` hoặc `'error'` |
 
 ---
 
@@ -302,3 +334,23 @@ Sau animation: `nextIdx >= total` → gọi `onExit()` (kết thúc deck, không
 `app/page.tsx` theo dõi generation status qua `useRef(prevStatus)`.  
 Khi status chuyển từ bất kỳ non-idle → `'idle'`: tự gọi `refreshCourses()`.  
 → Library cập nhật khoá học mới mà không cần F5.
+
+---
+
+## Citation Markers (NotebookLM-style)
+
+**Chunk ID format:** `chunk-{page_idx}-{flat_array_index}` — gán bởi `content-list-converter.ts` khi tạo markdown anchor `<a id="chunk-P-I">`.
+
+**Flow:**
+1. Stage 1 (Planner): mỗi `OutlinePoint.chunks[]` liệt kê chunk IDs hỗ trợ điểm đó
+2. Stage 2 (Generator): nhúng `[chunk-P-I]` inline vào `answer`/`detail` sau mỗi câu tuyên bố
+3. `validateCitationMarkers()`: sau Stage 2, warn nếu marker không nằm trong `validChunkIds`
+4. FE (`parseCitations()`): tách text → `Segment[]` (text | cite); `displayNum` dedup per card
+5. `CitedText` trong `EditMode`: valid chunk → clickable `[N]` → mở `PdfPanel` scroll đến chunk; invalid → gray `[?]`; no layout loaded → gray `[N]`
+
+**PdfPanel highlight:**
+- `chunkStart`/`chunkEnd` từ lesson-level navigation (range highlight)
+- `selectedChunkId` từ click marker → override range → highlight single chunk
+- Scroll dùng double-rAF để đảm bảo DOM đã paint trước `scrollIntoView`
+
+**`buildValidChunkIds(contentList)`**: Set của tất cả `chunk-{page_idx}-{index}` không phải `discarded` — dùng để phân biệt marker hợp lệ vs hallucinated.
