@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
 import { ref as storageRef, uploadBytes } from 'firebase/storage';
-import { Course, ChapterContent, CourseContent } from '@/core/models/learning-model';
+import { Course, ChapterContent, CourseContent, isLegacyOutline } from '@/core/models/learning-model';
 import { useAuth } from './auth-context';
 import { useCourses } from '../hooks/use-courses';
 import { storage } from '@/lib/firebase-client';
@@ -90,8 +90,8 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     })
       .then(res => res.json())
       .then(data => {
-        if (data.questions?.length) {
-          localStorage.setItem(`diagnosticQuestions_${courseId}`, JSON.stringify(data.questions))
+        if (data.quiz?.questions?.length) {
+          localStorage.setItem(`diagnosticQuestions_${courseId}`, JSON.stringify(data.quiz.questions))
           setDiagnosticStatus('done')
         } else {
           setDiagnosticStatus('error')
@@ -264,7 +264,10 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       const accumulatedChapters: ChapterContent[] = [];
       let currentSavedId: string | null = null;
 
-      if (fromCache && data.courseContent?.chapters?.length) {
+      const hasLegacyOutline = resolvedCourse.chapters.some(ch =>
+        ch.lessons.some(l => isLegacyOutline(l.outline))
+      )
+      if (fromCache && data.courseContent?.chapters?.length && !hasLegacyOutline) {
         const cachedChapters = data.courseContent.chapters as ChapterContent[] || [];
         const map: Record<number, ChapterContent> = {};
         cachedChapters.forEach((ch: ChapterContent, i: number) => { map[i] = ch; });
@@ -315,17 +318,14 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
                   currentSavedId = saved.id;
                   setSavedCourseId(saved.id);
                   localStorage.setItem(`justGenerated_${saved.id}`, 'true')
+                  // Fire diagnostic quiz in parallel as soon as we have a courseId
+                  runDiagnosticPrefetch(saved.id, markdown)
                 }
               } else {
                 await updateCourse(currentSavedId, content);
               }
             }
           }
-        }
-        if (currentSavedId && resolvedCourse) {
-          const seqMap: Record<number, ChapterContent> = {}
-          accumulatedChapters.forEach((ch, i) => { seqMap[i] = ch })
-          runDiagnosticPrefetch(currentSavedId, buildMarkdown(resolvedCourse.title, resolvedCourse, seqMap))
         }
         setStatus('done');
       }

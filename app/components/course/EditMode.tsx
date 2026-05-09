@@ -267,6 +267,7 @@ function CitedText({ text, validChunkIds, onCiteClick }: {
   onCiteClick: (chunkId: string) => void
 }) {
   const segments = parseCitations(text, validChunkIds)
+  const layoutLoaded = validChunkIds.size > 0
   return (
     <>
       {segments.map((seg, i) => {
@@ -276,9 +277,11 @@ function CitedText({ text, validChunkIds, onCiteClick }: {
             [{seg.displayNum}]
           </sup>
         )
+        // Layout not loaded yet → show number in gray, non-clickable (can't validate)
+        // Layout loaded but ID absent → hallucinated marker, show [?]
         return (
           <sup key={i} style={{ color: T.ink40, fontSize: 10, fontWeight: 700, marginLeft: 1 }}>
-            [?]
+            {layoutLoaded ? '[?]' : `[${seg.displayNum}]`}
           </sup>
         )
       })}

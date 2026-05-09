@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 import { generateChapterContent } from '@/lib/ai'
 import type { Course, ChapterContent, CourseContent } from '@/lib/types'
+import { isLegacyOutline } from '@/lib/types'
 import { logger, courseRepository } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
@@ -17,8 +18,9 @@ const handler = async (req: NextRequest) => {
       return NextResponse.json({ success: false, error: 'Invalid chapterIndex' }, { status: 400 })
     }
 
-    // Check cache if hash is provided
-    if (hash) {
+    // Check cache if hash is provided; skip if outline is legacy (pre-OutlinePoint schema)
+    const hasLegacyOutline = course.chapters[chapterIndex].lessons.some(l => isLegacyOutline(l.outline))
+    if (hash && !hasLegacyOutline) {
       const cachedChapter = await courseRepository.getChapter(hash, chapterIndex)
       if (cachedChapter) {
         return NextResponse.json({ success: true, chapter: cachedChapter, fromCache: true })
