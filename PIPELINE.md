@@ -256,7 +256,7 @@ Bốn nhánh trong `startGeneration()`:
 | Đọc PDF | parse-pdf đang chạy | `rawMarkdown` có nội dung |
 | Phân tích cấu trúc | Stage 1 đang chạy | `course` JSON resolve |
 | Tạo concept cards · X/N | Stage 2 đang chạy | tất cả chapter trong `courseContentMap` |
-| Tạo bài test chẩn đoán | `diagnosticStatus = 'loading'` (song song!) | `diagnosticStatus = 'done'` hoặc `'error'` |
+| Tạo bài test trình độ | `diagnosticStatus = 'loading'` (song song!) | `diagnosticStatus = 'done'` hoặc `'error'` |
 
 ---
 

@@ -3,6 +3,7 @@ import { ParseDocumentUseCase } from '@/core/use-cases/parse-document.usecase';
 import { withUseCaseLogging } from '@/core/utils/use-case-logger';
 import { logger, monitoring } from './logger.di';
 import { storageAdapter } from './storage.di';
+import { progressStore } from './progress.di';
 import path from 'path';
 
 const baseUrl = process.env.PDF_MINERU_BASE_URL;
@@ -12,7 +13,7 @@ export const parserAdapter = new MineruParserAdapter({
   baseUrl: baseUrl || '',
   apiKey: apiKey || '',
   outputDir: path.join(process.cwd(), '.mineru-output')
-});
+}, progressStore);
 
 const rawParseDocumentUseCase = new ParseDocumentUseCase(storageAdapter, parserAdapter);
 

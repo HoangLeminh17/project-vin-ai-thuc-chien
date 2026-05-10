@@ -84,7 +84,7 @@ function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal, allDon
     { label: 'Đọc PDF',            state: parsed ? 'done' : 'active' },
     { label: 'Phân tích cấu trúc', state: parsed ? (outlined ? 'done' : 'active') : 'pending' },
     { label: `Tạo concept cards · ${chaptersDone}/${chaptersTotal}`, state: !outlined ? 'pending' : (allDone ? 'done' : 'active') },
-    { label: 'Tạo bài test chẩn đoán', state: diagState },
+    { label: 'Tạo bài test trình độ', state: diagState },
   ]
   return (
     <div style={{ padding: '14px 16px', background: T.bgSunken, borderRadius: 8, fontSize: 11, color: T.ink60, lineHeight: 1.55 }}>
@@ -219,7 +219,7 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
 // ── Main home ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { status, course, courseContentMap, stage2Loading, stage2Errors, error, rawMarkdown, savedCourseId, diagnosticStatus, startGeneration, resetGeneration, fetchChapter } = useGeneration()
+  const { status, course, courseContentMap, stage2Loading, stage2Errors, error, rawMarkdown, savedCourseId, diagnosticStatus, parseProgress, startGeneration, resetGeneration, fetchChapter } = useGeneration()
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -277,7 +277,39 @@ export default function Home() {
               <p className="sy-serif" style={{ fontSize: 20, fontWeight: 600, color: T.ink, margin: '0 0 4px' }}>
                 {status === 'parsing' ? 'Đang đọc tài liệu PDF...' : 'Đang thiết kế lộ trình khóa học...'}
               </p>
-              <p style={{ fontSize: 13, color: T.ink60, margin: 0 }}>Quá trình này có thể mất tới 1 phút, vui lòng đợi nhé.</p>
+              {status === 'parsing' && (
+                <p style={{ fontSize: 13, color: T.ink60, margin: '0 0 8px' }}>
+                  Tài liệu dài nên cần được xử lý kỹ, vui lòng đợi chút nhé.
+                </p>
+              )}
+              {parseProgress && status === 'parsing' && (
+                <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div
+                    aria-hidden="true"
+                    style={{
+                      width: '100%',
+                      height: 8,
+                      borderRadius: 999,
+                      background: T.ink10,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${parseProgress.percentComplete}%`,
+                        height: '100%',
+                        borderRadius: 999,
+                        background: `linear-gradient(90deg, ${T.accent}, ${T.srsGood})`,
+                        transition: 'width 0.35s ease',
+                      }}
+                    />
+                  </div>
+                  <p style={{ fontSize: 13, color: T.ink60, margin: 0 }}>
+                    Chunk {parseProgress.currentChunk}/{parseProgress.totalChunks} ({parseProgress.percentComplete}%)
+                  </p>
+                </div>
+              )}
+              <p style={{ fontSize: 13, color: T.ink60, margin: parseProgress && status === 'parsing' ? '4px 0 0' : 0 }}>Quá trình này mất 3 - 5 phút.</p>
             </div>
           </div>
           <FlashFactGallery markdown={rawMarkdown} />
@@ -299,6 +331,58 @@ export default function Home() {
           await fetchChapter(i)
         }}
       />
+    )
+  }
+
+  if (error && !course) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6" style={{ background: T.bg, fontFamily: T.fontSans }}>
+        <div className="w-full max-w-2xl" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>
+          <div style={{ padding: 16, borderRadius: 16, background: '#fff5f5', border: '1px solid #fecdcd' }}>
+            <div className="sy-serif" style={{ fontSize: 20, fontWeight: 600, color: '#7a0000', marginBottom: 6 }}>
+              Có lỗi khi tạo khóa học
+            </div>
+            <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: '#7a0000' }}>{error}</p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <button
+              onClick={() => file && startGeneration(file)}
+              disabled={!file}
+              style={{
+                background: T.ink,
+                color: T.bgSolid,
+                padding: '11px 20px',
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 700,
+                cursor: file ? 'pointer' : 'not-allowed',
+                opacity: file ? 1 : 0.5,
+              }}
+            >
+              Thử lại
+            </button>
+            <button
+              onClick={reset}
+              style={{
+                background: T.bgSolid,
+                color: T.ink60,
+                padding: '11px 20px',
+                borderRadius: 10,
+                fontSize: 14,
+                border: `1px solid ${T.ink10}`,
+                cursor: 'pointer',
+              }}
+            >
+              Quay về thư viện
+            </button>
+          </div>
+
+          <div style={{ width: '100%', maxWidth: 640 }}>
+            <FlashFactGallery markdown={rawMarkdown} />
+          </div>
+        </div>
+      </main>
     )
   }
 

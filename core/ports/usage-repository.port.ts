@@ -4,7 +4,7 @@ export interface TokenUsageRecord {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
-  type: 'course_generation' | 'quiz_generation' | 'other';
+  type: 'course_generation' | 'course_generation_chunked' | 'quiz_generation' | 'other';
   userId?: string;
 }
 

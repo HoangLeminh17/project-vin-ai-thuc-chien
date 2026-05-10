@@ -125,12 +125,12 @@ export function CourseFlow({ course, progressMap, onExit, layoutStorageUrl }: Pr
   )
 
   if (view === 'diagnostic-loading') return (
-    <LoadingOverlay label="Đang tạo bài test chẩn đoán..." />
+    <LoadingOverlay label="Đang tạo bài test trình độ..." />
   )
 
   if (view === 'diagnostic-error') return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16, background: T.bg, fontFamily: T.fontSans, padding: 40, textAlign: 'center' }}>
-      <p style={{ fontSize: 15, fontWeight: 600, color: T.ink, margin: 0 }}>Không thể tạo bài test chẩn đoán</p>
+      <p style={{ fontSize: 15, fontWeight: 600, color: T.ink, margin: 0 }}>Không thể tạo bài test trình độ</p>
       <p style={{ fontSize: 13, color: T.ink60, margin: 0, maxWidth: 340, lineHeight: 1.55 }}>Có lỗi khi kết nối máy chủ. Bạn có thể thử lại hoặc bỏ qua để vào khóa học.</p>
       <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
         <button onClick={handleDiagnosticStart} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none' }}>
