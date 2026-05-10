@@ -1,6 +1,6 @@
 import type { ChapterContent } from './types'
 
-type ContentListItem = { type?: string; page_idx?: number }
+type ContentListItem = { type?: string; page_idx?: number; sourceChunkIndex?: number }
 
 export function buildValidChunkIds(contentList: ContentListItem[]): Set<string> {
   const valid = new Set<string>()
