@@ -1,6 +1,6 @@
 global:
-  scrape_interval: 15s       # Tần suất scrape metrics
-  evaluation_interval: 15s   # Tần suất evaluate rules
+  scrape_interval: 15s
+  evaluation_interval: 15s
   scrape_timeout: 10s
 
   external_labels:
@@ -8,7 +8,7 @@ global:
     environment: "production"
 
 # =============================================
-# ALERTING (tuỳ chọn - bỏ qua nếu chưa cần)
+# ALERTING (bỏ comment khi cần dùng)
 # =============================================
 # alerting:
 #   alertmanagers:
@@ -30,17 +30,15 @@ scrape_configs:
     metrics_path: /metrics
 
   # --- Next.js Web App ---
-  # Cần cài thêm prom-client trong Next.js và expose /metrics endpoint
+  # Đảm bảo tên service trên Railway là "web", nếu khác thì sửa lại
   - job_name: "web"
     static_configs:
       - targets: ["web.railway.internal:3000"]
     metrics_path: /metrics
     scrape_interval: 30s
-    # Nếu /metrics chưa có, dùng tạm healthcheck để biết app còn sống
-    # metrics_path: /api/health
 
   # --- UKT Python Microservice ---
-  # FastAPI/Flask thường dùng prometheus_client để expose /metrics
+  # Đảm bảo tên service trên Railway là "ukt-service", nếu khác thì sửa lại
   - job_name: "ukt-service"
     static_configs:
       - targets: ["ukt-service.railway.internal:8000"]
@@ -48,10 +46,11 @@ scrape_configs:
     scrape_interval: 30s
 
   # --- Redis ---
-  # Redis không tự expose Prometheus metrics
-  # Cần redis_exporter (xem ghi chú bên dưới)
-  - job_name: "redis"
-    static_configs:
-      - targets: ["redis-exporter.railway.internal:9121"]
-    metrics_path: /metrics
-    scrape_interval: 30s
+  # Nếu dùng Redis plugin của Railway, thay target thành tên service Redis
+  # Redis không tự expose Prometheus metrics → cần redis_exporter
+  # Tạm thời comment lại nếu chưa có redis_exporter
+  # - job_name: "redis"
+  #   static_configs:
+  #     - targets: ["redis-exporter.railway.internal:9121"]
+  #   metrics_path: /metrics
+  #   scrape_interval: 30s

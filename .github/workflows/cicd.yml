@@ -3,6 +3,9 @@ name: CI/CD Pipeline to Railway
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - 'monitoring/**'
+      - 'infrastructure/monitoring/**'
 
 permissions:
   contents: read
