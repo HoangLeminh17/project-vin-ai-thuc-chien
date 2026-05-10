@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prometheusRegistry } from '@/infrastructure/adapters/prometheus.adapter'
 import { withAdminAuth } from '@/lib/middlewares/with-admin-auth'
 
