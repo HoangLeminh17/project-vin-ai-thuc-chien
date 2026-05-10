@@ -3,6 +3,7 @@ uvicorn[standard]==0.30.6
 pydantic==2.8.2
 redis==5.0.8
 python-multipart==0.0.9
+prometheus-fastapi-instrumentator==7.0.0
 
 # PyTorch CPU (nhẹ hơn GPU build, đủ dùng cho inference)
 # Hỗ trợ Python 3.13+ yêu cầu torch >= 2.5.0
