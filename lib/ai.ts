@@ -278,26 +278,8 @@ async function generateChapterContentHuggingFace(chapter: Chapter, input: string
   return attachChunkRange(raw, chapter)
 }
 
-export async function generateChapterContent(chapter: Chapter, rawContexts?: string[]): Promise<ChapterContent> {
-  if (rawContexts && rawContexts.length !== chapter.lessons.length) {
-    console.warn(`[generate-content] Context length mismatch: ${rawContexts.length} vs ${chapter.lessons.length}. Ignoring contexts.`);
-    rawContexts = undefined;
-  }
-  const chapterInput = {
-    chapter_title: chapter.title,
-    quiz_topic: chapter.quiz.topic,
-    lessons: chapter.lessons.map((l, i) => ({
-      title: l.title,
-      key_concept: l.key_concept,
-      outline: isLegacyOutline(l.outline)
-        ? l.outline.map(p => ({ point: p, chunks: [] }))
-        : l.outline,
-      ...(rawContexts?.[i] ? { raw_context: rawContexts[i] } : {}),
-    })),
-  }
-  const input = JSON.stringify(chapterInput)
-
-  let lastError: unknown;
+async function generateChapterContentForInput(chapter: Chapter, input: string): Promise<ChapterContent> {
+  let lastError: unknown
 
   if (process.env.OPENAI_API_KEY) {
     try {
