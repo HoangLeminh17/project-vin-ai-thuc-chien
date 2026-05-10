@@ -219,7 +219,7 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
 // ── Main home ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { status, course, courseContentMap, stage2Loading, stage2Errors, error, rawMarkdown, savedCourseId, diagnosticStatus, startGeneration, resetGeneration, fetchChapter } = useGeneration()
+  const { status, course, courseContentMap, stage2Loading, stage2Errors, error, rawMarkdown, savedCourseId, diagnosticStatus, parseProgress, startGeneration, resetGeneration, fetchChapter } = useGeneration()
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -277,7 +277,12 @@ export default function Home() {
               <p className="sy-serif" style={{ fontSize: 20, fontWeight: 600, color: T.ink, margin: '0 0 4px' }}>
                 {status === 'parsing' ? 'Đang đọc tài liệu PDF...' : 'Đang thiết kế lộ trình khóa học...'}
               </p>
-              <p style={{ fontSize: 13, color: T.ink60, margin: 0 }}>Quá trình này có thể mất tới 1 phút, vui lòng đợi nhé.</p>
+              {parseProgress && status === 'parsing' && (
+                <p style={{ fontSize: 13, color: T.ink60, margin: '8px 0 0' }}>
+                  Chunk {parseProgress.currentChunk}/{parseProgress.totalChunks} ({parseProgress.percentComplete}%)
+                </p>
+              )}
+              <p style={{ fontSize: 13, color: T.ink60, margin: parseProgress && status === 'parsing' ? '4px 0 0' : 0 }}>Quá trình này có thể mất tới 1 phút, vui lòng đợi nhé.</p>
             </div>
           </div>
           <FlashFactGallery markdown={rawMarkdown} />
