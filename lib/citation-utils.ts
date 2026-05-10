@@ -1,18 +1,23 @@
 import type { ChapterContent } from './types'
 
-type ContentListItem = { type?: string; page_idx?: number }
+type ContentListItem = { type?: string; page_idx?: number; sourceChunkIndex?: number }
 
 export function buildValidChunkIds(contentList: ContentListItem[]): Set<string> {
   const valid = new Set<string>()
   contentList.forEach((item, index) => {
     if (item.type !== 'discarded') {
-      valid.add(`chunk-${item.page_idx ?? 0}-${index}`)
+      if (item.sourceChunkIndex !== undefined) {
+        valid.add(`chunk-${item.sourceChunkIndex}-${item.page_idx ?? 0}-${index}`)
+      } else {
+        valid.add(`chunk-${item.page_idx ?? 0}-${index}`)
+      }
     }
   })
   return valid
 }
 
-const CITATION_MARKER_RE = /\[(chunk-\d+-\d+)\]/g
+// Matches both legacy 2-number (chunk-P-I) and current 3-number (chunk-S-P-I) formats
+const CITATION_MARKER_RE = /\[(chunk-\d+-\d+(?:-\d+)?)\]/g
 
 export function validateCitationMarkers(
   chapter: ChapterContent,

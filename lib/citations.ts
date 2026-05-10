@@ -2,7 +2,8 @@ export type Segment =
   | { type: 'text'; value: string }
   | { type: 'cite'; chunkId: string; displayNum: number; valid: boolean }
 
-const MARKER_RE = /\[(chunk-\d+-\d+)\]/g
+// Matches both legacy 2-number format (chunk-P-I) and current 3-number format (chunk-S-P-I)
+const MARKER_RE = /\[(chunk-\d+-\d+(?:-\d+)?)\]/g
 
 export function parseCitations(
   text: string,

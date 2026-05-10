@@ -33,12 +33,18 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, lay
   const aiInputRef = useRef<HTMLInputElement>(null)
 
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
-  // Shared display map so answer + detail citations share one numbering sequence per card
-  const cardCiteMap = useMemo(() => {
-    // Reset map when card changes
-    void selectedId; 
-    return new Map<string, number>();
-  }, [selectedId])
+
+  // Global citation map: numbers are assigned across ALL cards in order, so (1)(2)(3)...
+  // increase monotonically across lessons rather than resetting at each card.
+  const globalCiteMap = useMemo(() => {
+    const map = new Map<string, number>()
+    const empty = new Set<string>()
+    for (const c of cards) {
+      parseCitations(c.concept.answer, empty, map)
+      if (c.concept.detail) parseCitations(c.concept.detail, empty, map)
+    }
+    return map
+  }, [cards])
   // New courses use source_chunk_start; legacy courses fall back to source_chunk_id
   const chunkStart = card?.concept.source_chunk_start ?? card?.concept.source_chunk_id ?? null
   const chunkEnd   = card?.concept.source_chunk_end   ?? card?.concept.source_chunk_id ?? null
@@ -161,7 +167,7 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, lay
               )}
             </div>
             <div className="sy-serif" style={{ fontSize: 15, fontWeight: 500, color: T.ink, lineHeight: 1.5 }}>
-              <CitedText text={card.concept.answer} validChunkIds={validChunkIds} sharedMap={cardCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true); setCitationOpen(false) }} />
+              <CitedText text={card.concept.answer} validChunkIds={validChunkIds} sharedMap={globalCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true); setCitationOpen(false) }} />
             </div>
             {/* Citation popover */}
             {hasCitation && citationOpen && (
@@ -186,7 +192,7 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, lay
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
               <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Chi tiết</span>
               <div className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, marginTop: 6 }}>
-                <CitedText text={card.concept.detail!} validChunkIds={validChunkIds} sharedMap={cardCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true) }} />
+                <CitedText text={card.concept.detail!} validChunkIds={validChunkIds} sharedMap={globalCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true) }} />
               </div>
             </div>
           )}

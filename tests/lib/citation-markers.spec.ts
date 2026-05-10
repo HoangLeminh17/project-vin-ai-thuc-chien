@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { isLegacyOutline } from '@/lib/types'
 import { buildValidChunkIds, validateCitationMarkers } from '@/lib/citation-utils'
+import { parseCitations } from '@/lib/citations'
 import type { ChapterContent } from '@/lib/types'
 
 // ── isLegacyOutline ────────────────────────────────────────────────────────────
@@ -27,7 +28,7 @@ describe('isLegacyOutline', () => {
 // ── buildValidChunkIds ─────────────────────────────────────────────────────────
 
 describe('buildValidChunkIds', () => {
-  it('builds IDs for non-discarded items using flat index', () => {
+  it('builds 2-number IDs for items without sourceChunkIndex (legacy format)', () => {
     const contentList = [
       { type: 'text', page_idx: 0 },
       { type: 'discarded', page_idx: 0 },
@@ -39,8 +40,55 @@ describe('buildValidChunkIds', () => {
     expect(ids.has('chunk-1-2')).toBe(true)
   })
 
+  it('builds 3-number IDs for items with sourceChunkIndex (current format)', () => {
+    const contentList = [
+      { type: 'text', page_idx: 2, sourceChunkIndex: 0 },
+      { type: 'discarded', page_idx: 2, sourceChunkIndex: 0 },
+      { type: 'text', page_idx: 5, sourceChunkIndex: 1 },
+    ]
+    const ids = buildValidChunkIds(contentList)
+    expect(ids.has('chunk-0-2-0')).toBe(true)
+    expect(ids.has('chunk-0-2-1')).toBe(false) // discarded
+    expect(ids.has('chunk-1-5-2')).toBe(true)
+  })
+
   it('returns empty set for empty contentList', () => {
     expect(buildValidChunkIds([]).size).toBe(0)
+  })
+})
+
+// ── parseCitations ─────────────────────────────────────────────────────────────
+
+describe('parseCitations', () => {
+  it('parses 3-number chunk IDs into cite segments', () => {
+    const valid = new Set(['chunk-0-1-12'])
+    const segs = parseCitations('Câu trả lời.[chunk-0-1-12]', valid)
+    expect(segs).toHaveLength(2)
+    expect(segs[0]).toEqual({ type: 'text', value: 'Câu trả lời.' })
+    expect(segs[1]).toMatchObject({ type: 'cite', chunkId: 'chunk-0-1-12', displayNum: 1, valid: true })
+  })
+
+  it('parses legacy 2-number chunk IDs (backward compat)', () => {
+    const valid = new Set(['chunk-2-5'])
+    const segs = parseCitations('Nội dung.[chunk-2-5]', valid)
+    expect(segs[1]).toMatchObject({ type: 'cite', chunkId: 'chunk-2-5', valid: true })
+  })
+
+  it('numbers are globally continuous when sharedMap is passed across calls', () => {
+    const valid = new Set(['chunk-0-0-1', 'chunk-0-0-5', 'chunk-0-1-3'])
+    const sharedMap = new Map<string, number>()
+    parseCitations('Câu 1.[chunk-0-0-1]', valid, sharedMap)
+    const segs2 = parseCitations('Câu 2.[chunk-0-0-5] Câu 3.[chunk-0-1-3]', valid, sharedMap)
+    const cite2 = segs2.find(s => s.type === 'cite' && s.chunkId === 'chunk-0-0-5')
+    const cite3 = segs2.find(s => s.type === 'cite' && s.chunkId === 'chunk-0-1-3')
+    expect(cite2).toMatchObject({ displayNum: 2 })
+    expect(cite3).toMatchObject({ displayNum: 3 })
+  })
+
+  it('returns only a text segment for text with no markers', () => {
+    const segs = parseCitations('Không có trích dẫn nào.', new Set())
+    expect(segs).toHaveLength(1)
+    expect(segs[0]).toEqual({ type: 'text', value: 'Không có trích dẫn nào.' })
   })
 })
 
@@ -58,11 +106,22 @@ function makeChapter(answer: string, detail?: string): ChapterContent {
 }
 
 describe('validateCitationMarkers', () => {
-  it('does not warn when all markers are valid', () => {
+  it('does not warn when all markers are valid (legacy 2-number format)', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     const validIds = new Set(['chunk-0-5', 'chunk-1-8'])
     validateCitationMarkers(
       makeChapter('Statin ức chế HMG-CoA.[chunk-0-5]', 'Chi tiết hơn.[chunk-1-8]'),
+      validIds,
+    )
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('does not warn when all markers are valid (current 3-number format)', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const validIds = new Set(['chunk-0-1-12', 'chunk-0-2-5'])
+    validateCitationMarkers(
+      makeChapter('Giải pháp tự động.[chunk-0-1-12]', 'Chi tiết.[chunk-0-2-5]'),
       validIds,
     )
     expect(warn).not.toHaveBeenCalled()
