@@ -16,7 +16,8 @@ export function buildValidChunkIds(contentList: ContentListItem[]): Set<string> 
   return valid
 }
 
-const CITATION_MARKER_RE = /\[(chunk-\d+-\d+)\]/g
+// Matches both legacy 2-number (chunk-P-I) and current 3-number (chunk-S-P-I) formats
+const CITATION_MARKER_RE = /\[(chunk-\d+-\d+(?:-\d+)?)\]/g
 
 export function validateCitationMarkers(
   chapter: ChapterContent,
