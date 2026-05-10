@@ -2,6 +2,7 @@ import { PLANNER_PROMPT, STAGE2_CHAPTER_PROMPT } from './prompts'
 import type { Chapter, ChapterContent, Course } from './types'
 import { isLegacyOutline } from './types'
 import { resolveAiProvider, type AiProvider } from './ai-provider'
+import { buildStage2ChapterInput, DEFAULT_STAGE2_MAX_INPUT_CHARS, mergeStage2ChapterOutputs, splitStage2ChapterInput } from './stage2-chunking'
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
@@ -277,21 +278,7 @@ async function generateChapterContentHuggingFace(chapter: Chapter, input: string
   return attachChunkRange(raw, chapter)
 }
 
-export async function generateChapterContent(chapter: Chapter, rawContexts?: string[]): Promise<ChapterContent> {
-  const chapterInput = {
-    chapter_title: chapter.title,
-    quiz_topic: chapter.quiz.topic,
-    lessons: chapter.lessons.map((l, i) => ({
-      title: l.title,
-      key_concept: l.key_concept,
-      outline: isLegacyOutline(l.outline)
-        ? l.outline.map(p => ({ point: p, chunks: [] }))
-        : l.outline,
-      ...(rawContexts?.[i] ? { raw_context: rawContexts[i] } : {}),
-    })),
-  }
-  const input = JSON.stringify(chapterInput)
-
+async function generateChapterContentForInput(chapter: Chapter, input: string): Promise<ChapterContent> {
   let lastError: unknown;
 
   if (process.env.OPENAI_API_KEY) {
@@ -335,6 +322,27 @@ export async function generateChapterContent(chapter: Chapter, rawContexts?: str
   }
 
   throw new Error(`All chapter generation providers failed. Last error: ${lastError}`)
+}
+
+export async function generateChapterContent(chapter: Chapter, rawContexts?: string[]): Promise<ChapterContent> {
+  const chapterInput = buildStage2ChapterInput(chapter, rawContexts)
+  const inputJson = JSON.stringify(chapterInput)
+
+  if (inputJson.length <= DEFAULT_STAGE2_MAX_INPUT_CHARS) {
+    return generateChapterContentForInput(chapter, inputJson)
+  }
+
+  const batches = splitStage2ChapterInput(chapterInput, DEFAULT_STAGE2_MAX_INPUT_CHARS)
+  const partials: ChapterContent[] = []
+
+  for (const batch of batches) {
+    // Keep the fallback order stable for each batch.
+    // Sequential execution avoids spiking token usage on giant chapters.
+    // eslint-disable-next-line no-await-in-loop
+    partials.push(await generateChapterContentForInput(chapter, JSON.stringify(batch)))
+  }
+
+  return mergeStage2ChapterOutputs(chapter.title, chapter.quiz.topic, partials)
 }
 export async function extractFacts(content: string): Promise<string[]> {
   const messages = [

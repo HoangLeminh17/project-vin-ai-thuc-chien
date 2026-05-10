@@ -186,10 +186,12 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     let contentList: Array<{ type?: string; text?: string; table_body?: string; page_idx?: number }> = [];
     let validChunkIds = new Set<string>();
     let taskId: string | undefined;
+    let isPollingProgress = true;
     try {
       const res = await fetch('/api/parse-pdf', { method: 'POST', body: form });
       const data = await res.json();
       if (!data.success) {
+        isPollingProgress = false;
         setError(data.error || 'Parse failed');
         setStatus('idle');
         return;
@@ -201,7 +203,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       // Poll progress if taskId is provided
       if (taskId) {
         const pollProgress = async () => {
-          while (status === 'parsing') {
+          while (isPollingProgress) {
             try {
               const progressRes = await fetch(`/api/parse-pdf/progress?taskId=${taskId}`);
               const progressData = await progressRes.json();
@@ -218,7 +220,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             await new Promise(r => setTimeout(r, 500));
           }
         };
-        pollProgress();
+        void pollProgress();
       }
 
       // Upload MinerU contentList JSON for layout serving
@@ -236,11 +238,13 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         }
       }
     } catch (e) {
+      isPollingProgress = false;
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
       return;
     }
 
+    isPollingProgress = false;
     setStatus('generating');
     let resolvedCourse: Course | null = null;
     let hash = '';
@@ -374,7 +378,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
     }
-  }, [status, courses, user, saveCourse, updateCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
+  }, [courses, user, saveCourse, updateCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
 
   const value = useMemo(() => ({
     status,

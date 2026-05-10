@@ -277,6 +277,11 @@ export default function Home() {
               <p className="sy-serif" style={{ fontSize: 20, fontWeight: 600, color: T.ink, margin: '0 0 4px' }}>
                 {status === 'parsing' ? 'Đang đọc tài liệu PDF...' : 'Đang thiết kế lộ trình khóa học...'}
               </p>
+              {status === 'parsing' && (
+                <p style={{ fontSize: 13, color: T.ink60, margin: '0 0 8px' }}>
+                  Tài liệu dài nên cần được xử lý kỹ, vui lòng uống tách trà - bình tĩnh chờ đợi rồi quay lại nhé.
+                </p>
+              )}
               {parseProgress && status === 'parsing' && (
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
                   <div
