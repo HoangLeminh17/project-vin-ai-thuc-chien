@@ -126,6 +126,14 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
     onReset()
   }
 
+  const handleSkipDiagnosticAndStudy = () => {
+    if (!savedCourseId) return
+    localStorage.removeItem(`justGenerated_${savedCourseId}`)
+    localStorage.setItem(`diagnosticDone_${savedCourseId}`, 'true')
+    router.push(`/course/${savedCourseId}`)
+    onReset()
+  }
+
   return (
     <main className="min-h-screen" style={{ background: T.bg, fontFamily: T.fontSans }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 28px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid }}>
@@ -193,12 +201,15 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
               <p style={{ fontSize: 12, color: T.ink60, margin: '0 0 16px' }}>
                 {diagnosticStatus === 'done' ? 'Bài test chẩn đoán đã được chuẩn bị sẵn.' : 'Không tạo được bài test — bạn có thể bỏ qua trong khóa học.'}
               </p>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                  Vào bài test chẩn đoán →
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: '1px solid transparent' }}>
+                  Vào bài test trình độ
+                </button>
+                <button onClick={handleSkipDiagnosticAndStudy} style={{ background: T.bgSolid, color: T.ink, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: `1px solid ${T.ink}` }}>
+                  Vào học luôn
                 </button>
                 <button onClick={handleGoBack} style={{ background: T.bgSolid, color: T.ink60, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: `1px solid ${T.ink10}` }}>
-                  ← Quay về thư viện
+                 Quay về thư viện
                 </button>
               </div>
             </div>
@@ -279,7 +290,7 @@ export default function Home() {
               </p>
               {status === 'parsing' && (
                 <p style={{ fontSize: 13, color: T.ink60, margin: '0 0 8px' }}>
-                  Tài liệu dài nên cần được xử lý kỹ, vui lòng đợi chút nhé.
+                  Tài liệu đang được xử lý, vui lòng đợi chút nhé.
                 </p>
               )}
               {parseProgress && status === 'parsing' && (

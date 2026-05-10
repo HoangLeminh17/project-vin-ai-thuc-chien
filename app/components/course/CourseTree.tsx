@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { SynapsyLogo, SynapsyRing, T } from '@/app/components/synapsy'
 import { SavedCourse } from '@/core/models/saved-course'
 import type { ProgressEntry } from '@/lib/types'
@@ -107,9 +107,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
   const chapters = course.course.chapters
   const allCards = useMemo(() => flattenCards(course), [course])
 
-  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>(
-    () => chapters.reduce((acc: Record<number, boolean>, _, i) => ({ ...acc, [i]: true }), {})
-  )
+  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({})
   const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>({})
   const [activeCard, setActiveCard] = useState<FlatCard | null>(null)
   const [detailTab, setDetailTab] = useState<'edit' | 'study'>('edit')
@@ -119,10 +117,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
     setExpandedChapters(p => ({ ...p, [i]: !p[i] }))
 
   const toggleLesson = (key: string) =>
-    setExpandedLessons(p => {
-      const wasExpanded = p[key] !== false
-      return { ...p, [key]: !wasExpanded }
-    })
+    setExpandedLessons(p => ({ ...p, [key]: !p[key] }))
 
   const dueCards    = allCards.filter(c => progressMap[c.id]?.isDue)
   const totalDue    = dueCards.length
@@ -139,6 +134,73 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
     if (diagnosticState[key] !== undefined) return diagnosticState[key]
     return null
   }
+
+  // ── Keyboard Navigation ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (studyOverlay) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent triggering if user is typing in an input or contentEditable
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        (document.activeElement as HTMLElement)?.isContentEditable
+      ) {
+        return
+      }
+
+      const idx = activeCard ? allCards.findIndex(c => c.id === activeCard.id) : -1
+
+      if (e.key === 'ArrowLeft') {
+        if (idx === -1 && allCards.length > 0) {
+          e.preventDefault()
+          const last = allCards[allCards.length - 1]
+          setActiveCard(last)
+          setExpandedChapters(p => ({ ...p, [last.ci]: true }))
+          setExpandedLessons(p => ({ ...p, [`${last.ci}-${last.li}`]: true }))
+        } else if (idx > 0) {
+          e.preventDefault()
+          const prev = allCards[idx - 1]
+          setActiveCard(prev)
+          setExpandedChapters(p => ({ ...p, [prev.ci]: true }))
+          setExpandedLessons(p => ({ ...p, [`${prev.ci}-${prev.li}`]: true }))
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (idx === -1 && allCards.length > 0) {
+          e.preventDefault()
+          const first = allCards[0]
+          setActiveCard(first)
+          setExpandedChapters(p => ({ ...p, [first.ci]: true }))
+          setExpandedLessons(p => ({ ...p, [`${first.ci}-${first.li}`]: true }))
+        } else if (idx >= 0 && idx < allCards.length - 1) {
+          e.preventDefault()
+          const next = allCards[idx + 1]
+          setActiveCard(next)
+          setExpandedChapters(p => ({ ...p, [next.ci]: true }))
+          setExpandedLessons(p => ({ ...p, [`${next.ci}-${next.li}`]: true }))
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeCard, allCards, studyOverlay, detailTab])
+
+  // ── Auto-scroll to active card ────────────────────────────────────────────
+
+  useEffect(() => {
+    if (activeCard) {
+      // Small timeout to allow React to render if chapter/lesson was just expanded
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`tree-card-${activeCard.id}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+        }
+      }, 60)
+      return () => clearTimeout(timer)
+    }
+  }, [activeCard])
 
   // ── Study overlay (Ôn all due) ────────────────────────────────────────────
 
@@ -296,7 +358,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
                     const lCol       = nodeColor(m)
                     const lCards     = allCards.filter(c => c.ci === ci && c.li === li)
                     const lDue       = lCards.filter(c => progressMap[c.id]?.isDue).length
-                    const lExpanded  = expandedLessons[lessonKey] !== false
+                    const lExpanded  = !!expandedLessons[lessonKey]
 
                     return (
                       <div key={li}>
@@ -329,6 +391,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
                           return (
                             <button
                               key={card.id}
+                              id={`tree-card-${card.id}`}
                               onClick={() => { setActiveCard(card); setDetailTab('edit') }}
                               style={{
                                 width: '100%', textAlign: 'left',
@@ -375,7 +438,16 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
             <EmptyDetail />
           ) : detailTab === 'study' ? (
             <StudyMode
-              cards={allCards.filter(c => c.ci === activeCard.ci && c.li === activeCard.li)}
+              cards={allCards}
+              initialCardId={activeCard.id}
+              onCardChange={(id) => {
+                const card = allCards.find(c => c.id === id)
+                if (card && card.id !== activeCard.id) {
+                  setActiveCard(card)
+                  setExpandedChapters(p => ({ ...p, [card.ci]: true }))
+                  setExpandedLessons(p => ({ ...p, [`${card.ci}-${card.li}`]: true }))
+                }
+              }}
               onExit={() => setDetailTab('edit')}
             />
           ) : (
@@ -403,6 +475,12 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
                 </div>
                 <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {activeCard.chapterTitle} › {activeCard.lessonTitle}
+                </span>
+                <span className="sy-mono" style={{ marginLeft: 'auto', fontSize: 10, color: T.ink40, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  Dùng
+                  <kbd style={{ padding: '2px 4px', background: T.bgSunken, border: `1px solid ${T.ink10}`, borderRadius: 4, fontFamily: 'inherit', fontWeight: 600 }}>←</kbd>
+                  <kbd style={{ padding: '2px 4px', background: T.bgSunken, border: `1px solid ${T.ink10}`, borderRadius: 4, fontFamily: 'inherit', fontWeight: 600 }}>→</kbd>
+                  chuyển thẻ
                 </span>
               </div>
 

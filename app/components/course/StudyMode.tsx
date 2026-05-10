@@ -7,11 +7,17 @@ import { parseCitations } from '@/lib/citations'
 
 interface Props {
   cards: FlatCard[]
+  initialCardId?: string
   onExit: () => void
+  onCardChange?: (cardId: string) => void
 }
 
-export function StudyMode({ cards, onExit }: Props) {
-  const [idx, setIdx] = useState(0)
+export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props) {
+  const [idx, setIdx] = useState(() => {
+    if (!initialCardId) return 0
+    const i = cards.findIndex(c => c.id === initialCardId)
+    return i >= 0 ? i : 0
+  })
   const [revealed, setRevealed] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [slideDir, setSlideDir] = useState<'out' | 'in' | null>(null)
@@ -40,8 +46,40 @@ export function StudyMode({ cards, onExit }: Props) {
   }, [card, idx, total, onExit])
 
   useEffect(() => {
+    if (initialCardId) {
+      const newIdx = cards.findIndex(c => c.id === initialCardId)
+      if (newIdx >= 0 && newIdx !== idx) {
+        // Do a slide animation when card is changed externally
+        setSlideDir(newIdx > idx ? 'in' : 'out')
+        setTimeout(() => {
+          setRevealed(false)
+          setSlideDir(newIdx > idx ? 'out' : 'in')
+          setIdx(newIdx)
+          setTimeout(() => setSlideDir(null), 200)
+        }, 150)
+      }
+    }
+  }, [initialCardId, cards])
+
+  // Sync index to parent
+  useEffect(() => {
+    const c = cards[idx]
+    if (c) onCardChange?.(c.id)
+  }, [idx, cards, onCardChange])
+
+  useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      // Prevent triggering if user is typing in an input or contentEditable
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        (document.activeElement as HTMLElement)?.isContentEditable
+      ) {
+        return
+      }
+
       if (e.key === ' ') { e.preventDefault(); setRevealed(r => !r) }
+      
       if (revealed) {
         if (e.key === '1') advance(0)
         if (e.key === '2') advance(1)
@@ -170,7 +208,7 @@ export function StudyMode({ cards, onExit }: Props) {
 
       {/* Keyboard hints */}
       <div style={{ padding: '10px 24px', borderTop: `1px solid ${T.ink10}`, background: T.bgSoft, fontSize: 11, color: T.ink40, display: 'flex', gap: 18, justifyContent: 'center' }}>
-        {[['Space', 'xem đáp án'], ['1–4', 'đánh giá']].map(([k, v]) => (
+        {[['← →', 'chuyển thẻ'], ['Space', 'xem đáp án'], ['1–4', 'đánh giá']].map(([k, v]) => (
           <span key={k}><kbd style={{ fontSize: 10, padding: '2px 5px', background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 3, fontFamily: T.fontMono }}>{k}</kbd> {v}</span>
         ))}
       </div>
