@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { SynapsyLogo, SynapsyRing, T } from '@/app/components/synapsy'
 import { SavedCourse } from '@/core/models/saved-course'
 import type { ProgressEntry } from '@/lib/types'
@@ -107,9 +107,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
   const chapters = course.course.chapters
   const allCards = useMemo(() => flattenCards(course), [course])
 
-  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>(
-    () => chapters.reduce((acc: Record<number, boolean>, _, i) => ({ ...acc, [i]: true }), {})
-  )
+  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({})
   const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>({})
   const [activeCard, setActiveCard] = useState<FlatCard | null>(null)
   const [detailTab, setDetailTab] = useState<'edit' | 'study'>('edit')
@@ -119,10 +117,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
     setExpandedChapters(p => ({ ...p, [i]: !p[i] }))
 
   const toggleLesson = (key: string) =>
-    setExpandedLessons(p => {
-      const wasExpanded = p[key] !== false
-      return { ...p, [key]: !wasExpanded }
-    })
+    setExpandedLessons(p => ({ ...p, [key]: !p[key] }))
 
   const dueCards    = allCards.filter(c => progressMap[c.id]?.isDue)
   const totalDue    = dueCards.length
@@ -139,6 +134,47 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
     if (diagnosticState[key] !== undefined) return diagnosticState[key]
     return null
   }
+
+  // ── Keyboard Navigation ───────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!activeCard || studyOverlay || detailTab === 'study') return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Prevent triggering if user is typing in an input or contentEditable
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA' ||
+        (document.activeElement as HTMLElement)?.isContentEditable
+      ) {
+        return
+      }
+
+      const idx = allCards.findIndex(c => c.id === activeCard.id)
+      if (idx === -1) return
+
+      if (e.key === 'ArrowLeft') {
+        if (idx > 0) {
+          e.preventDefault()
+          const prev = allCards[idx - 1]
+          setActiveCard(prev)
+          setExpandedChapters(p => ({ ...p, [prev.ci]: true }))
+          setExpandedLessons(p => ({ ...p, [`${prev.ci}-${prev.li}`]: true }))
+        }
+      } else if (e.key === 'ArrowRight') {
+        if (idx < allCards.length - 1) {
+          e.preventDefault()
+          const next = allCards[idx + 1]
+          setActiveCard(next)
+          setExpandedChapters(p => ({ ...p, [next.ci]: true }))
+          setExpandedLessons(p => ({ ...p, [`${next.ci}-${next.li}`]: true }))
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [activeCard, allCards, studyOverlay, detailTab])
 
   // ── Study overlay (Ôn all due) ────────────────────────────────────────────
 
@@ -296,7 +332,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
                     const lCol       = nodeColor(m)
                     const lCards     = allCards.filter(c => c.ci === ci && c.li === li)
                     const lDue       = lCards.filter(c => progressMap[c.id]?.isDue).length
-                    const lExpanded  = expandedLessons[lessonKey] !== false
+                    const lExpanded  = !!expandedLessons[lessonKey]
 
                     return (
                       <div key={li}>
