@@ -178,13 +178,16 @@ Prompts and tool calls are automatically logged when you use any supported AI to
 
 #### Core Docs
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — Bản đồ kiến trúc hệ thống và luồng dữ liệu.
-- **[CONVENTIONS.md](CONVENTIONS.md)** — Quy chuẩn viết code và chiến lược testing.
-- **[PIPELINE.md](PIPELINE.md)** — Chi tiết pipeline tạo khóa học.
-- **[WORKLOG.md](WORKLOG.md)** — Nhật ký quyết định kỹ thuật (ADRs).
-- **[JOURNAL.md](JOURNAL.md)** — Nhật ký học tập hàng tuần.
+- **[CLAUDE.md](CLAUDE.md)** — Hướng dẫn cho AI (Claude) về quy trình PR, git và kiến trúc.
+- **[CONVENTIONS.md](CONVENTIONS.md)** — Quy chuẩn phát triển code, testing và chiến lược xử lý lỗi.
+- **[JOURNAL.md](JOURNAL.md)** — Nhật ký học tập và phát triển hàng tuần của các thành viên.
+- **[PIPELINE.md](PIPELINE.md)** — Bản đồ file, cấu trúc dữ liệu và chi tiết luồng AI Pipeline.
+- **[WORKLOG.md](WORKLOG.md)** — Nhật ký quyết định kỹ thuật (ADRs) và phân công task.
 
 #### 🛠️ BMAD Management (Busy Madman)
-Located in `_bmad-output/`:
-- **[TRACK.md](_bmad-output/TRACK.md)** — Project heartbeat, status tracking, and next steps.
-- **[initialization_plan.md](_bmad-output/initialization_plan.md)** — Initial BMAD setup and complexity assessment.
-- **[PRDs/](_bmad-output/PRDs/)** — Product Requirement Documents for key features.
+Tài liệu quản lý dự án tại `_bmad-output/`:
+- **[TRACK.md](_bmad-output/TRACK.md)** — Project heartbeat, theo dõi trạng thái và các bước tiếp theo.
+- **[initialization_plan.md](_bmad-output/initialization_plan.md)** — Kế hoạch khởi tạo BMAD và đánh giá độ phức tạp.
+- **[PRDs/](_bmad-output/PRDs/)** — Danh mục các bản đặc tả yêu cầu sản phẩm (PRD-01 đến PRD-08).
+- **[reviews/](_bmad-output/reviews/)** — Các báo cáo đánh giá (Adversarial, Edge Case).
+

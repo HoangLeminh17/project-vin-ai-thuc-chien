@@ -278,6 +278,10 @@ async function generateChapterContentHuggingFace(chapter: Chapter, input: string
 }
 
 export async function generateChapterContent(chapter: Chapter, rawContexts?: string[]): Promise<ChapterContent> {
+  if (rawContexts && rawContexts.length !== chapter.lessons.length) {
+    console.warn(`[generate-content] Context length mismatch: ${rawContexts.length} vs ${chapter.lessons.length}. Ignoring contexts.`);
+    rawContexts = undefined;
+  }
   const chapterInput = {
     chapter_title: chapter.title,
     quiz_topic: chapter.quiz.topic,

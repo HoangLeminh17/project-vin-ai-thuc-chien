@@ -6,6 +6,21 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+### [Fix] Edge Case Hunting & Reliability Improvements — 10/05/2026
+
+**Người làm:** Antigravity (BMAD Agent) | **Ref:** ECH Review report
+
+**Bối cảnh:** Sau khi chạy `bmad-review-edge-case-hunter`, phát hiện một số điểm yếu trong luồng xử lý JSON và fallback nội dung có thể gây crash hoặc hiển thị lỗi `[object Object]` cho người dùng.
+
+**Các thay đổi:**
+1.  **Bảo vệ JSON Parsing:** Thêm try-catch cho tất cả các lệnh `req.json()` tại các API route chính (`generate-course`, `generate-content`).
+2.  **Fix Fallback Content:** Sửa logic tại `/api/generate-content` để xử lý đúng format `OutlinePoint[]` mới, tránh việc hiển thị `[object Object]` khi AI gặp lỗi và phải dùng nội dung dự phòng.
+3.  **Validation Context:** Thêm kiểm tra độ dài `rawContexts` trong `lib/ai.ts` để đảm bảo trích dẫn nguồn (citation) không bị gán nhầm bài học khi dữ liệu đầu vào không khớp.
+
+**Kết quả:** Hệ thống chịu lỗi tốt hơn, UI không bị vỡ khi gặp sự cố mạng hoặc lỗi AI provider.
+
+---
+
 ## Sprint 6 — 04/05 → 10/05/2026
 
 | Task | Người làm | PR |
