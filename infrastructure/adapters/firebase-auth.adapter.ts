@@ -12,6 +12,7 @@ export class FirebaseAuthAdapter implements IAuthService {
       email: decodedToken.email || null,
       displayName: decodedToken.name || null,
       photoURL: decodedToken.picture || null,
+      role: (decodedToken.role as any) || 'user',
     };
   }
 
@@ -26,6 +27,8 @@ export class FirebaseAuthAdapter implements IAuthService {
       email: decodedClaims.email || null,
       displayName: decodedClaims.name || null,
       photoURL: decodedClaims.picture || null,
+      role: (decodedClaims.role as any) || 'user',
     };
   }
+
 }

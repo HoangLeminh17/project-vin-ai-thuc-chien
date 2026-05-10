@@ -1,7 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/contexts/auth-context';
+
 
 interface LogEntry {
   id: string;
@@ -27,6 +30,9 @@ interface TokenUsageRecord {
 }
 
 export default function AdminMonitorPage() {
+  const { user, role, loading: authLoading } = useAuth();
+  const router = useRouter();
+  
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [usage, setUsage] = useState<{ daily: any[], recent: TokenUsageRecord[] }>({ daily: [], recent: [] });
@@ -36,7 +42,9 @@ export default function AdminMonitorPage() {
   const [filterLevel, setFilterLevel] = useState<'all' | 'error'>('all');
   const [filterHighLatency, setFilterHighLatency] = useState(false);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!user || role !== 'admin') return;
+
     try {
       const [logsRes, usageRes] = await Promise.all([
         fetch('/api/admin/logs'),
@@ -53,18 +61,26 @@ export default function AdminMonitorPage() {
         const data = await usageRes.json();
         setUsage({ daily: data.daily || [], recent: data.recent || [] });
       }
-    } catch (e) {
-      console.error('Failed to fetch monitoring data', e);
+    } catch (err) {
+      console.error('Failed to fetch monitoring data', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, role]);
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 10000); // Poll every 10 seconds
-    return () => clearInterval(interval);
-  }, []);
+    if (!authLoading && (!user || role !== 'admin')) {
+      // Small delay to allow the user to see what's happening or just redirect
+      const timer = setTimeout(() => router.push('/dashboard'), 3000);
+      return () => clearTimeout(timer);
+    }
+    
+    if (user && role === 'admin') {
+      fetchData();
+      const interval = setInterval(fetchData, 10000); // Poll every 10 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user, role, authLoading, router, fetchData]);
 
   const totalTokensToday = usage.daily.length > 0 
     ? usage.daily[usage.daily.length - 1].total 
@@ -80,6 +96,39 @@ export default function AdminMonitorPage() {
     return true;
   });
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Verifying authorization...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || role !== 'admin') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-red-100 p-8 text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 15.632c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <p className="text-gray-600 mb-8">
+            You do not have the required permissions to view this dashboard. 
+            Redirecting you back to safety...
+          </p>
+          <Link href="/dashboard" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors w-full">
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen p-8 bg-gray-50 text-gray-900">
@@ -91,6 +140,7 @@ export default function AdminMonitorPage() {
 
   return (
     <div className="min-h-screen p-8 bg-gray-50 text-gray-900 font-sans">
+
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">System Monitor</h1>

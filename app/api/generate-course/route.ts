@@ -35,7 +35,7 @@ const handler = async (req: NextRequest) => {
   let body;
   try {
     body = await req.json();
-  } catch (e) {
+  } catch {
     return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
   }
   const { markdown, force } = body;
