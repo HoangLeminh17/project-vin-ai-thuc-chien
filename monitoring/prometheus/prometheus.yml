@@ -44,7 +44,7 @@ scrape_configs:
   - job_name: "ukt-service"
     static_configs:
       # Sử dụng biến bạn yêu cầu cho ukt-service
-      - targets: ["https://ukt-service-production.up.railway.app"]
+      - targets: ["ukt-service-production.up.railway.app"]
     metrics_path: /metrics
     scrape_interval: 30s
 
