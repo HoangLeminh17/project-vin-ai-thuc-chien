@@ -212,7 +212,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
                   percentComplete: progressData.progress.percentComplete,
                 });
               }
-            } catch (e) {
+            } catch {
               // Polling failed, continue silently
             }
             await new Promise(r => setTimeout(r, 500));
@@ -374,7 +374,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
     }
-  }, [courses, user, saveCourse, updateCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
+  }, [status, courses, user, saveCourse, updateCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
 
   const value = useMemo(() => ({
     status,
