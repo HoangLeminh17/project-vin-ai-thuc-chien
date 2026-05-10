@@ -6,6 +6,31 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+### [ADR-33] Chunked Stage 2 generation for oversized chapters — 10/05/2026
+
+**Người làm:** Lê Minh Hoàng | **Ref:** local implementation
+
+**Bối cảnh:** Stage 2 (`generate-content`) already works chapter-by-chapter, but a single chapter can still exceed the model context window when it contains too many lessons or very large raw contexts.
+
+**Quyết định:**
+- Tách chapter input thành các lesson batches trước khi gọi model khi payload vượt ngưỡng an toàn.
+- Merge lại các partial lesson outputs theo đúng thứ tự gốc.
+- Gộp quiz questions từ các batch, khử trùng lặp theo question text, rồi giới hạn output hợp lệ cho chapter.
+
+**Kết quả:** Stage 2 giữ nguyên API contract, nhưng có fallback an toàn hơn cho chapter quá lớn.
+
+### [ADR-32] Chunked Stage 1 generation for oversized markdown — 10/05/2026
+
+**Người làm:** Lê Minh Hoàng | **Ref:** local implementation
+
+**Bối cảnh:** `generate-course` có thể vượt context window khi PDF parse ra markdown quá dài, dẫn đến lỗi token limit trước khi course outline được tạo.
+
+**Quyết định:**
+- Chia markdown lớn thành các chunk theo boundary gần nhất trước khi gọi planner.
+- Gọi AI planner từng chunk, rồi merge lại thành một course outline duy nhất.
+- Giữ usage logging trên đường đi mới và thêm test cho small input, large input, và invalid input.
+
+**Ghi chú:** Stage 2 generate-per-chapter đã có sẵn ở `generate-content`; thay đổi này tập trung chặn token overflow ở Stage 1.
 ### [Fix] Edge Case Hunting & Reliability Improvements — 10/05/2026
 
 **Người làm:** Antigravity (BMAD Agent) | **Ref:** ECH Review report

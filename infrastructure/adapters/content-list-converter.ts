@@ -5,6 +5,7 @@ export type ContentItem = {
   img_path?: string
   table_body?: string
   page_idx?: number
+  sourceChunkIndex?: number
 }
 
 const ROMAN = String.raw`^(I{1,3}|IV|V|VI{0,3}|IX|X)\.`
@@ -26,7 +27,8 @@ export function contentListToMarkdown(items: ContentItem[]): string {
   items.forEach((item, index) => {
     if (item.type === 'discarded') return
 
-    const anchor = `<a id="chunk-${item.page_idx ?? 0}-${index}"></a>`
+    const chunkId = item.sourceChunkIndex ?? 0
+    const anchor = `<a id="chunk-${chunkId}-${item.page_idx ?? 0}-${index}"></a>`
 
     if (item.type === 'text') {
       const text = (item.text ?? '').trim()

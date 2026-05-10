@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { logStore } from '@/infrastructure/log-store';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { withAdminAuth } from '@/lib/middlewares/with-admin-auth';
