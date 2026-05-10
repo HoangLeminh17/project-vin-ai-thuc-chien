@@ -84,7 +84,7 @@ function PipelineTracker({ parsed, outlined, chaptersDone, chaptersTotal, allDon
     { label: 'Đọc PDF',            state: parsed ? 'done' : 'active' },
     { label: 'Phân tích cấu trúc', state: parsed ? (outlined ? 'done' : 'active') : 'pending' },
     { label: `Tạo concept cards · ${chaptersDone}/${chaptersTotal}`, state: !outlined ? 'pending' : (allDone ? 'done' : 'active') },
-    { label: 'Tạo bài test chẩn đoán', state: diagState },
+    { label: 'Tạo bài test trình độ', state: diagState },
   ]
   return (
     <div style={{ padding: '14px 16px', background: T.bgSunken, borderRadius: 8, fontSize: 11, color: T.ink60, lineHeight: 1.55 }}>
@@ -279,7 +279,7 @@ export default function Home() {
               </p>
               {status === 'parsing' && (
                 <p style={{ fontSize: 13, color: T.ink60, margin: '0 0 8px' }}>
-                  Tài liệu dài nên cần được xử lý kỹ, vui lòng uống tách trà - bình tĩnh chờ đợi rồi quay lại nhé.
+                  Tài liệu dài nên cần được xử lý kỹ, vui lòng đợi chút nhé.
                 </p>
               )}
               {parseProgress && status === 'parsing' && (
@@ -309,7 +309,7 @@ export default function Home() {
                   </p>
                 </div>
               )}
-              <p style={{ fontSize: 13, color: T.ink60, margin: parseProgress && status === 'parsing' ? '4px 0 0' : 0 }}>Quá trình này có thể mất tới 1 phút, vui lòng đợi nhé.</p>
+              <p style={{ fontSize: 13, color: T.ink60, margin: parseProgress && status === 'parsing' ? '4px 0 0' : 0 }}>Quá trình này mất 3 - 5 phút.</p>
             </div>
           </div>
           <FlashFactGallery markdown={rawMarkdown} />
