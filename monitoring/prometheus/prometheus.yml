@@ -36,6 +36,9 @@ scrape_configs:
       - targets: ["web.railway.internal"]
     metrics_path: /api/metrics
     scrape_interval: 30s
+    authorization:
+      type: Bearer
+      credentials: "${SCRAPER_TOKEN}"
 
   # --- UKT Python Microservice ---
   # Đảm bảo tên service trên Railway là "ukt-service", nếu khác thì sửa lại
