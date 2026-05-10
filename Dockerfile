@@ -3,7 +3,24 @@ FROM node:22-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ARG NO_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY}
+ENV HTTPS_PROXY=${HTTPS_PROXY}
+ENV NO_PROXY=${NO_PROXY}
+
+# If build-time proxy vars are provided, configure npm to use them (harmless otherwise)
+RUN if [ -n "$HTTP_PROXY" ] || [ -n "$HTTPS_PROXY" ]; then \
+			npm config set proxy "$HTTP_PROXY" || true; \
+			npm config set https-proxy "$HTTPS_PROXY" || true; \
+		fi
+
+# Improve resilience: retries and shorter timeouts for flaky networks
+RUN npm config set fetch-retries 5 && npm config set fetch-retry-factor 2 && npm config set fetch-retry-mintimeout 1000
+
+# Install dependencies (prefer offline + no-audit to reduce network hits)
+RUN npm ci --unsafe-perm --no-audit --prefer-offline --progress=false
 
 # ── Stage 2: Builder ────────────────────────────────────────────────────────
 FROM node:22-alpine AS builder
