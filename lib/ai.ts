@@ -1,6 +1,5 @@
 import { PLANNER_PROMPT, STAGE2_CHAPTER_PROMPT } from './prompts'
 import type { Chapter, ChapterContent, Course } from './types'
-import { isLegacyOutline } from './types'
 import { resolveAiProvider, type AiProvider } from './ai-provider'
 import { buildStage2ChapterInput, DEFAULT_STAGE2_MAX_INPUT_CHARS, mergeStage2ChapterOutputs, splitStage2ChapterInput } from './stage2-chunking'
 
@@ -338,7 +337,6 @@ export async function generateChapterContent(chapter: Chapter, rawContexts?: str
   for (const batch of batches) {
     // Keep the fallback order stable for each batch.
     // Sequential execution avoids spiking token usage on giant chapters.
-    // eslint-disable-next-line no-await-in-loop
     partials.push(await generateChapterContentForInput(chapter, JSON.stringify(batch)))
   }
 

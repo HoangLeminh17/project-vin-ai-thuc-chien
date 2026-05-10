@@ -68,7 +68,6 @@ export class GenerateCourseUseCase {
         // note: aiService.generateCourse returns { course, tokens }
         // calling it per-chunk keeps each planner prompt within model limits
         // and we will merge the resulting outlines below
-        // eslint-disable-next-line no-await-in-loop
         const res = await this.aiService.generateCourse(chunkText)
         partials.push(res)
       } catch (e) {

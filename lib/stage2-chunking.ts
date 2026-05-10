@@ -1,4 +1,4 @@
-import type { Chapter, ChapterContent, Lesson, OutlinePoint, QuizQuestion } from './types'
+import type { Chapter, ChapterContent, OutlinePoint, QuizQuestion } from './types'
 
 export type Stage2LessonInput = {
   title: string
