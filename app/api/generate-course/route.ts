@@ -32,7 +32,13 @@ const handler = async (req: NextRequest) => {
     }
   }
 
-  const { markdown, force } = await req.json()
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+  }
+  const { markdown, force } = body;
 
   if (!markdown || typeof markdown !== 'string') {
     return NextResponse.json({ success: false, error: 'Missing or invalid markdown' }, { status: 400 })

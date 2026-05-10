@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractFacts } from '@/lib/ai'
+import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 const handler = async (req: NextRequest) => {
@@ -12,4 +13,5 @@ const handler = async (req: NextRequest) => {
   return NextResponse.json({ success: true, facts })
 }
 
-export const POST = withApiLogging('/api/extract-facts', handler)
+export const POST = withApiLogging('/api/extract-facts', withAuth(handler))
+

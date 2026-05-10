@@ -1,9 +1,9 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { logStore } from '@/infrastructure/log-store';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
+import { withAdminAuth } from '@/lib/middlewares/with-admin-auth';
 
-export const GET = withApiLogging('/api/admin/logs', async () => {
-  // In a real app, verify admin role here
+export const GET = withApiLogging('/api/admin/logs', withAdminAuth(async (req: NextRequest) => {
   const logs = logStore.getLogs(100);
   const metrics = logStore.getMetricsSummary();
 
@@ -11,4 +11,5 @@ export const GET = withApiLogging('/api/admin/logs', async () => {
     metrics,
     logs
   });
-});
+}));
+

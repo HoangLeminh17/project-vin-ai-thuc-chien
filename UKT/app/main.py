@@ -9,6 +9,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.schemas import PredictRequest, PredictResponse, UpdateRequest, UpdateResponse
 from app.ukt_engine import UKTEngine
@@ -49,6 +50,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Prometheus Instrumentation
+Instrumentator().instrument(app).expose(app)
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 

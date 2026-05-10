@@ -4,10 +4,17 @@ import { generateChapterContent } from '@/lib/ai'
 import type { Course, ChapterContent, CourseContent } from '@/lib/types'
 import { isLegacyOutline } from '@/lib/types'
 import { logger, courseRepository } from '@/infrastructure/di'
+import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 const handler = async (req: NextRequest) => {
-  const { course, chapterIndex, hash, rawContexts } = (await req.json()) as { course?: Course; chapterIndex?: number; hash?: string; rawContexts?: string[] }
+  let body;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+  }
+  const { course, chapterIndex, hash, rawContexts } = body as { course?: Course; chapterIndex?: number; hash?: string; rawContexts?: string[] }
   if (!course?.chapters?.length) {
     return NextResponse.json({ success: false, error: 'Missing course' }, { status: 400 })
   }
@@ -53,7 +60,9 @@ const handler = async (req: NextRequest) => {
         lesson_title: l.title,
         concept: {
           question: `${l.title} là gì?`,
-          answer: l.outline.slice(0, 2).join('. '),
+          answer: isLegacyOutline(l.outline) 
+            ? l.outline.slice(0, 2).join('. ') 
+            : l.outline.slice(0, 2).map(o => o.point).join('. '),
           followUps: [] as string[],
         },
       })),
@@ -68,4 +77,6 @@ const handler = async (req: NextRequest) => {
   return NextResponse.json({ success: true, courseContent })
 }
 
-export const POST = withApiLogging('/api/generate-content', handler)
+export const POST = withApiLogging('/api/generate-content', withAuth(handler))
+
+

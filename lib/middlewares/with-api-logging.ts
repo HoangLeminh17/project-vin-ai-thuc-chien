@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/infrastructure/registry';
 import { handleApiError } from '../api-utils';
 
-type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<NextResponse>;
+type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<Response | NextResponse>;
 
 export function withApiLogging(routeName: string, handler: ApiHandler): ApiHandler {
   return async (req: NextRequest, ...args: any[]) => {
