@@ -33,7 +33,7 @@ scrape_configs:
   # Đảm bảo tên service trên Railway là "web", nếu khác thì sửa lại
   - job_name: "web"
     static_configs:
-      - targets: ["web.railway.internal:3000"]
+      - targets: ["web:3000", "web.railway.internal:3000"]
     metrics_path: /api/metrics
     scrape_interval: 30s
     bearer_token: "${SCRAPER_TOKEN}"
@@ -43,7 +43,7 @@ scrape_configs:
   # Đảm bảo tên service trên Railway là "ukt-service", nếu khác thì sửa lại
   - job_name: "ukt-service"
     static_configs:
-      - targets: ["ukt-service.railway.internal:8000"]
+      - targets: ["ukt-service:8000", "ukt-service.railway.internal:8000"]
     metrics_path: /metrics
     scrape_interval: 30s
 
