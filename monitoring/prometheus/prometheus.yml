@@ -33,7 +33,7 @@ scrape_configs:
   - job_name: "web"
     static_configs:
       # Sử dụng biến Private Domain của web service
-      - targets: ["${{web.RAILWAY_PRIVATE_DOMAIN}}"]
+      - targets: [${{web.RAILWAY_PRIVATE_DOMAIN}}]
     metrics_path: /api/metrics
     scrape_interval: 30s
     authorization:
@@ -44,7 +44,7 @@ scrape_configs:
   - job_name: "ukt-service"
     static_configs:
       # Sử dụng biến bạn yêu cầu cho ukt-service
-      - targets: ["${{ukt-service.RAILWAY_PRIVATE_DOMAIN}}"]
+      - targets: [${{ukt-service.RAILWAY_PRIVATE_DOMAIN}}]
     metrics_path: /metrics
     scrape_interval: 30s
 
