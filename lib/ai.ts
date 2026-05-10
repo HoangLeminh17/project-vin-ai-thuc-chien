@@ -257,18 +257,24 @@ async function generateChapterContentLocal(chapter: Chapter, input: string): Pro
 async function generateChapterContentHuggingFace(chapter: Chapter, input: string): Promise<ChapterContent> {
   const apiKey = process.env.HUGGINGFACE_API_KEY!
   const model = process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.1-8B-Instruct'
-  const res = await fetch('https://api-inference.huggingface.co/v1/chat/completions', {
+  
+  // Truncate to stay within context limits
+  const MAX_CHARS = 24000;
+  const truncatedInput = input.length > MAX_CHARS ? input.slice(0, MAX_CHARS) : input;
+
+  const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({
       model, temperature: 0.3, response_format: { type: 'json_object' },
-      messages: [{ role: 'system', content: STAGE2_CHAPTER_PROMPT }, { role: 'user', content: input }],
+      messages: [{ role: 'system', content: STAGE2_CHAPTER_PROMPT }, { role: 'user', content: truncatedInput }],
     }),
   })
   if (!res.ok) {
     const body = await res.json().catch(() => null)
     throw new Error(`Hugging Face error (${res.status}): ${JSON.stringify(body?.error || body?.message || 'Unknown')}`)
   }
+
   const data = await res.json()
   const text = data.choices?.[0]?.message?.content
   if (!text) throw new Error('Hugging Face returned no content')
@@ -378,7 +384,7 @@ export async function extractFacts(content: string): Promise<string[]> {
   // 2. Try Hugging Face
   if (process.env.HUGGINGFACE_API_KEY) {
     try {
-      const res = await fetch('https://api-inference.huggingface.co/v1/chat/completions', {
+      const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

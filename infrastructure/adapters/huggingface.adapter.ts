@@ -94,7 +94,13 @@ export class HuggingFaceAdapter implements IAiService {
   }
 
   async generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
-    const { text, tokens } = await this.safeFetch(PLANNER_PROMPT, markdown)
+    // Truncate to approx 24k characters to stay within ~6k tokens (leaving room for prompt and output)
+    const MAX_CHARS = 24000;
+    const truncatedMarkdown = markdown.length > MAX_CHARS 
+      ? markdown.slice(0, MAX_CHARS) + '\n\n[CONTENT TRUNCATED DUE TO LENGTH]' 
+      : markdown;
+
+    const { text, tokens } = await this.safeFetch(PLANNER_PROMPT, truncatedMarkdown)
     const course = this.parseSecureJson<Course>(text)
 
     if (!course.chapters || !Array.isArray(course.chapters)) {
