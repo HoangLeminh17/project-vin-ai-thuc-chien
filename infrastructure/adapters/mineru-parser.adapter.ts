@@ -4,6 +4,9 @@ import fs from 'fs/promises';
 import path from 'path';
 import { InfrastructureError } from '@/core/errors/domain-error'
 import { contentListToMarkdown } from './content-list-converter'
+import { getBucket } from '@/lib/firebase-admin'
+import { PDFDocument } from 'pdf-lib'
+import { buildPdfPageRanges, mergeMineruChunkResults, splitPdfBufferByRanges, type MineruChunkResult } from './mineru-chunking'
 
 export interface MineruConfig {
   baseUrl: string
@@ -47,6 +50,29 @@ export class MineruParserAdapter implements IDocumentParser {
     }
   }
 
+  private async downloadPdfBuffer(fileUrl: string): Promise<Buffer> {
+    const res = await fetch(fileUrl)
+    if (!res.ok) {
+      throw new InfrastructureError(`Failed to download PDF (${res.status}) from storage`)
+    }
+
+    return Buffer.from(await res.arrayBuffer())
+  }
+
+  private async uploadTempPdf(fileBuffer: Buffer, destPath: string): Promise<{ publicUrl: string; filePath: string }> {
+    const bucket = getBucket()
+    const fileRef = bucket.file(destPath)
+
+    await fileRef.save(fileBuffer, {
+      metadata: { contentType: 'application/pdf' },
+    })
+
+    await fileRef.makePublic()
+
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${destPath}`
+    return { publicUrl, filePath: destPath }
+  }
+
   private async submitExtractTask(fileUrl: string): Promise<string> {
     const res = await this.mineruFetch('/extract/task', {
       method: 'POST',
@@ -62,6 +88,46 @@ export class MineruParserAdapter implements IDocumentParser {
     const taskId = data.data?.task_id;
     if (!taskId) throw new InfrastructureError(`MinerU: no task_id returned: ${JSON.stringify(data)}`);
     return taskId;
+  }
+
+  private async parseSingleDocument(fileUrl: string, safeName: string): Promise<ParseResult> {
+    const taskId = await this.submitExtractTask(fileUrl)
+    return await this.pollAndExtract(taskId, safeName)
+  }
+
+  private async parseLargeDocument(safeName: string, pdfBuffer: Buffer, pageCount: number): Promise<ParseResult> {
+    const pageRanges = buildPdfPageRanges(pageCount)
+    const chunkBuffers = await splitPdfBufferByRanges(pdfBuffer, pageRanges)
+    const tempFiles: string[] = []
+    const chunkResults: MineruChunkResult[] = []
+    const baseName = safeName.replace(/\.pdf$/i, '')
+
+    try {
+      for (const [chunkIndex, chunkBuffer] of chunkBuffers.entries()) {
+        const pageRange = pageRanges[chunkIndex]
+        const chunkTag = `part-${String(chunkIndex + 1).padStart(2, '0')}_${pageRange.startPage}-${pageRange.endPage}`
+        const destPath = `uploads/mineru-chunks/${Date.now()}_${baseName}_${chunkTag}.pdf`
+        const { publicUrl, filePath } = await this.uploadTempPdf(chunkBuffer, destPath)
+        tempFiles.push(filePath)
+
+        const chunkResult = await this.parseSingleDocument(publicUrl, `${baseName}_${chunkTag}`)
+        chunkResults.push({
+          ...chunkResult,
+          chunkIndex,
+          pageRange,
+        })
+      }
+
+      const mergedContentList = mergeMineruChunkResults(chunkResults)
+      const markdown = contentListToMarkdown(mergedContentList)
+
+      return {
+        markdown,
+        contentList: mergedContentList,
+      }
+    } finally {
+      await Promise.all(tempFiles.map((filePath) => this.deleteTempFile(filePath)))
+    }
   }
 
   private async pollAndExtract(taskId: string, safeName: string, timeoutMs = 900_000, intervalMs = 3_000): Promise<ParseResult> {
@@ -133,8 +199,23 @@ export class MineruParserAdapter implements IDocumentParser {
     return { markdown, contentList, pdfLocalPath };
   }
 
+  private async deleteTempFile(filePath: string): Promise<void> {
+    try {
+      await getBucket().file(filePath).delete()
+    } catch {
+      // non-critical, ignore
+    }
+  }
+
   async extractMarkdown(fileUrl: string, safeName: string): Promise<ParseResult> {
-    const taskId = await this.submitExtractTask(fileUrl);
-    return await this.pollAndExtract(taskId, safeName);
+    const pdfBuffer = await this.downloadPdfBuffer(fileUrl)
+    const pdfDocument = await PDFDocument.load(pdfBuffer)
+    const pageCount = pdfDocument.getPageCount()
+
+    if (pageCount <= 200) {
+      return await this.parseSingleDocument(fileUrl, safeName)
+    }
+
+    return await this.parseLargeDocument(safeName, pdfBuffer, pageCount)
   }
 }
