@@ -157,6 +157,19 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
+## 🚀 Deployment & Monitoring
+
+### 1. Production Deployment (Railway)
+Dự án được thiết kế để chạy tối ưu trên **Railway**. Xem hướng dẫn chi tiết tại:
+- **Web App & UKT Service**: Tự động deploy qua GitHub integration.
+- **Monitoring Stack**: Hướng dẫn deploy Prometheus & Grafana tại **[monitoring/README.md](monitoring/README.md)**.
+
+### 2. Observability
+Hệ thống tích hợp sẵn bộ công cụ giám sát:
+- **Prometheus**: Thu thập metrics từ các service.
+- **Grafana**: Dashboard trực quan hóa (Latency, Token Usage, Error Rates).
+- **Discord Alerts**: Cảnh báo lỗi hệ thống thời gian thực.
+
 ## AI Logging
 
 Prompts and tool calls are automatically logged when you use any supported AI tool (Claude Code, Cursor, Codex, Gemini, Copilot). No manual steps needed after running `setup_hooks.sh`. Logs go to `.ai-log/session.jsonl` and are submitted on `git push`.
@@ -164,17 +177,14 @@ Prompts and tool calls are automatically logged when you use any supported AI to
 ### 📑 Documentation
 
 #### Core Docs
-- **[ARCHITECTURE.md](ARCHITECTURE.md)** — Clean Architecture guide (ports, use cases, adapters, DI, testing)
-- **[CONVENTIONS.md](CONVENTIONS.md)** — Coding rules, team workflow, and testing strategies.
-- **[PIPELINE.md](PIPELINE.md)** — File map, key types, generation flow, caching, UI state machine
-- **[WORKLOG.md](WORKLOG.md)** — ADRs, sprint log, technical decisions
-- **[JOURNAL.md](JOURNAL.md)** — Weekly learning journal
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — Bản đồ kiến trúc hệ thống và luồng dữ liệu.
+- **[CONVENTIONS.md](CONVENTIONS.md)** — Quy chuẩn viết code và chiến lược testing.
+- **[PIPELINE.md](PIPELINE.md)** — Chi tiết pipeline tạo khóa học.
+- **[WORKLOG.md](WORKLOG.md)** — Nhật ký quyết định kỹ thuật (ADRs).
+- **[JOURNAL.md](JOURNAL.md)** — Nhật ký học tập hàng tuần.
 
 #### 🛠️ BMAD Management (Busy Madman)
 Located in `_bmad-output/`:
 - **[TRACK.md](_bmad-output/TRACK.md)** — Project heartbeat, status tracking, and next steps.
 - **[initialization_plan.md](_bmad-output/initialization_plan.md)** — Initial BMAD setup and complexity assessment.
 - **[PRDs/](_bmad-output/PRDs/)** — Product Requirement Documents for key features.
-
-
-

@@ -10,19 +10,61 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Source Base Cleanup & Documentation Reorg | Lê Kim Dũng | #cleanup-01 |
 | Redesign `/course/[id]` — Master-Detail CourseTree | Nguyễn Bình Thành | #53, #54, #55 |
-| Optimistic update cho xóa course ở thư viện | Nguyễn Bình Thành | #62 |
-| In-memory TTL cache cho VerifySessionUseCase | Nguyễn Bình Thành | #63 |
-| Fix pipeline tracker stuck + lesson list trong GenerationScreen | Nguyễn Bình Thành | #64 |
-| Citation Phase 1 — Bug fixes (UI guard + client-side upload + layout JSON) | Nguyễn Bình Thành | #TBD |
-| OutlinePoint schema + Stage 2 inline citation markers (Phase 1+2) | Nguyễn Bình Thành | #70 |
-| Clickable citation markers trong ConceptCard (Phase 3 FE) | Nguyễn Bình Thành | #71 |
-| Fix diagnostic quiz + stale cache + citation [?] display + parallel diagnostic | Nguyễn Bình Thành | #73, #74 |
-| Force Stage 1 regen khi cached outline là legacy string[] | Nguyễn Bình Thành | #76 |
+| Railway Deployment & Grafana Monitoring | Lê Kim Dũng | #monitoring-01 |
+| ... (giữ nguyên các task khác) ... | | |
+
+---
+
+### [ADR-33] Observability Stack (Prometheus & Grafana) trên Railway — 09/05/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** Conversation b925e6e2-c45f-4cb7-93c6-4098111a0c09
+
+**Bối cảnh:** Hệ thống cần khả năng giám sát thời gian thực về hiệu năng, tỷ lệ lỗi AI, và tình trạng tài nguyên. Việc deploy manual hoặc dùng log đơn thuần không đủ để DevOps theo dõi sức khỏe hệ thống trên môi trường production (Railway).
+
+**Quyết định:** Triển khai ngăn xếp giám sát (Observability Stack) tách biệt:
+1.  **Prometheus**: Thu thập metrics từ Web App và UKT Service qua các endpoints `/api/metrics`. Cấu hình scraper với interval 15s.
+2.  **Grafana**: Trực quan hóa dữ liệu. Tự động kết nối Prometheus làm Data Source qua cấu hình provisioning.
+3.  **Deployment**: Đóng gói thành các Docker service riêng biệt trong thư mục `monitoring/`, deploy lên Railway dưới dạng các service phụ trợ.
+4.  **Data Persistence**: Sử dụng Railway Volumes (`/prometheus`) để giữ lại dữ liệu lịch sử metrics khi service khởi động lại.
+
+**Hệ quả:**
+- ✅ Theo dõi được latency, token usage, và error rates của AI theo thời gian thực.
+- ✅ Cảnh báo (Alerting) có thể cấu hình qua Prometheus Alertmanager gửi về Discord.
+- ⚠️ Tăng chi phí tài nguyên trên Railway (cần thêm 2 service chạy 24/7).
+
+---
+
+### [ADR-32] Source Base Cleanup & Documentation Reorganization — 10/05/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** Báo cáo dọn dẹp hệ thống
+
+**Bối cảnh:** Sau một thời gian phát triển nhanh, repository tích tụ nhiều file rác, tệp tạm và cấu hình dư thừa từ nhiều công cụ AI khác nhau (Claude, Cursor, Codex). Tài liệu hướng dẫn cũng bị phân mảnh ở nhiều file (`README.md`, `index.md`, `ARCHITECTURE.md`, `ARCHITECTURE_VISUAL.md`).
+
+**Các hành động đã thực hiện:**
+1.  **Dọn dẹp tệp rác & Bảo mật:**
+    - Xóa thư mục `me/` chứa Firebase Service Account Key (chuyển sang quản lý qua Env).
+    - Xóa `prometheus.yml` dư thừa ở root (giữ lại bản trong `monitoring/`).
+    - Xóa các tệp tạm: `build_log.txt`, `image.png`.
+    - Xóa các thư mục cache & IDE trash: `.claude`, `.cursor`, `.codex`, `.ai-log`, `.pytest_cache`, `.ruff_cache`.
+2.  **Tái cấu trúc tài liệu (Documentation Reorg):**
+    - Gộp `index.md` (mục lục) vào `README.md`.
+    - Tích hợp sơ đồ Mermaid từ `ARCHITECTURE_VISUAL.md` vào `ARCHITECTURE.md`.
+    - Tách các quy tắc code (Coding Rules/Conventions) từ `ARCHITECTURE.md` ra một file riêng là **`CONVENTIONS.md`** đặt tại thư mục root để dễ tra cứu.
+3.  **Bảo toàn cấu trúc:**
+    - Khôi phục các file route/page bị xóa nhầm trong quá trình quét tự động (`app/api/courses/[id]`, `app/course/[id]`).
+    - Thêm `.gitkeep` vào các thư mục placeholder trống (`public/uploads`, `UKT/model/checkpoints`) để tránh bị xóa trong tương lai.
+
+**Kết quả:** 
+- Source base sạch sẽ, tập trung vào logic nghiệp vụ.
+- Tài liệu được phân cấp rõ ràng: `README` (Tổng quan), `ARCHITECTURE` (Bản đồ hệ thống), `CONVENTIONS` (Quy chuẩn code).
+- Hệ thống vượt qua 73/73 unit tests sau khi dọn dẹp.
 
 ---
 
 ### [ADR-31] Legacy outline cache bypass — 09/05/2026
+
 
 **Người làm:** Nguyễn Bình Thành | **Ref:** PR #73, #76
 
