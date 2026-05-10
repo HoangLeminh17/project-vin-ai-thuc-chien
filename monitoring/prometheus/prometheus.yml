@@ -32,8 +32,8 @@ scrape_configs:
   # --- Next.js Web App ---
   - job_name: "web"
     static_configs:
-      # Mặc định dùng port 3000 cho web
-      - targets: ["web.railway.internal:3000"]
+      # Dùng biến Railway để tự động cập nhật Port
+      - targets: ["${WEB_TARGET}"]
     metrics_path: /api/metrics
     scrape_interval: 30s
     authorization:
@@ -43,8 +43,8 @@ scrape_configs:
   # --- UKT Python Microservice ---
   - job_name: "ukt-service"
     static_configs:
-      # Mặc định dùng port 8000 cho ukt-service
-      - targets: ["ukt-service.railway.internal:8000"]
+      # Dùng biến Railway để tự động cập nhật Port
+      - targets: ["${UKT_TARGET}"]
     metrics_path: /metrics
     scrape_interval: 30s
 
