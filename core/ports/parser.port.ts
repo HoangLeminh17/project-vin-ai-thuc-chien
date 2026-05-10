@@ -5,5 +5,5 @@ export interface ParseResult {
 }
 
 export interface IDocumentParser {
-  extractMarkdown(fileUrl: string, safeName: string): Promise<ParseResult>;
+  extractMarkdown(fileUrl: string, safeName: string, taskId?: string): Promise<ParseResult>;
 }

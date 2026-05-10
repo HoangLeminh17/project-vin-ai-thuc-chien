@@ -1,4 +1,5 @@
 import { IDocumentParser, ParseResult } from '@/core/ports/parser.port';
+import { IProgressStore } from '@/core/ports/progress.port';
 import JSZip from 'jszip';
 import fs from 'fs/promises';
 import path from 'path';
@@ -18,11 +19,26 @@ export class MineruParserAdapter implements IDocumentParser {
   private readonly baseUrl: string
   private readonly apiKey: string
   private readonly outputDir: string
+  private progressStore?: IProgressStore
+  private currentTaskId?: string
 
-  constructor(config: MineruConfig) {
+  constructor(config: MineruConfig, progressStore?: IProgressStore) {
     this.baseUrl = config.baseUrl
     this.apiKey = config.apiKey
     this.outputDir = config.outputDir || path.join(process.cwd(), '.mineru-output')
+    this.progressStore = progressStore
+  }
+
+  private async reportProgress(currentChunk: number, totalChunks: number, totalPages: number) {
+    if (!this.progressStore || !this.currentTaskId) return
+    
+    await this.progressStore.setProgress(this.currentTaskId, {
+      currentChunk,
+      totalChunks,
+      currentPage: Math.min(currentChunk * 200, totalPages),
+      totalPages,
+      percentComplete: Math.round((currentChunk / totalChunks) * 100),
+    })
   }
 
   private async mineruFetch(apiPath: string, init?: RequestInit): Promise<Response> {
@@ -116,6 +132,8 @@ export class MineruParserAdapter implements IDocumentParser {
           chunkIndex,
           pageRange,
         })
+
+        await this.reportProgress(chunkIndex + 1, chunkBuffers.length, pageCount)
       }
 
       const mergedContentList = mergeMineruChunkResults(chunkResults)
@@ -207,12 +225,15 @@ export class MineruParserAdapter implements IDocumentParser {
     }
   }
 
-  async extractMarkdown(fileUrl: string, safeName: string): Promise<ParseResult> {
+  async extractMarkdown(fileUrl: string, safeName: string, taskId?: string): Promise<ParseResult> {
+    this.currentTaskId = taskId
+    
     const pdfBuffer = await this.downloadPdfBuffer(fileUrl)
     const pdfDocument = await PDFDocument.load(pdfBuffer)
     const pageCount = pdfDocument.getPageCount()
 
     if (pageCount <= 200) {
+      await this.reportProgress(1, 1, pageCount)
       return await this.parseSingleDocument(fileUrl, safeName)
     }
 
