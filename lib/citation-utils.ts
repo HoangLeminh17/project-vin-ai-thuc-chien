@@ -6,7 +6,11 @@ export function buildValidChunkIds(contentList: ContentListItem[]): Set<string> 
   const valid = new Set<string>()
   contentList.forEach((item, index) => {
     if (item.type !== 'discarded') {
-      valid.add(`chunk-${item.page_idx ?? 0}-${index}`)
+      if (item.sourceChunkIndex !== undefined) {
+        valid.add(`chunk-${item.sourceChunkIndex}-${item.page_idx ?? 0}-${index}`)
+      } else {
+        valid.add(`chunk-${item.page_idx ?? 0}-${index}`)
+      }
     }
   })
   return valid
