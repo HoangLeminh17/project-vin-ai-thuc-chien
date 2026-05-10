@@ -17,6 +17,9 @@ Course viewer uses a **master-detail layout**: a fixed tree nav on the left (cha
 - **Database**: Firebase Firestore (course + SRS progress persistence)
 - **Storage**: Firebase Storage (PDF + layout JSON; client-side upload, server-side Admin proxy)
 - **PDF parsing**: MinerU Precision API
+- **Monitoring**: Prometheus + Grafana (latency, token usage, system health)
+- **Security**: Role-Based Access Control (RBAC) via Firebase Custom Claims
+- **Task Management**: Redis-backed rate limiting and job queue
 
 ## Getting Started
 
@@ -139,6 +142,7 @@ docker-compose up --build
 
 - **Web App**: http://localhost:3000
 - **UKT API**: http://localhost:8000
+- **Admin Monitor**: http://localhost:3000/admin/monitor (Yêu cầu quyền Admin)
 - **Health Check**: http://localhost:8000/health
 
 ### 6. Run (Development: Manual)
@@ -157,6 +161,28 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
+## 🛡️ Security & Roles (RBAC)
+
+Dự án sử dụng cơ chế phân quyền dựa trên **Firebase Custom Claims**.
+
+### 1. Phân quyền (Roles)
+- **`user`** (Mặc định): Có quyền tạo khóa học, học bài và quản lý dữ liệu cá nhân.
+- **`admin`**: Có quyền truy cập Admin Dashboard, xem toàn bộ logs hệ thống, metrics và thông số sử dụng token AI.
+
+### 2. Quản lý Admin
+Để nâng quyền Admin cho một tài khoản, sử dụng script CLI:
+```bash
+# Nâng quyền cho một email
+npx tsx scripts/promote-admin.ts user@example.com
+```
+*Lưu ý: Sau khi chạy script, người dùng cần đăng xuất và đăng nhập lại để cập nhật quyền mới.*
+
+### 3. Bảo vệ API
+Hệ thống sử dụng các middleware chuyên dụng:
+- `withAuth`: Bảo vệ các API yêu cầu đăng nhập.
+- `withAdminAuth`: Chặn quyền truy cập các API nhạy cảm (Logs, Usage, Metrics).
+- `withApiLogging`: Tự động ghi log chi tiết mọi request và response.
+
 ## 🚀 Deployment & Monitoring
 
 ### 1. Production Deployment (Railway)
@@ -166,8 +192,9 @@ Dự án được thiết kế để chạy tối ưu trên **Railway**. Xem hư
 
 ### 2. Observability
 Hệ thống tích hợp sẵn bộ công cụ giám sát:
-- **Prometheus**: Thu thập metrics từ các service.
-- **Grafana**: Dashboard trực quan hóa (Latency, Token Usage, Error Rates).
+- **Prometheus**: Thu thập metrics từ các service qua `/api/metrics` (chỉ dành cho Admin).
+- **Grafana**: Dashboard trực quan hóa chuyên sâu.
+- **Admin Dashboard**: Giao diện quản trị trực tiếp trên Web App để theo dõi Logs và Usage.
 - **Discord Alerts**: Cảnh báo lỗi hệ thống thời gian thực.
 
 ## AI Logging
