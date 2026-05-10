@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionUseCase } from '@/infrastructure/di';
 
-type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<NextResponse>;
+type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<Response | NextResponse>;
 
 export function withAdminAuth(handler: ApiHandler): ApiHandler {
   return async (req: NextRequest, ...args: any[]) => {
