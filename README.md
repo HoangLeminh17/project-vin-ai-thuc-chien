@@ -161,9 +161,20 @@ uvicorn app.main:app --reload
 
 Prompts and tool calls are automatically logged when you use any supported AI tool (Claude Code, Cursor, Codex, Gemini, Copilot). No manual steps needed after running `setup_hooks.sh`. Logs go to `.ai-log/session.jsonl` and are submitted on `git push`.
 
-## Docs
+### 📑 Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — Clean Architecture guide (ports, use cases, adapters, DI, testing)
-- [PIPELINE.md](PIPELINE.md) — File map, key types, generation flow, caching, UI state machine
-- [WORKLOG.md](WORKLOG.md) — ADRs, sprint log, technical decisions
-- [JOURNAL.md](JOURNAL.md) — Weekly learning journal
+#### Core Docs
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** — Clean Architecture guide (ports, use cases, adapters, DI, testing)
+- **[CONVENTIONS.md](CONVENTIONS.md)** — Coding rules, team workflow, and testing strategies.
+- **[PIPELINE.md](PIPELINE.md)** — File map, key types, generation flow, caching, UI state machine
+- **[WORKLOG.md](WORKLOG.md)** — ADRs, sprint log, technical decisions
+- **[JOURNAL.md](JOURNAL.md)** — Weekly learning journal
+
+#### 🛠️ BMAD Management (Busy Madman)
+Located in `_bmad-output/`:
+- **[TRACK.md](_bmad-output/TRACK.md)** — Project heartbeat, status tracking, and next steps.
+- **[initialization_plan.md](_bmad-output/initialization_plan.md)** — Initial BMAD setup and complexity assessment.
+- **[PRDs/](_bmad-output/PRDs/)** — Product Requirement Documents for key features.
+
+
+
