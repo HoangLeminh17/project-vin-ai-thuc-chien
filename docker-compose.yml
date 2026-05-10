@@ -64,13 +64,16 @@ services:
 
   # Prometheus for metrics collection
   prometheus:
-    image: prom/prometheus:latest
+    build:
+      context: ./monitoring/prometheus
+      dockerfile: Dockerfile
+    environment:
+      - SCRAPER_TOKEN=${SCRAPER_TOKEN}
     volumes:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
-    command:
-      - '--config.file=/etc/prometheus/prometheus.yml'
     ports:
       - "9090:9090"
+
     depends_on:
       - web
 

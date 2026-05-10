@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { usageRepository } from '@/infrastructure/di'
 import { withAdminAuth } from '@/lib/middlewares/with-admin-auth'
 
 export const dynamic = 'force-dynamic'
 
-export const GET = withAdminAuth(async function () {
+export const GET = withAdminAuth(async function (_req: NextRequest) {
   try {
     const daily = await usageRepository.getDailyUsage(30)
     const recent = await usageRepository.getRecentUsage(50)

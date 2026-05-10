@@ -98,7 +98,7 @@ export async function splitPdfBufferByRanges(pdfBuffer: Buffer, ranges: PdfPageR
       (_, index) => range.startPage - 1 + index
     )
     const copiedPages = await chunkPdf.copyPages(sourcePdf, pageIndexes)
-    copiedPages.forEach((page) => chunkPdf.addPage(page))
+    copiedPages.forEach((page: any) => chunkPdf.addPage(page))
     const bytes = await chunkPdf.save()
     chunkBuffers.push(Buffer.from(bytes))
   }
