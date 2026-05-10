@@ -33,7 +33,7 @@ scrape_configs:
   - job_name: "web"
     static_configs:
       # Dùng biến Railway để tự động cập nhật Port
-      - targets: ["${WEB_TARGET}"]
+      - targets: ["${WEB_TARGET}:8080"]
     metrics_path: /api/metrics
     scrape_interval: 30s
     authorization:
@@ -44,7 +44,7 @@ scrape_configs:
   - job_name: "ukt-service"
     static_configs:
       # Dùng biến Railway để tự động cập nhật Port
-      - targets: ["${UKT_TARGET}"]
+      - targets: ["${UKT_TARGET}:8080"]
     metrics_path: /metrics
     scrape_interval: 30s
 
