@@ -487,6 +487,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
               {/* EditMode without card list */}
               <EditMode
                 cards={allCards.filter(c => c.ci === activeCard.ci && c.li === activeCard.li)}
+                allCards={allCards}
                 controlledCardId={activeCard.id}
                 hideList
                 layoutStorageUrl={layoutStorageUrl}

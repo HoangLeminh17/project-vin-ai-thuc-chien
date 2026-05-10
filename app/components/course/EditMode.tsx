@@ -13,6 +13,8 @@ const AI_CHIPS = ['💡 Giải thích dễ hơn', '📌 Thêm ví dụ lâm sàn
 
 interface Props {
   cards: FlatCard[]
+  /** Full card list across all lessons — used for global citation numbering */
+  allCards?: FlatCard[]
   initialCardId?: string | null
   /** When set, overrides internal card selection — used by master-detail parent */
   controlledCardId?: string | null
@@ -21,7 +23,7 @@ interface Props {
   layoutStorageUrl?: string | null
 }
 
-export function EditMode({ cards, initialCardId, controlledCardId, hideList, layoutStorageUrl }: Props) {
+export function EditMode({ cards, allCards, initialCardId, controlledCardId, hideList, layoutStorageUrl }: Props) {
   const [selectedId, setSelectedId] = useState(controlledCardId ?? initialCardId ?? cards[0]?.id ?? null)
   const [aiInput, setAiInput] = useState('')
   const [aiProposal, setAiProposal] = useState<string | null>(null)
@@ -34,17 +36,18 @@ export function EditMode({ cards, initialCardId, controlledCardId, hideList, lay
 
   const card = cards.find(c => c.id === selectedId) ?? cards[0] ?? null
 
-  // Global citation map: numbers are assigned across ALL cards in order, so (1)(2)(3)...
-  // increase monotonically across lessons rather than resetting at each card.
+  // Global citation map: numbers assigned across ALL course cards in document order.
+  // Uses allCards (full course) when available so numbers are stable across lessons.
+  // Falls back to cards (current lesson only) when allCards is not provided.
   const globalCiteMap = useMemo(() => {
     const map = new Map<string, number>()
     const empty = new Set<string>()
-    for (const c of cards) {
+    for (const c of (allCards ?? cards)) {
       parseCitations(c.concept.answer, empty, map)
       if (c.concept.detail) parseCitations(c.concept.detail, empty, map)
     }
     return map
-  }, [cards])
+  }, [allCards, cards])
   // New courses use source_chunk_start; legacy courses fall back to source_chunk_id
   const chunkStart = card?.concept.source_chunk_start ?? card?.concept.source_chunk_id ?? null
   const chunkEnd   = card?.concept.source_chunk_end   ?? card?.concept.source_chunk_id ?? null

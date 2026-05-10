@@ -10,6 +10,7 @@ interface ContentItem {
   img_path?: string
   table_body?: string
   page_idx?: number
+  sourceChunkIndex?: number
 }
 
 interface Props {
@@ -20,9 +21,10 @@ interface Props {
   onClose: () => void
 }
 
-// Extract the flat-array global index from "chunk-{page}-{globalIdx}"
+// Extract flat-array index: always the last number in the chunk ID
+// Works for both 2-number (chunk-P-I) and 3-number (chunk-S-P-I) formats
 function parseGlobalIdx(id: string): number {
-  const m = id.match(/chunk-\d+-(\d+)/)
+  const m = id.match(/(\d+)$/)
   return m ? parseInt(m[1]) : -1
 }
 
@@ -57,12 +59,15 @@ export function PdfPanel({ layoutStorageUrl, chunkStart, chunkEnd, selectedChunk
   const highlightEnd   = selectedChunkId ?? chunkEnd   ?? null
 
   // Double-rAF: guarantees browser has fully painted before scrollIntoView fires.
+  // Uses data-flat-idx (last number of chunk ID) so scroll works for both 2 and 3-number formats.
   useEffect(() => {
     if (!items.length || !scrollTarget) return
+    const flatIdx = parseGlobalIdx(scrollTarget)
+    if (flatIdx < 0) return
     let raf2 = -1
     const raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        const el = containerRef.current?.querySelector(`[data-chunk-id="${scrollTarget}"]`)
+        const el = containerRef.current?.querySelector(`[data-flat-idx="${flatIdx}"]`)
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
       })
     })
@@ -140,7 +145,8 @@ function DocBody({ items, chunkStart, chunkEnd }: {
       {items.map((item, index) => {
         if (item.type === 'discarded') return null
 
-        const itemChunkId  = `chunk-${item.page_idx ?? 0}-${index}`
+        // Match contentListToMarkdown format: chunk-{sourceChunkIndex ?? 0}-{page_idx}-{index}
+        const itemChunkId  = `chunk-${item.sourceChunkIndex ?? 0}-${item.page_idx ?? 0}-${index}`
         const isHighlighted = startIdx >= 0 && index >= startIdx && index <= Math.max(startIdx, endIdx)
         const showPageBreak = pageBreakAt.has(index)
         const pageIdx = item.page_idx ?? 0
@@ -159,6 +165,7 @@ function DocBody({ items, chunkStart, chunkEnd }: {
                 {showPageBreak && <PageBreak page={pageIdx} />}
                 <h3
                   data-chunk-id={itemChunkId}
+                  data-flat-idx={index}
                   className="sy-serif"
                   style={{ fontSize: 15, fontWeight: 700, color: T.ink, margin: '20px 0 6px', lineHeight: 1.4, ...hlStyle }}
                 >
@@ -173,6 +180,7 @@ function DocBody({ items, chunkStart, chunkEnd }: {
               {showPageBreak && <PageBreak page={pageIdx} />}
               <p
                 data-chunk-id={itemChunkId}
+                data-flat-idx={index}
                 className="sy-serif"
                 style={{ fontSize: 13.5, color: T.ink80, lineHeight: 1.65, margin: '0 0 10px', ...hlStyle }}
               >
@@ -190,6 +198,7 @@ function DocBody({ items, chunkStart, chunkEnd }: {
               {showPageBreak && <PageBreak page={pageIdx} />}
               <pre
                 data-chunk-id={itemChunkId}
+                data-flat-idx={index}
                 className="sy-mono"
                 style={{
                   fontSize: 11, color: T.ink80, lineHeight: 1.5,
@@ -211,6 +220,7 @@ function DocBody({ items, chunkStart, chunkEnd }: {
               {showPageBreak && <PageBreak page={pageIdx} />}
               <div
                 data-chunk-id={itemChunkId}
+                data-flat-idx={index}
                 style={{
                   margin: '8px 0', padding: '8px 12px',
                   background: isHighlighted ? 'rgba(255, 226, 0, 0.45)' : T.bgSunken,

@@ -28,19 +28,21 @@ describe('isLegacyOutline', () => {
 // ── buildValidChunkIds ─────────────────────────────────────────────────────────
 
 describe('buildValidChunkIds', () => {
-  it('builds 2-number IDs for items without sourceChunkIndex (legacy format)', () => {
+  it('items without sourceChunkIndex generate both 3-number (default 0) and 2-number IDs', () => {
     const contentList = [
       { type: 'text', page_idx: 0 },
       { type: 'discarded', page_idx: 0 },
       { type: 'table', page_idx: 1 },
     ]
     const ids = buildValidChunkIds(contentList)
-    expect(ids.has('chunk-0-0')).toBe(true)
-    expect(ids.has('chunk-0-1')).toBe(false) // discarded
-    expect(ids.has('chunk-1-2')).toBe(true)
+    expect(ids.has('chunk-0-0-0')).toBe(true)  // 3-number, sourceChunkIndex defaults to 0
+    expect(ids.has('chunk-0-0')).toBe(true)    // 2-number, backward compat
+    expect(ids.has('chunk-0-0-1')).toBe(false) // discarded
+    expect(ids.has('chunk-0-1-2')).toBe(true)  // 3-number
+    expect(ids.has('chunk-1-2')).toBe(true)    // 2-number
   })
 
-  it('builds 3-number IDs for items with sourceChunkIndex (current format)', () => {
+  it('builds 3-number IDs only for items with sourceChunkIndex (current format)', () => {
     const contentList = [
       { type: 'text', page_idx: 2, sourceChunkIndex: 0 },
       { type: 'discarded', page_idx: 2, sourceChunkIndex: 0 },
@@ -50,6 +52,7 @@ describe('buildValidChunkIds', () => {
     expect(ids.has('chunk-0-2-0')).toBe(true)
     expect(ids.has('chunk-0-2-1')).toBe(false) // discarded
     expect(ids.has('chunk-1-5-2')).toBe(true)
+    expect(ids.has('chunk-2-0')).toBe(false)   // no 2-number when sourceChunkIndex is set
   })
 
   it('returns empty set for empty contentList', () => {

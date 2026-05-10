@@ -339,18 +339,28 @@ Khi status chuyển từ bất kỳ non-idle → `'idle'`: tự gọi `refreshCo
 
 ## Citation Markers (NotebookLM-style)
 
-**Chunk ID format:** `chunk-{page_idx}-{flat_array_index}` — gán bởi `content-list-converter.ts` khi tạo markdown anchor `<a id="chunk-P-I">`.
+**Chunk ID format (hiện tại):** `chunk-{sourceChunkIndex}-{page_idx}-{flat_array_index}` — 3 số, gán bởi `content-list-converter.ts` khi tạo anchor `<a id="chunk-S-P-I">`. `sourceChunkIndex` mặc định `0` với PDF ≤200 trang; với PDF >200 trang (chunked), mang index chunk MinerU.
+
+> **Legacy format (trước PR #84):** `chunk-{page_idx}-{flat_array_index}` — 2 số. Regex và `buildValidChunkIds` hỗ trợ cả hai format (backward compat).
 
 **Flow:**
 1. Stage 1 (Planner): mỗi `OutlinePoint.chunks[]` liệt kê chunk IDs hỗ trợ điểm đó
-2. Stage 2 (Generator): nhúng `[chunk-P-I]` inline vào `answer`/`detail` sau mỗi câu tuyên bố
+2. Stage 2 (Generator): nhúng `[chunk-S-P-I]` inline vào `answer`/`detail` sau mỗi câu tuyên bố
 3. `validateCitationMarkers()`: sau Stage 2, warn nếu marker không nằm trong `validChunkIds`
-4. FE (`parseCitations()`): tách text → `Segment[]` (text | cite); `displayNum` dedup per card
+4. FE (`parseCitations()`): tách text → `Segment[]` (text | cite); `displayNum` global across toàn khóa học (không reset theo lesson)
 5. `CitedText` trong `EditMode`: valid chunk → clickable `[N]` → mở `PdfPanel` scroll đến chunk; invalid → gray `[?]`; no layout loaded → gray `[N]`
+
+**Global citation numbering:**
+- `EditMode` nhận `allCards` (toàn khóa học) và `cards` (lesson hiện tại)
+- `globalCiteMap` được build từ `allCards` theo thứ tự document → số [1], [2], [3]... tăng liên tục xuyên suốt, không reset khi chuyển lesson
+- `CourseTree` truyền `allCards` xuống `EditMode`
 
 **PdfPanel highlight:**
 - `chunkStart`/`chunkEnd` từ lesson-level navigation (range highlight)
 - `selectedChunkId` từ click marker → override range → highlight single chunk
-- Scroll dùng double-rAF để đảm bảo DOM đã paint trước `scrollIntoView`
+- Scroll dùng `data-flat-idx` (số cuối của chunk ID) để tìm element — độc lập với format 2 hay 3 số
+- `parseGlobalIdx()` extract số cuối của chunk ID (flat array index) — hoạt động cho cả 2 và 3-number format
 
-**`buildValidChunkIds(contentList)`**: Set của tất cả `chunk-{page_idx}-{index}` không phải `discarded` — dùng để phân biệt marker hợp lệ vs hallucinated.
+**`buildValidChunkIds(contentList)`**:
+- Items có `sourceChunkIndex`: sinh `chunk-{sourceChunkIndex}-{page_idx}-{index}` (3 số)
+- Items không có `sourceChunkIndex`: sinh cả `chunk-0-{page_idx}-{index}` (3 số, default 0) **và** `chunk-{page_idx}-{index}` (2 số backward compat)

@@ -6,9 +6,10 @@ export function buildValidChunkIds(contentList: ContentListItem[]): Set<string> 
   const valid = new Set<string>()
   contentList.forEach((item, index) => {
     if (item.type !== 'discarded') {
-      if (item.sourceChunkIndex !== undefined) {
-        valid.add(`chunk-${item.sourceChunkIndex}-${item.page_idx ?? 0}-${index}`)
-      } else {
+      // 3-number format — matches current contentListToMarkdown (sourceChunkIndex ?? 0)
+      valid.add(`chunk-${item.sourceChunkIndex ?? 0}-${item.page_idx ?? 0}-${index}`)
+      // 2-number format — backward compat with courses generated before PR #84
+      if (item.sourceChunkIndex === undefined) {
         valid.add(`chunk-${item.page_idx ?? 0}-${index}`)
       }
     }

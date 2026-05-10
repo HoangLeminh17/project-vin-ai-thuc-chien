@@ -6,6 +6,23 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+### [Fix] Citation display và PdfPanel scroll — 10/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #92 (`fix/citation-display-and-pdfpanel`)
+
+**Bối cảnh:** PR #84 đổi chunk ID từ 2 số (`chunk-P-I`) sang 3 số (`chunk-S-P-I`) nhưng không cập nhật các consumer phía FE, gây ra 5 bug cùng lúc.
+
+**Các bug đã sửa:**
+1. **Marker hiện raw text** `[chunk-0-1-12]` — `MARKER_RE` regex chỉ match 2-số. Sửa: `(?:-\d+)?` để match cả 3-số.
+2. **Marker hiện `(?)`** — `buildValidChunkIds` tạo ID 2-số nhưng AI embed ID 3-số (dùng `?? 0`). Sửa: luôn dùng `sourceChunkIndex ?? 0` và chỉ tạo thêm ID 2-số cho backward-compat khi `sourceChunkIndex === undefined`.
+3. **PdfPanel không tự scroll** — `querySelector('[data-chunk-id]')` không tìm ra vì format khác nhau. Sửa: thêm `data-flat-idx={index}` (flat array index, luôn là số cuối của chunk ID) vào mọi element, scroll bằng `[data-flat-idx]`.
+4. **Highlight chỉ dòng đầu** — `parseGlobalIdx` dùng regex `/chunk-\d+-(\d+)/` capture `page_idx` thay vì flat index. Sửa: `/(\d+)$/` lấy số cuối cùng.
+5. **Số citation reset về `[1]` mỗi lesson** — `EditMode` chỉ thấy cards của 1 lesson khi build `globalCiteMap`. Sửa: thêm prop `allCards` vào `EditMode`, `CourseTree` truyền toàn bộ course cards.
+
+**Kết quả:** Citation markers hiện số `[N]` tăng liên tục toàn document, PdfPanel scroll và highlight đúng chunk.
+
+---
+
 ### [ADR-33] Chunked Stage 2 generation for oversized chapters — 10/05/2026
 
 **Người làm:** Lê Minh Hoàng | **Ref:** local implementation
