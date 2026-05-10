@@ -36,7 +36,7 @@ scrape_configs:
       - targets: ["web.railway.internal:3000"]
     metrics_path: /api/metrics
     scrape_interval: 30s
-    bearer_token: "your-secret-token-here" # Sẽ được thay bằng biến môi trường
+    bearer_token: "${SCRAPER_TOKEN}"
 
 
   # --- UKT Python Microservice ---
