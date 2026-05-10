@@ -4,9 +4,7 @@ datasources:
   - name: Prometheus
     type: prometheus
     access: proxy
-    # Dùng private network của Railway để kết nối nội bộ
-    # Thay "prometheus" bằng tên service Prometheus thực tế trên Railway nếu khác
-    url: ${PROMETHEUS_URL:-http://prometheus.railway.internal:9090}
+    url: "${PROMETHEUS_URL}"
     isDefault: true
     editable: true
     jsonData:
