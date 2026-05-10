@@ -4,6 +4,7 @@ import { generateChapterContent } from '@/lib/ai'
 import type { Course, ChapterContent, CourseContent } from '@/lib/types'
 import { isLegacyOutline } from '@/lib/types'
 import { logger, courseRepository } from '@/infrastructure/di'
+import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 const handler = async (req: NextRequest) => {
@@ -76,4 +77,6 @@ const handler = async (req: NextRequest) => {
   return NextResponse.json({ success: true, courseContent })
 }
 
-export const POST = withApiLogging('/api/generate-content', handler)
+export const POST = withApiLogging('/api/generate-content', withAuth(handler))
+
+

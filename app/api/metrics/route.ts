@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prometheusRegistry } from '@/infrastructure/adapters/prometheus.adapter'
+import { withAdminAuth } from '@/lib/middlewares/with-admin-auth'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export const GET = withAdminAuth(async function () {
   try {
     const metrics = await prometheusRegistry.getMetrics()
     return new Response(metrics, {
@@ -14,4 +15,5 @@ export async function GET() {
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
-}
+})
+

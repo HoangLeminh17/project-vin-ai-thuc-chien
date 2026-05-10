@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { parseDocumentUseCase } from '@/infrastructure/registry'
+import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 const MAX_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -26,4 +27,5 @@ const handler = async (req: NextRequest) => {
   return NextResponse.json({ success: true, markdown, contentList, pdfLocalPath })
 }
 
-export const POST = withApiLogging('/api/parse-pdf', handler)
+export const POST = withApiLogging('/api/parse-pdf', withAuth(handler))
+
