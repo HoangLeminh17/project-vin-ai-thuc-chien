@@ -23,6 +23,7 @@ interface GenerationState {
   isFromCache: boolean;
   diagnosticStatus: DiagnosticStatus;
   pdfLocalPath: string | null;
+  parseProgress: { currentChunk: number; totalChunks: number; percentComplete: number } | null;
 }
 
 interface GenerationContextType extends GenerationState {
@@ -65,6 +66,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const [isFromCache, setIsFromCache] = useState(false);
   const [diagnosticStatus, setDiagnosticStatus] = useState<DiagnosticStatus>('idle');
   const [pdfLocalPath, setPdfLocalPath] = useState<string | null>(null);
+  const [parseProgress, setParseProgress] = useState<{ currentChunk: number; totalChunks: number; percentComplete: number } | null>(null);
 
   const resetGeneration = useCallback(() => {
     setStatus('idle');
@@ -79,6 +81,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     setIsFromCache(false);
     setDiagnosticStatus('idle');
     setPdfLocalPath(null);
+    setParseProgress(null);
   }, []);
 
   const runDiagnosticPrefetch = useCallback((courseId: string, markdown: string) => {
@@ -182,6 +185,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     // Kept in outer scope so fetchChapter calls can build rawContexts and validate markers
     let contentList: Array<{ type?: string; text?: string; table_body?: string; page_idx?: number }> = [];
     let validChunkIds = new Set<string>();
+    let taskId: string | undefined;
     try {
       const res = await fetch('/api/parse-pdf', { method: 'POST', body: form });
       const data = await res.json();
@@ -191,7 +195,31 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         return;
       }
       markdown = data.markdown ?? '';
+      taskId = data.taskId;
       setRawMarkdown(markdown);
+
+      // Poll progress if taskId is provided
+      if (taskId) {
+        const pollProgress = async () => {
+          while (status === 'parsing') {
+            try {
+              const progressRes = await fetch(`/api/parse-pdf/progress?taskId=${taskId}`);
+              const progressData = await progressRes.json();
+              if (progressData.success && progressData.progress) {
+                setParseProgress({
+                  currentChunk: progressData.progress.currentChunk,
+                  totalChunks: progressData.progress.totalChunks,
+                  percentComplete: progressData.progress.percentComplete,
+                });
+              }
+            } catch (e) {
+              // Polling failed, continue silently
+            }
+            await new Promise(r => setTimeout(r, 500));
+          }
+        };
+        pollProgress();
+      }
 
       // Upload MinerU contentList JSON for layout serving
       contentList = data.contentList ?? [];
@@ -361,10 +389,11 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     isFromCache,
     diagnosticStatus,
     pdfLocalPath,
+    parseProgress,
     startGeneration,
     resetGeneration,
     fetchChapter
-  }), [status, course, courseContentMap, stage2Loading, stage2Errors, rawMarkdown, error, currentHash, savedCourseId, isFromCache, diagnosticStatus, pdfLocalPath, startGeneration, resetGeneration, fetchChapter]);
+  }), [status, course, courseContentMap, stage2Loading, stage2Errors, rawMarkdown, error, currentHash, savedCourseId, isFromCache, diagnosticStatus, pdfLocalPath, parseProgress, startGeneration, resetGeneration, fetchChapter]);
 
   return (
     <GenerationContext.Provider value={value}>
