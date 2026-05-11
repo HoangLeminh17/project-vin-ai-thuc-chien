@@ -7,14 +7,22 @@ monitoring/
 ├── prometheus/
 │   ├── Dockerfile
 │   └── prometheus.yml
-└── grafana/
+├── grafana/
+│   ├── Dockerfile
+│   └── provisioning/
+├── alertmanager/
+│   ├── Dockerfile
+│   └── alertmanager.yml
+└── otel-collector/
     ├── Dockerfile
-    └── provisioning/
-        ├── datasources/
-        │   └── prometheus.yml   ← tự động kết nối Prometheus
-        └── dashboards/
-            └── dashboard.yml    ← tự động load dashboard
+    └── config.yml
 ```
+
+### Các dịch vụ hỗ trợ mới:
+1. **Jaeger**: Distributed Tracing (truy vết request).
+2. **Loki**: Centralized Logging (quản lý log tập trung).
+3. **OTel Collector**: Bộ thu thập dữ liệu trung gian.
+4. **Alertmanager**: Gửi cảnh báo tới Discord.
 
 ---
 

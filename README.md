@@ -27,7 +27,7 @@ Course viewer uses a **master-detail layout**: a fixed tree nav on the left (cha
 
 ```bash
 git clone <repo-url>
-cd <repo>
+cd <repo>/web
 npm install
 ```
 
@@ -40,7 +40,8 @@ bash scripts/setup_hooks.sh
 ### 3. Configure environment
 
 ```bash
-cp .env.example .env
+cp .env.example web/.env
+cp .env.example UKT/.env
 ```
 
 Fill in `.env`:
@@ -140,9 +141,9 @@ npm install
 docker-compose up --build
 ```
 
-- **Web App**: http://localhost:3000
+- **Web App**: http://localhost:3002 (trong Docker) hoặc http://localhost:3000 (npm run dev)
 - **UKT API**: http://localhost:8000
-- **Admin Monitor**: http://localhost:3000/admin/monitor (Yêu cầu quyền Admin)
+- **Admin Monitor**: http://localhost:3002/admin/monitor (Yêu cầu quyền Admin)
 - **Health Check**: http://localhost:8000/health
 
 ### 6. Run (Development: Manual)
@@ -151,6 +152,7 @@ Nếu muốn chạy riêng lẻ để phát triển:
 
 **Web App:**
 ```bash
+cd web
 npm run dev
 ```
 

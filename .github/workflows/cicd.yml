@@ -130,4 +130,4 @@ jobs:
         with:
           node-version: '20'
       - name: Deploy UKT Service to Railway
-        run: npx railway up --service ukt-service --environment production --detach
+        run: cd UKT && npx railway up --service ukt-service --environment production --detach
