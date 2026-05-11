@@ -13,7 +13,7 @@ import os
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from opentelemetry import trace
-from opentelemetry.sdk.resources import RESOURCE_ATTRIBUTES, Resource
+from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -64,7 +64,7 @@ Instrumentator().instrument(app).expose(app)
 
 # OpenTelemetry Instrumentation
 resource = Resource(attributes={
-    RESOURCE_ATTRIBUTES.SERVICE_NAME: "ukt-service",
+    "service.name": "ukt-service",
     "environment": os.getenv("ENVIRONMENT", "production")
 })
 

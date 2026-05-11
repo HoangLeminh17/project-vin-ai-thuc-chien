@@ -27,7 +27,7 @@ services:
   # Synapsy Web App (Next.js)
   web:
     build:
-      context: .
+      context: ./web
       dockerfile: Dockerfile
       args:
         - NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}
@@ -55,7 +55,7 @@ services:
       - PDF_MINERU_API_KEY=${PDF_MINERU_API_KEY}
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     ports:
-      - "3000:3000"
+      - "3002:3000"
     depends_on:
       ukt-service:
         condition: service_healthy
@@ -70,7 +70,7 @@ services:
     environment:
       - SCRAPER_TOKEN=${SCRAPER_TOKEN}
     volumes:
-      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
 
@@ -86,4 +86,53 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     depends_on:
       - prometheus
+      - loki
+      - jaeger
 
+  # OpenTelemetry Collector
+  otel-collector:
+    build:
+      context: ./monitoring/otel-collector
+      dockerfile: Dockerfile
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "8889:8889" # Prometheus metrics
+    depends_on:
+      - jaeger
+      - loki
+
+  # Jaeger for distributed tracing
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686" # Jaeger UI
+    networks:
+      default:
+        aliases:
+          - jaeger.railway.internal
+
+  # Loki for centralized logging
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3101:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      default:
+        aliases:
+          - loki.railway.internal
+
+  # Alertmanager
+  alertmanager:
+    build:
+      context: ./monitoring/alertmanager
+      dockerfile: Dockerfile
+    environment:
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+    ports:
+      - "9093:9093"
+    networks:
+      default:
+        aliases:
+          - alertmanager.railway.internal
