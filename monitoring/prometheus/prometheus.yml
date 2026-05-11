@@ -8,12 +8,12 @@ global:
     environment: "production"
 
 # =============================================
-# ALERTING
+# ALERTING (bỏ comment khi cần dùng)
 # =============================================
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: ["alertmanager.railway.internal:9093"]
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager.railway.internal:9093"]
 
 # rule_files:
 #   - "alerts/*.yml"
@@ -30,27 +30,31 @@ scrape_configs:
     metrics_path: /metrics
 
   # --- Next.js Web App ---
+  # Đảm bảo tên service trên Railway là "web", nếu khác thì sửa lại
   - job_name: "web"
     static_configs:
-      # Dùng biến Railway để tự động cập nhật Port
-      - targets: ["${WEB_TARGET}:8080"]
+      - targets: ["web:3000", "web.railway.internal:3000"]
     metrics_path: /api/metrics
     scrape_interval: 30s
     authorization:
       type: Bearer
       credentials: "${SCRAPER_TOKEN}"
 
+
   # --- UKT Python Microservice ---
+  # Đảm bảo tên service trên Railway là "ukt-service", nếu khác thì sửa lại
   - job_name: "ukt-service"
     static_configs:
-      # Dùng biến Railway để tự động cập nhật Port
-      - targets: ["${UKT_TARGET}:8080"]
+      - targets: ["ukt-service:8000", "ukt-service.railway.internal:8000"]
     metrics_path: /metrics
     scrape_interval: 30s
 
-  # --- Redis (Nếu có redis-exporter) ---
+  # --- Redis ---
+  # Nếu dùng Redis plugin của Railway, thay target thành tên service Redis
+  # Redis không tự expose Prometheus metrics → cần redis_exporter
+  # Tạm thời comment lại nếu chưa có redis_exporter
   # - job_name: "redis"
   #   static_configs:
-  #     - targets: ["${{redis-exporter.RAILWAY_PRIVATE_DOMAIN}}:9121"]
+  #     - targets: ["redis-exporter.railway.internal:9121"]
   #   metrics_path: /metrics
   #   scrape_interval: 30s

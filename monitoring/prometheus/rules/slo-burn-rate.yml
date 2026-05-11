@@ -1,0 +1,56 @@
+## SLO: 99.5% of requests succeed (status="ok") within 30 days.
+## Error budget = 0.5%
+groups:
+  - name: slo-burn-rate
+    interval: 30s
+    rules:
+      # Recording rules
+      - record: inference:fail_ratio:rate5m
+        expr: |
+          sum(rate(inference_requests_total{status="error"}[5m]))
+          /
+          sum(rate(inference_requests_total[5m]))
+
+      - record: inference:fail_ratio:rate30m
+        expr: |
+          sum(rate(inference_requests_total{status="error"}[30m]))
+          /
+          sum(rate(inference_requests_total[30m]))
+
+      - record: inference:fail_ratio:rate1h
+        expr: |
+          sum(rate(inference_requests_total{status="error"}[1h]))
+          /
+          sum(rate(inference_requests_total[1h]))
+
+      - record: inference:fail_ratio:rate6h
+        expr: |
+          sum(rate(inference_requests_total{status="error"}[6h]))
+          /
+          sum(rate(inference_requests_total[6h]))
+
+      # Alerts
+      - alert: SLOFastBurn
+        expr: |
+          inference:fail_ratio:rate5m  > (14.4 * 0.005)
+          and
+          inference:fail_ratio:rate1h  > (14.4 * 0.005)
+        for: 2m
+        labels:
+          severity: critical
+          service: ukt-service
+        annotations:
+          summary: "SLO fast burn: error budget consumed > 14.4× normal"
+          description: "At this pace the 30-day error budget is gone in ~2 days."
+
+      - alert: SLOSlowBurn
+        expr: |
+          inference:fail_ratio:rate30m > (6 * 0.005)
+          and
+          inference:fail_ratio:rate6h  > (6 * 0.005)
+        for: 15m
+        labels:
+          severity: warning
+          service: ukt-service
+        annotations:
+          summary: "SLO slow burn: error budget consumed > 6× normal"

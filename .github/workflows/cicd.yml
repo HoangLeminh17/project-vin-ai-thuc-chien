@@ -24,10 +24,7 @@ jobs:
         with:
           filters: |
             web:
-              - '!(UKT/**)'
-              - 'package.json'
-              - 'next.config.ts'
-              - 'tsconfig.json'
+              - 'web/**'
               - '.github/workflows/cicd.yml'
             ukt:
               - 'UKT/**'
@@ -49,19 +46,19 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: cd web && npm ci
 
       - name: Run Type Check
-        run: npx tsc --noEmit
+        run: cd web && npx tsc --noEmit
 
       - name: Run lint
-        run: npm run lint
+        run: cd web && npm run lint
 
       - name: Run Build Safety Smoke Tests
-        run: NEXT_PHASE=phase-production-build npx vitest run tests/smoke tests/lib
+        run: cd web && NEXT_PHASE=phase-production-build npx vitest run tests/smoke tests/lib
 
       - name: Run Unit tests
-        run: npm run test
+        run: cd web && npm run test
 
   # 3. UKT Service CI (Build & Test)
   ukt-build-test:
@@ -111,7 +108,7 @@ jobs:
         with:
           node-version: '20'
       - name: Deploy Web App to Railway
-        run: npx railway up --service web --environment production --detach
+        run: cd web && npx railway up --service web --environment production --detach
 
   deploy-ukt:
     needs: [changes, ukt-build-test]

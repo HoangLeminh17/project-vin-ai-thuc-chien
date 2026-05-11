@@ -1,0 +1,27 @@
+groups:
+  - name: ai-quality
+    interval: 30s
+    rules:
+      - alert: HighInferenceLatency
+        expr: |
+          histogram_quantile(
+            0.99,
+            sum(rate(inference_latency_seconds_bucket[5m])) by (le, model)
+          ) > 2.0
+        for: 5m
+        labels:
+          severity: warning
+          service: ukt-service
+        annotations:
+          summary: "P99 latency > 2s on {{ $labels.model }}"
+          description: "P99 latency has been > 2s for 5 minutes."
+
+      - alert: ServiceDown
+        expr: up{job="ukt-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: ukt-service
+        annotations:
+          summary: "ukt-service is down"
+          description: "Prometheus has been unable to scrape ukt-service for 1 minute."

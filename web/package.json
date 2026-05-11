@@ -21,7 +21,16 @@
     "prom-client": "^15.1.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "react-pdf": "^10.4.1"
+    "react-pdf": "^10.4.1",
+    "@opentelemetry/api": "^1.9.0",
+    "@opentelemetry/resources": "^1.26.0",
+    "@opentelemetry/semantic-conventions": "^1.27.0",
+    "@opentelemetry/sdk-node": "^0.53.0",
+    "@opentelemetry/sdk-trace-node": "^1.26.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.53.0",
+    "@opentelemetry/instrumentation-http": "^0.53.0",
+    "@opentelemetry/instrumentation-fetch": "^0.53.0",
+    "pino-loki": "^2.3.1"
   },
   "devDependencies": {
     "@types/node": "^22.15.2",

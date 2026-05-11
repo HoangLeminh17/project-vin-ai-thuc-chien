@@ -9,7 +9,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+import os
 from prometheus_fastapi_instrumentator import Instrumentator
+
+from opentelemetry import trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 from app.schemas import PredictRequest, PredictResponse, UpdateRequest, UpdateResponse
 from app.ukt_engine import UKTEngine
@@ -53,6 +61,22 @@ app.add_middleware(
 
 # Prometheus Instrumentation
 Instrumentator().instrument(app).expose(app)
+
+# OpenTelemetry Instrumentation
+resource = Resource(attributes={
+    "service.name": "ukt-service",
+    "environment": os.getenv("ENVIRONMENT", "production")
+})
+
+provider = TracerProvider(resource=resource)
+processor = BatchSpanProcessor(OTLPSpanExporter(
+    endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector.railway.internal:4317"),
+    insecure=True
+))
+provider.add_span_processor(processor)
+trace.set_tracer_provider(provider)
+
+FastAPIInstrumentor.instrument_app(app)
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
