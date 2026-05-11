@@ -10,13 +10,13 @@ global:
 # =============================================
 # ALERTING
 # =============================================
-# alerting:
-#   alertmanagers:
-#     - static_configs:
-#         - targets: ["alertmanager.railway.internal:9093"]
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager.railway.internal:9093"]
 
-# rule_files:
-#   - "alerts/*.yml"
+rule_files:
+  - "rules/*.yml"
 
 # =============================================
 # SCRAPE CONFIGS
