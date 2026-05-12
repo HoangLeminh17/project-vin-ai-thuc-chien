@@ -27,7 +27,8 @@ Course viewer uses a **master-detail layout**: a fixed tree nav on the left (cha
 
 ```bash
 git clone <repo-url>
-cd <repo>/web
+cd <repo>
+cd web
 npm install
 ```
 
@@ -40,10 +41,23 @@ bash scripts/setup_hooks.sh
 ### 3. Configure environment
 
 ```bash
+cd ..
 cp .env.example .env
 ```
 
-Docker Compose reads the root `.env`. If you run services manually, copy the same values into the service-local env file expected by your local command.
+Run the copy command from the repository root. Docker Compose reads this root `.env`.
+
+When running the web app manually from `web/`, Next.js only loads env files from `web/`. Keep a service-local copy in sync before starting the dev server:
+
+```bash
+cp .env web/.env
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env web\.env
+```
 
 Fill in `.env`:
 
@@ -143,6 +157,8 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 
 ### 5. Run (Recommended: Docker)
 
+Run this section from the repository root. If dependencies need refreshing, run `npm install` from `web/` first.
+
 Hệ thống hiện tại bao gồm Web App (Next.js) và UKT Microservice (Python). Cách tốt nhất để chạy toàn bộ là sử dụng Docker Compose:
 
 ```bash
@@ -164,12 +180,17 @@ Nếu muốn chạy riêng lẻ để phát triển:
 
 **Web App:**
 ```bash
+# From the repository root:
+cp .env web/.env
 cd web
 npm run dev
 ```
 
+If you start from the repository root in PowerShell, use `Copy-Item .env web\.env` instead of `cp .env web/.env`.
+
 **UKT Service:**
 ```bash
+# From the repository root:
 cd UKT
 pip install -r requirements.txt
 uvicorn app.main:app --reload
