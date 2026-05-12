@@ -62,21 +62,28 @@ app.add_middleware(
 # Prometheus Instrumentation
 Instrumentator().instrument(app).expose(app)
 
-# OpenTelemetry Instrumentation
-resource = Resource(attributes={
-    "service.name": "ukt-service",
-    "environment": os.getenv("ENVIRONMENT", "production")
-})
+# OpenTelemetry Instrumentation (Optional)
+if os.getenv("ENABLE_OTEL", "false").lower() == "true":
+    try:
+        resource = Resource(attributes={
+            "service.name": "ukt-service",
+            "environment": os.getenv("ENVIRONMENT", "production")
+        })
 
-provider = TracerProvider(resource=resource)
-processor = BatchSpanProcessor(OTLPSpanExporter(
-    endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector.railway.internal:4317"),
-    insecure=True
-))
-provider.add_span_processor(processor)
-trace.set_tracer_provider(provider)
+        provider = TracerProvider(resource=resource)
+        processor = BatchSpanProcessor(OTLPSpanExporter(
+            endpoint=os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://otel-collector.railway.internal:4317"),
+            insecure=True
+        ))
+        provider.add_span_processor(processor)
+        trace.set_tracer_provider(provider)
 
-FastAPIInstrumentor.instrument_app(app)
+        FastAPIInstrumentor.instrument_app(app)
+        logger.info("OpenTelemetry instrumentation enabled.")
+    except Exception as e:
+        logger.warning(f"Failed to initialize OpenTelemetry: {e}. Tracing is disabled.")
+else:
+    logger.info("OpenTelemetry instrumentation is disabled (ENABLE_OTEL=false).")
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
