@@ -12,6 +12,7 @@ opentelemetry-exporter-otlp
 # PyTorch CPU (nhẹ hơn GPU build, đủ dùng cho inference)
 # Hỗ trợ Python 3.13+ yêu cầu torch >= 2.5.0
 torch>=2.5.0
+numpy>=1.26.0
 --extra-index-url https://download.pytorch.org/whl/cpu
 
 # Test
