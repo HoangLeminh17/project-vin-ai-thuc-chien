@@ -10,10 +10,28 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Diagnostic lesson-scoped coverage fix | Nguyen Binh Thanh | TBD |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Final monitoring restructure + `/api/auth/me` cleanup | Lê Kim Dũng | #96 |
+
+---
+
+### [ADR-35] Diagnostic quiz maps 1-1 to lesson progress - 12/05/2026
+
+**Nguoi lam:** Nguyen Binh Thanh | **Ref:** `fix/diagnostic-lesson-coverage`
+
+**Boi canh:** Fresh generation dang prefetch diagnostic ngay sau chapter dau tien va gui raw MinerU markdown. API legacy boc markdown thanh chunk `legacy-full`, nen AI co the tra `source_chunk_id = legacy-full` thay vi key lesson `ci-li`. Ket qua: user lam diagnostic xong nhung CourseTree van hien nhieu lesson "Chua test".
+
+**Quyet dinh:**
+- Tao `lib/diagnostic-chunks.ts` de build moi lesson thanh mot chunk `{ id: "ci-li", text }`.
+- Strip inline citation markers `[chunk-X-Y]` truoc khi gui sang diagnostic prompt de AI khong nham voi `source_chunk_id`.
+- Doi prefetch tu `{ markdown }` sang `{ chunks }` va chi chay sau khi full course content da co, ke ca fresh generation.
+- Prompt diagnostic yeu cau exactly one question per `SOURCE_CHUNK_ID`; use case normalize id neu provider tra thieu/sai/duplicate.
+- Validate localStorage cache: questions/results cu dung `legacy-full` hoac khong cover du lesson ids se bi xoa va regenerate.
+
+**Ket qua:** Khi diagnostic generation thanh cong, moi lesson trong course co mot question map ve key `ci-li`; `DiagnosticResults` tao `diagnosticState["ci-li"]` va CourseTree khong con grey do sai id. Neu AI khong tra du coverage, UI chuyen `diagnostic-error` de retry/skip thay vi save cache hong.
 
 ---
 

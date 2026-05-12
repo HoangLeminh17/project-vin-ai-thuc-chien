@@ -7,6 +7,11 @@ import { DiagnosticQuestion } from '@/core/models/learning-model'
 import { DiagnosticIntro, DiagnosticQuiz } from '@/app/components/diagnostic'
 import { CourseTree } from './CourseTree'
 import type { ProgressEntry } from '@/lib/types'
+import {
+  buildDiagnosticChunksFromSavedCourse,
+  diagnosticQuestionsCoverChunks,
+  diagnosticResultsCoverChunks,
+} from '@/lib/diagnostic-chunks'
 
 type View = 'init' | 'diagnostic-intro' | 'diagnostic-loading' | 'diagnostic-quiz' | 'diagnostic-error' | 'course-tree'
 
@@ -15,25 +20,6 @@ interface Props {
   progressMap: Record<string, ProgressEntry>
   onExit: () => void
   layoutStorageUrl?: string | null
-}
-
-function courseToMarkdown(course: SavedCourse): string {
-  const lines: string[] = [`# ${course.title}`]
-  const content = course.courseContent
-  if (!content) return lines.join('\n')
-  course.course.chapters.forEach((ch, ci) => {
-    lines.push(`\n## ${ch.title}`)
-    const chContent = content.chapters[ci]
-    if (!chContent) return
-    chContent.lessons.forEach((lesson, li) => {
-      lines.push(`\n### [${ci}-${li}] ${lesson.lesson_title}`)
-      const c = lesson.concept
-      lines.push(`Q: ${c.question}`)
-      lines.push(`A: ${c.answer}`)
-      if (c.detail) lines.push(c.detail)
-    })
-  })
-  return lines.join('\n')
 }
 
 function LoadingOverlay({ label }: { label: string }) {
@@ -68,38 +54,58 @@ export function CourseFlow({ course, progressMap, onExit, layoutStorageUrl }: Pr
       if (saved) {
         try { 
           const parsed = JSON.parse(saved)
-          Promise.resolve().then(() => setDiagnosticState(parsed))
-        } catch { /* ignore */ }
+          if (diagnosticResultsCoverChunks(parsed, buildDiagnosticChunksFromSavedCourse(course))) {
+            Promise.resolve().then(() => setDiagnosticState(parsed))
+          } else {
+            localStorage.removeItem(`diagnosticDone_${course.id}`)
+            localStorage.removeItem(`diagnosticResults_${course.id}`)
+            localStorage.removeItem(`diagnosticQuestions_${course.id}`)
+            Promise.resolve().then(() => setView('diagnostic-intro'))
+            return
+          }
+        } catch {
+          localStorage.removeItem(`diagnosticDone_${course.id}`)
+          localStorage.removeItem(`diagnosticResults_${course.id}`)
+          localStorage.removeItem(`diagnosticQuestions_${course.id}`)
+          Promise.resolve().then(() => setView('diagnostic-intro'))
+          return
+        }
       }
       Promise.resolve().then(() => setView('course-tree'))
     } else {
       Promise.resolve().then(() => setView('diagnostic-intro'))
     }
-  }, [course.id])
+  }, [course])
 
   const handleDiagnosticStart = useCallback(async () => {
+    const chunks = buildDiagnosticChunksFromSavedCourse(course)
     const cached = localStorage.getItem(`diagnosticQuestions_${course.id}`)
     if (cached) {
       try {
         const questions = JSON.parse(cached)
-        if (questions?.length) {
+        if (diagnosticQuestionsCoverChunks(questions, chunks)) {
           localStorage.removeItem(`diagnosticQuestions_${course.id}`)
           setDiagnosticQuestions(questions)
           setView('diagnostic-quiz')
           return
         }
       } catch { /* ignore */ }
+      localStorage.removeItem(`diagnosticQuestions_${course.id}`)
     }
     setView('diagnostic-loading')
     try {
+      if (chunks.length === 0) throw new Error('No diagnostic content')
+
       const res = await fetch('/api/diagnostic-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ markdown: courseToMarkdown(course) }),
+        body: JSON.stringify({ chunks }),
       })
       if (!res.ok) throw new Error('Quiz generation failed')
-      const quiz = await res.json()
-      setDiagnosticQuestions(quiz.questions ?? [])
+      const data = await res.json()
+      const questions = data.quiz?.questions ?? data.questions ?? []
+      if (!diagnosticQuestionsCoverChunks(questions, chunks)) throw new Error('Quiz generation returned incomplete coverage')
+      setDiagnosticQuestions(questions)
       setView('diagnostic-quiz')
     } catch {
       setView('diagnostic-error')

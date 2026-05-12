@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/contexts/auth-context';
 import { DiagnosticQuiz } from '@/core/models/learning-model';
+import { buildDiagnosticChunksFromSavedCourse, diagnosticQuestionsCoverChunks } from '@/lib/diagnostic-chunks';
 
 export default function DiagnosticPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -26,20 +27,21 @@ export default function DiagnosticPage({ params }: { params: Promise<{ id: strin
     
     async function loadQuiz() {
       try {
-        // 1. Fetch course details to get markdown_url
+        // Fetch course details and build lesson-scoped diagnostic chunks.
         const courseRes = await fetch(`/api/courses/${id}`);
         if (!courseRes.ok) throw new Error('Không tìm thấy khóa học');
         const courseData = await courseRes.json();
         
-        if (!courseData.markdownUrl) {
+        if (!courseData) {
            throw new Error('Khóa học chưa có tài liệu gốc để chẩn đoán');
         }
 
-        // 2. Fetch markdown text
-        const mdRes = await fetch(courseData.markdownUrl);
-        const markdown = await mdRes.text();
+        const chunks = buildDiagnosticChunksFromSavedCourse(courseData);
+        if (chunks.length === 0) {
+          throw new Error('Khoa hoc chua co noi dung de chan doan');
+        }
 
-        // 3. Generate quiz
+        // Generate quiz
         const token = await user!.getIdToken();
         const quizRes = await fetch('/api/diagnostic-quiz', {
           method: 'POST',
@@ -47,12 +49,16 @@ export default function DiagnosticPage({ params }: { params: Promise<{ id: strin
             'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`
           },
-          body: JSON.stringify({ markdown })
+          body: JSON.stringify({ chunks })
         });
         
         if (!quizRes.ok) throw new Error('Lỗi khi sinh bài chẩn đoán');
         const quizData = await quizRes.json();
-        setQuiz(quizData);
+        const generatedQuiz = quizData.quiz ?? quizData;
+        if (!diagnosticQuestionsCoverChunks(generatedQuiz.questions, chunks)) {
+          throw new Error('Bai chan doan chua bao phu day du bai hoc');
+        }
+        setQuiz(generatedQuiz);
       } catch (err: any) {
         setError(err.message);
       } finally {

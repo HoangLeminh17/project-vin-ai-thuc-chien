@@ -140,11 +140,11 @@ export class HuggingFaceAdapter implements IAiService {
     const formattedContent = chunks
       .filter(chunk => {
         if (currentChars >= maxChars) return false;
-        currentChars += chunk.text.length;
+        currentChars += chunk.id.length + chunk.text.length;
         return true;
       })
-      .map(chunk => chunk.text) // No ID formatting to save tokens
-      .join(' ');
+      .map(chunk => `[[SOURCE_CHUNK_ID: ${chunk.id}]]\n${chunk.text}`)
+      .join('\n\n---\n\n');
 
     const { text, tokens } = await this.safeFetch(DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT, formattedContent)
     const quiz = this.parseSecureJson<DiagnosticQuiz>(text)

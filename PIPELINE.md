@@ -351,8 +351,9 @@ POST /api/generate-content
     v
 Save partial/full course to Firestore courses/{id}
     |
-    | after first saved chapter or cached full save:
-    | fire-and-forget POST /api/diagnostic-quiz
+    | after full course content is available:
+    | build one diagnostic chunk per lesson id ("ci-li")
+    | fire-and-forget POST /api/diagnostic-quiz with { chunks }
     | localStorage diagnosticQuestions_{id}
     v
 status = done
@@ -411,17 +412,19 @@ Main branches inside `startGeneration()`:
 
 | Branch | Condition | Action |
 | :--- | :--- | :--- |
-| Existing saved course | local course with same hash/title exists and API returns it with content | restore `courseContentMap`, prefetch diagnostic if needed, mark done |
-| Full cache | Stage 1 response has `fromCache` and cached `courseContent.chapters`, non-legacy outline | save cached full course to user library, prefetch diagnostic, mark done |
+| Existing saved course | local course with same hash/title exists and API returns it with content | restore `courseContentMap`, validate cached diagnostic coverage, prefetch diagnostic if needed, mark done |
+| Full cache | Stage 1 response has `fromCache` and cached `courseContent.chapters`, non-legacy outline | save cached full course to user library, prefetch lesson-scoped diagnostic, mark done |
 | Cache fallback | Stage 1 cache exists but no full content or legacy outline | regenerate Stage 2 chapters |
-| Fresh | no Stage 1 cache | generate Stage 2 chapters, save first chapter then update incrementally |
+| Fresh | no Stage 1 cache | generate Stage 2 chapters, save first chapter then update incrementally, prefetch diagnostic after the loop |
 
-`runDiagnosticPrefetch(courseId, markdown)`:
+`runDiagnosticPrefetch(courseId, chunks)`:
 
 - Sets `diagnosticStatus = 'loading'`.
 - POSTs to `/api/diagnostic-quiz`.
-- On success stores `diagnosticQuestions_{id}` in `localStorage`.
-- On failure or empty response sets `diagnosticStatus = 'error'`.
+- Input chunks are built by `lib/diagnostic-chunks.ts`; each lesson becomes `{ id: "ci-li", text }`.
+- Inline source citations like `[chunk-X-Y]` are stripped from chunk text before diagnostic generation.
+- On success stores `diagnosticQuestions_{id}` in `localStorage` only if questions cover every lesson chunk id.
+- On failure, empty response, or incomplete coverage sets `diagnosticStatus = 'error'`.
 
 ---
 
@@ -465,7 +468,8 @@ Rules:
 
 - `justGenerated_{id}` is consumed on first mount and still routes through `diagnostic-intro`.
 - `diagnosticDone_{id}` skips the intro and restores `diagnosticResults_{id}` when present.
-- Cached `diagnosticQuestions_{id}` are consumed before calling `/api/diagnostic-quiz`.
+- Cached `diagnosticQuestions_{id}` are consumed before calling `/api/diagnostic-quiz` only when they cover every lesson chunk id.
+- Stale `diagnosticQuestions_{id}` / `diagnosticResults_{id}` using legacy ids such as `legacy-full` are discarded and regenerated.
 - `diagnostic-error` gives retry/skip instead of silently skipping.
 
 LocalStorage keys:
