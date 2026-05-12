@@ -16,10 +16,10 @@ COPY model/     ./model/
 # Đảm bảo PYTHONPATH bao gồm root để nhận diện app/ và model/
 ENV PYTHONPATH=/app
 
-EXPOSE 8000
+# Allow Railway to handle port mapping dynamically via $PORT
 
 # Railway handles its own health checks via the healthcheckPath in railway.toml.
 # Using a hardcoded port in a Docker HEALTHCHECK causes 'unhealthy' status
 # because Railway injects a dynamic $PORT.
 # Dùng shell form để có thể sử dụng biến môi trường $PORT
-CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
+CMD uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
