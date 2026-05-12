@@ -109,7 +109,7 @@ jobs:
         with:
           node-version: '20'
       - name: Deploy Web App to Railway
-        run: cd web && npx railway up --service web --environment production --detach
+        run: npx railway up --service web --environment production --detach
 
   deploy-ukt:
     needs: [changes, ukt-build-test]
@@ -130,4 +130,4 @@ jobs:
         with:
           node-version: '20'
       - name: Deploy UKT Service to Railway
-        run: cd UKT && npx railway up --service ukt-service --environment production --detach
+        run: npx railway up --service ukt-service --environment production --detach
