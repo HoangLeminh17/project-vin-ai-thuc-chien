@@ -71,6 +71,12 @@ const parserAdapter = new MineruParserAdapter({
   apiKey: process.env.PDF_MINERU_API_KEY!,
 });
 
+const normalizeChatCompletionUrl = (url: string): string => {
+  const normalized = url.trim().replace(/\/$/, '')
+  if (normalized.endsWith('/chat/completions')) return normalized
+  return `${normalized}/chat/completions`
+}
+
 // Setup AI Adapters with fallback chain
 const provider = process.env.AI_PROVIDER?.toLowerCase();
 const aiAdapters: IAiService[] = [];
@@ -92,7 +98,7 @@ const huggingface = process.env.HUGGINGFACE_API_KEY ? new HuggingFaceAdapter({
 
 const deepseek = process.env.DEEPSEEK_API_KEY ? new OpenAiAdapter({
   apiKey: process.env.DEEPSEEK_API_KEY,
-  baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1',
+  baseUrl: normalizeChatCompletionUrl(process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1'),
   model: process.env.DEEPSEEK_PLANNER_MODEL || 'deepseek-v4-pro',
 }) : null;
 

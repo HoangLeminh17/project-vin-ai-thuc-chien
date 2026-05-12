@@ -50,7 +50,7 @@ export class OpenAiAdapter implements IAiService {
     if (!res.ok) {
       const body = await res.json().catch(() => null)
       const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
-      throw new InfrastructureError(`OpenAI API error (${res.status}): ${msg}`)
+      throw new InfrastructureError(`OpenAI-compatible API error (${this.baseUrl}) returned ${res.status}: ${msg}`)
     }
 
     const data = await res.json()
@@ -132,7 +132,7 @@ export class OpenAiAdapter implements IAiService {
     if (!res.ok) {
       const body = await res.json().catch(() => null)
       const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
-      throw new InfrastructureError(`OpenAI API error (${res.status}): ${msg}`)
+      throw new InfrastructureError(`OpenAI-compatible API error (${this.baseUrl}) returned ${res.status}: ${msg}`)
     }
 
     const data = await res.json()
