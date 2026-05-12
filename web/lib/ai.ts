@@ -15,7 +15,7 @@ function getOpenAiConfig() {
 
   return {
     apiKey: process.env.OPENAI_API_KEY!,
-    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    model: process.env.OPENAI_GENERATOR_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
   }
 }
 
@@ -27,6 +27,18 @@ function getGeminiConfig() {
   return {
     apiKey: process.env.GEMINI_API_KEY!,
     model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+  }
+}
+
+function getDeepSeekConfig() {
+  if (!process.env.DEEPSEEK_API_KEY) {
+    throw new Error('Missing DEEPSEEK_API_KEY')
+  }
+
+  return {
+    apiKey: process.env.DEEPSEEK_API_KEY!,
+    baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1/chat/completions',
+    model: process.env.DEEPSEEK_GENERATOR_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
   }
 }
 
@@ -283,6 +295,29 @@ async function generateChapterContentHuggingFace(chapter: Chapter, input: string
   return attachChunkRange(raw, chapter)
 }
 
+async function generateChapterContentDeepSeek(chapter: Chapter, input: string): Promise<ChapterContent> {
+  const { apiKey, baseUrl, model } = getDeepSeekConfig()
+  
+  const res = await fetch(baseUrl.includes('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model, temperature: 0.3, response_format: { type: 'json_object' },
+      messages: [{ role: 'system', content: STAGE2_CHAPTER_PROMPT }, { role: 'user', content: input }],
+    }),
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => null)
+    throw new Error(`DeepSeek error (${res.status}): ${body?.error?.message?.split('\\n')[0] || 'Unknown'}`)
+  }
+  const data = await res.json()
+  const text = data.choices?.[0]?.message?.content
+  if (!text) throw new Error('DeepSeek returned no content')
+  const raw: ChapterContent = JSON.parse(text)
+  if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
+  return attachChunkRange(raw, chapter)
+}
+
 async function generateChapterContentForInput(chapter: Chapter, input: string): Promise<ChapterContent> {
   let lastError: unknown
 
@@ -292,6 +327,16 @@ async function generateChapterContentForInput(chapter: Chapter, input: string): 
       return await generateChapterContentOpenAI(chapter, input)
     } catch (e) {
       console.warn('[generate-content] OpenAI failed:', e)
+      lastError = e
+    }
+  }
+
+  if (process.env.DEEPSEEK_API_KEY) {
+    try {
+      console.log('[generate-content] Trying DeepSeek...')
+      return await generateChapterContentDeepSeek(chapter, input)
+    } catch (e) {
+      console.warn('[generate-content] DeepSeek failed:', e)
       lastError = e
     }
   }

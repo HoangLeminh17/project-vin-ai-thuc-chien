@@ -82,7 +82,7 @@ const gemini = process.env.GEMINI_API_KEY ? new GeminiAdapter({
 
 const openai = process.env.OPENAI_API_KEY ? new OpenAiAdapter({
   apiKey: process.env.OPENAI_API_KEY,
-  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  model: process.env.OPENAI_PLANNER_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
 }) : null;
 
 const huggingface = process.env.HUGGINGFACE_API_KEY ? new HuggingFaceAdapter({
@@ -90,15 +90,23 @@ const huggingface = process.env.HUGGINGFACE_API_KEY ? new HuggingFaceAdapter({
   model: process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.1-8B-Instruct',
 }) : null;
 
+const deepseek = process.env.DEEPSEEK_API_KEY ? new OpenAiAdapter({
+  apiKey: process.env.DEEPSEEK_API_KEY,
+  baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1',
+  model: process.env.DEEPSEEK_PLANNER_MODEL || 'deepseek-v4-pro',
+}) : null;
+
 // Add by priority: 1. Specified provider, 2. Others as fallback
 if (provider === 'gemini' && gemini) aiAdapters.push(gemini);
 else if (provider === 'openai' && openai) aiAdapters.push(openai);
 else if (provider === 'huggingface' && huggingface) aiAdapters.push(huggingface);
+else if (provider === 'deepseek' && deepseek) aiAdapters.push(deepseek);
 
 // Add remainders if they weren't already added (if AI_PROVIDER is not set or to provide fallback)
 if (gemini && !aiAdapters.includes(gemini)) aiAdapters.push(gemini);
 if (openai && !aiAdapters.includes(openai)) aiAdapters.push(openai);
 if (huggingface && !aiAdapters.includes(huggingface)) aiAdapters.push(huggingface);
+if (deepseek && !aiAdapters.includes(deepseek)) aiAdapters.push(deepseek);
 
 export const aiAdapter = new ChainAiAdapter(aiAdapters);
 
