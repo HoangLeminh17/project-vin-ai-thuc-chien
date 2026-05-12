@@ -21,6 +21,5 @@ ENV PYTHONPATH=/app
 # Railway handles its own health checks via the healthcheckPath in railway.toml.
 # Using a hardcoded port in a Docker HEALTHCHECK causes 'unhealthy' status
 # because Railway injects a dynamic $PORT.
-# Dùng exec form (JSON array) kết hợp với `sh -c "exec ..."` để linter không báo lỗi,
-# đồng thời xử lý đúng OS signals (PID 1) và vẫn nhận diện được biến $PORT.
-CMD ["sh", "-c", "exec uvicorn app.main:app --host :: --port $PORT --workers 1"]
+COPY run.py ./run.py
+CMD ["python", "run.py"]
