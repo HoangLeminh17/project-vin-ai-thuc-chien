@@ -20,7 +20,7 @@ class StateStore:
         if redis_url:
             # Tự động sửa nếu thiếu prefix (phổ biến khi config nhầm)
             if not any(redis_url.startswith(s) for s in ["redis://", "rediss://", "unix://"]):
-                logger.info(f"REDIS_URL thiếu prefix, tự động thêm redis://")
+                logger.info("REDIS_URL thiếu prefix, tự động thêm redis://")
                 redis_url = f"redis://{redis_url}"
                 
             try:
