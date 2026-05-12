@@ -14,11 +14,13 @@ export class RedisRateLimitAdapter implements IRateLimitProvider {
   private readonly defaultLimit = { count: 10, windowSeconds: 3600 }
 
   constructor(config: RedisRateLimitConfig) {
-    if (!config.url) {
-      throw new InfrastructureError('Redis URL is required for rate limiting')
+    let url = config.url
+    if (!url.startsWith('redis://') && !url.startsWith('rediss://') && !url.startsWith('unix://')) {
+      console.log('[RedisRateLimitAdapter] REDIS_URL missing prefix, auto-fixing to redis://')
+      url = `redis://${url}`
     }
 
-    this.redis = new Redis(config.url)
+    this.redis = new Redis(url)
     this.limits = config.limits || {}
 
     this.redis.on('error', (err) => {

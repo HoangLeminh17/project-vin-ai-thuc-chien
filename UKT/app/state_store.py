@@ -18,11 +18,16 @@ class StateStore:
         redis_url = os.getenv("REDIS_URL", "")
 
         if redis_url:
+            # Tự động sửa nếu thiếu prefix (phổ biến khi config nhầm)
+            if not any(redis_url.startswith(s) for s in ["redis://", "rediss://", "unix://"]):
+                logger.info(f"REDIS_URL thiếu prefix, tự động thêm redis://")
+                redis_url = f"redis://{redis_url}"
+                
             try:
                 import redis
                 self._redis = redis.from_url(redis_url, decode_responses=True)
                 self._redis.ping()
-                logger.info("Kết nối Redis thành công")
+                logger.info(f"Kết nối Redis thành công tại {redis_url.split('@')[-1]}")
             except Exception as e:
                 logger.warning(f"Không kết nối được Redis ({e}) → dùng in-memory store")
                 self._redis = None
