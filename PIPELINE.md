@@ -554,7 +554,7 @@ Flow:
 - `withAdminAuth` protects admin routes.
 - `withApiLogging` wraps APIs for structured logging/usage.
 - `/api/generate-course` checks Redis-backed rate limit when `rateLimiter` is configured.
-- Admin role is managed with Firebase Custom Claims via `web/scripts/promote-admin.ts`.
+- Admin role is managed with Firebase Custom Claims via `scripts/promote-admin.ts`.
 
 ---
 
