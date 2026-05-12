@@ -1,5 +1,5 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
-import { PLANNER_PROMPT_LIGHTWEIGHT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
+import { PLANNER_PROMPT_LIGHTWEIGHT, DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT } from '@/lib/prompts'
 import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
 
@@ -131,8 +131,10 @@ export class HuggingFaceAdapter implements IAiService {
   }
 
   async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
-    // Reduce content for HuggingFace's token limit
-    const maxChars = 10000; // More conservative for diagnostic
+    // HuggingFace has 8192 token limit
+    // Lightweight prompt ~300 tokens, need buffer for response
+    // Safe limit: 4000 chars (~1000 tokens) for content
+    const maxChars = 3500;
     let currentChars = 0;
 
     const formattedContent = chunks
@@ -141,10 +143,10 @@ export class HuggingFaceAdapter implements IAiService {
         currentChars += chunk.text.length;
         return true;
       })
-      .map(chunk => `[ID:${chunk.id}] ${chunk.text}`)
-      .join('\n');
+      .map(chunk => chunk.text) // No ID formatting to save tokens
+      .join(' ');
 
-    const { text, tokens } = await this.safeFetch(DIAGNOSTIC_QUIZ_PROMPT, formattedContent)
+    const { text, tokens } = await this.safeFetch(DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT, formattedContent)
     const quiz = this.parseSecureJson<DiagnosticQuiz>(text)
     return { quiz, tokens }
   }

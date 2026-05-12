@@ -96,17 +96,38 @@ const deepseek = process.env.DEEPSEEK_API_KEY ? new OpenAiAdapter({
   model: process.env.DEEPSEEK_PLANNER_MODEL || 'deepseek-v4-pro',
 }) : null;
 
-// Add by priority: 1. Specified provider, 2. Others as fallback
-if (provider === 'gemini' && gemini) aiAdapters.push(gemini);
-else if (provider === 'openai' && openai) aiAdapters.push(openai);
-else if (provider === 'huggingface' && huggingface) aiAdapters.push(huggingface);
-else if (provider === 'deepseek' && deepseek) aiAdapters.push(deepseek);
+// If AI_PROVIDER is explicitly set, use ONLY that provider (strict mode)
+// Otherwise, use fallback chain with available providers
+if (provider) {
+  // Strict mode: AI_PROVIDER explicitly set, use only that provider
+  if (provider === 'gemini') {
+    if (!gemini) throw new Error('AI_PROVIDER=gemini but GEMINI_API_KEY is missing or invalid');
+    aiAdapters.push(gemini);
+  } else if (provider === 'openai') {
+    if (!openai) throw new Error('AI_PROVIDER=openai but OPENAI_API_KEY is missing or invalid');
+    aiAdapters.push(openai);
+  } else if (provider === 'huggingface') {
+    if (!huggingface) throw new Error('AI_PROVIDER=huggingface but HUGGINGFACE_API_KEY is missing or invalid');
+    aiAdapters.push(huggingface);
+  } else if (provider === 'deepseek') {
+    if (!deepseek) throw new Error('AI_PROVIDER=deepseek but DEEPSEEK_API_KEY is missing or invalid');
+    aiAdapters.push(deepseek);
+  } else {
+    throw new Error(`Unknown AI_PROVIDER: ${provider}. Valid options: gemini, openai, deepseek, huggingface`);
+  }
+  console.log(`[DI] Using AI_PROVIDER=${provider} (strict mode, no fallback)`);
+} else {
+  // Fallback mode: no AI_PROVIDER set, try all available providers
+  console.log('[DI] AI_PROVIDER not set, using fallback chain');
+  if (gemini) aiAdapters.push(gemini);
+  if (openai) aiAdapters.push(openai);
+  if (deepseek) aiAdapters.push(deepseek);
+  if (huggingface) aiAdapters.push(huggingface);
+}
 
-// Add remainders if they weren't already added (if AI_PROVIDER is not set or to provide fallback)
-if (gemini && !aiAdapters.includes(gemini)) aiAdapters.push(gemini);
-if (openai && !aiAdapters.includes(openai)) aiAdapters.push(openai);
-if (huggingface && !aiAdapters.includes(huggingface)) aiAdapters.push(huggingface);
-if (deepseek && !aiAdapters.includes(deepseek)) aiAdapters.push(deepseek);
+if (aiAdapters.length === 0) {
+  throw new Error('No AI providers configured. Set at least one: OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, or HUGGINGFACE_API_KEY');
+}
 
 export const aiAdapter = new ChainAiAdapter(aiAdapters);
 

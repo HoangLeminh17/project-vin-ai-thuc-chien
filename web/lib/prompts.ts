@@ -181,3 +181,25 @@ Output schema:
 
 Now generate the diagnostic quiz for this content:
 `
+
+export const DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT = `Create a diagnostic quiz from this content.
+
+Generate 5-8 multiple-choice questions testing key concepts.
+Each question: 4 options, one correct answer (0-3 index).
+Output ONLY valid JSON.
+
+Schema:
+{
+  "questions": [
+    {
+      "question": "Question text?",
+      "options": ["A", "B", "C", "D"],
+      "answer": 0,
+      "explanation": "Why correct",
+      "topic": "Concept Name"
+    }
+  ]
+}
+
+Content:
+`
