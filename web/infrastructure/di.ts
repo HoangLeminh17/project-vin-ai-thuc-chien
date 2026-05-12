@@ -101,32 +101,48 @@ const deepseek = process.env.DEEPSEEK_API_KEY ? new OpenAiAdapter({
 if (provider) {
   // Strict mode: AI_PROVIDER explicitly set, use only that provider
   if (provider === 'gemini') {
-    if (!gemini) throw new Error('AI_PROVIDER=gemini but GEMINI_API_KEY is missing or invalid');
-    aiAdapters.push(gemini);
+    if (!gemini) {
+      console.error('⚠️  AI_PROVIDER=gemini but GEMINI_API_KEY is not configured. Will fail at runtime.');
+    } else {
+      aiAdapters.push(gemini);
+    }
   } else if (provider === 'openai') {
-    if (!openai) throw new Error('AI_PROVIDER=openai but OPENAI_API_KEY is missing or invalid');
-    aiAdapters.push(openai);
+    if (!openai) {
+      console.error('⚠️  AI_PROVIDER=openai but OPENAI_API_KEY is not configured. Will fail at runtime.');
+    } else {
+      aiAdapters.push(openai);
+    }
   } else if (provider === 'huggingface') {
-    if (!huggingface) throw new Error('AI_PROVIDER=huggingface but HUGGINGFACE_API_KEY is missing or invalid');
-    aiAdapters.push(huggingface);
+    if (!huggingface) {
+      console.error('⚠️  AI_PROVIDER=huggingface but HUGGINGFACE_API_KEY is not configured. Will fail at runtime.');
+    } else {
+      aiAdapters.push(huggingface);
+    }
   } else if (provider === 'deepseek') {
-    if (!deepseek) throw new Error('AI_PROVIDER=deepseek but DEEPSEEK_API_KEY is missing or invalid');
-    aiAdapters.push(deepseek);
+    if (!deepseek) {
+      console.error('⚠️  AI_PROVIDER=deepseek but DEEPSEEK_API_KEY is not configured. Will fail at runtime.');
+    } else {
+      aiAdapters.push(deepseek);
+    }
   } else {
-    throw new Error(`Unknown AI_PROVIDER: ${provider}. Valid options: gemini, openai, deepseek, huggingface`);
+    console.error(`⚠️  Unknown AI_PROVIDER: ${provider}. Valid options: gemini, openai, deepseek, huggingface`);
   }
-  console.log(`[DI] Using AI_PROVIDER=${provider} (strict mode, no fallback)`);
+  
+  if (aiAdapters.length > 0) {
+    console.log(`[DI] Using AI_PROVIDER=${provider} (strict mode, no fallback)`);
+  }
 } else {
   // Fallback mode: no AI_PROVIDER set, try all available providers
-  console.log('[DI] AI_PROVIDER not set, using fallback chain');
   if (gemini) aiAdapters.push(gemini);
   if (openai) aiAdapters.push(openai);
   if (deepseek) aiAdapters.push(deepseek);
   if (huggingface) aiAdapters.push(huggingface);
-}
-
-if (aiAdapters.length === 0) {
-  throw new Error('No AI providers configured. Set at least one: OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, or HUGGINGFACE_API_KEY');
+  
+  if (aiAdapters.length > 0) {
+    console.log('[DI] AI_PROVIDER not set, using fallback chain');
+  } else {
+    console.warn('[DI] ⚠️  No AI providers configured. API calls will fail at runtime. Set at least one: OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, HUGGINGFACE_API_KEY');
+  }
 }
 
 export const aiAdapter = new ChainAiAdapter(aiAdapters);

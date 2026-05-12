@@ -4,11 +4,18 @@ import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 export class ChainAiAdapter implements IAiService {
   constructor(private adapters: IAiService[]) {
     if (adapters.length === 0) {
-      console.warn('[ChainAiAdapter] No AI adapters provided!')
+      console.warn('[ChainAiAdapter] ⚠️  No AI adapters provided! API calls will fail.')
     }
   }
 
   async generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
+    if (this.adapters.length === 0) {
+      throw new Error(
+        'No AI providers configured.\n' +
+        'Configure at least one: OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, or HUGGINGFACE_API_KEY'
+      )
+    }
+    
     const errors: { adapter: string; error: string }[] = [];
     
     for (const adapter of this.adapters) {
@@ -38,6 +45,13 @@ export class ChainAiAdapter implements IAiService {
   }
 
   async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
+    if (this.adapters.length === 0) {
+      throw new Error(
+        'No AI providers configured.\n' +
+        'Configure at least one: OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, or HUGGINGFACE_API_KEY'
+      )
+    }
+    
     const errors: { adapter: string; error: string }[] = [];
     
     for (const adapter of this.adapters) {
