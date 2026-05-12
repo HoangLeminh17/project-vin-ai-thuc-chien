@@ -18,9 +18,8 @@ ENV PYTHONPATH=/app
 
 EXPOSE 8000
 
-# Health check đơn giản hơn bằng python
-HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-  CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"
-
+# Railway handles its own health checks via the healthcheckPath in railway.toml.
+# Using a hardcoded port in a Docker HEALTHCHECK causes 'unhealthy' status
+# because Railway injects a dynamic $PORT.
 # Dùng shell form để có thể sử dụng biến môi trường $PORT
 CMD uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1
