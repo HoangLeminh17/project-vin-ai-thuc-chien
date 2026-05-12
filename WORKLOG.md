@@ -6,6 +6,49 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+## Sprint 7 — 11/05 → 16/05/2026
+
+| Task | Người làm | PR |
+|---|---|---|
+| Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+| Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
+| Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
+| Final monitoring restructure + `/api/auth/me` cleanup | Lê Kim Dũng | #96 |
+
+---
+
+### [ADR-34] Monitoring restructure và distributed tracing — 12/05/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** PR #93, #94, #95, #96
+
+**Bối cảnh:** Sau khi có Prometheus/Grafana ở Sprint 6, monitoring cần được tổ chức lại rõ hơn theo service, đồng thời bổ sung tracing để quan sát luồng request qua Web App, UKT service và collector.
+
+**Quyết định:**
+- Restructure repo để phần Next.js nằm dưới `web/`, giữ monitoring config tách riêng trong `monitoring/`.
+- Thêm OpenTelemetry Collector, Alertmanager, Loki/Jaeger datasource provisioning và rule files cho Prometheus.
+- Instrument Web App và UKT service để gửi trace/metrics qua collector.
+- Bổ sung network alias cho `otel-collector`, requirements cho UKT, và endpoint `/api/auth/me` để verify session.
+
+**Kết quả:** Sprint 7 bắt đầu bằng nhánh monitoring restructure, tập trung vào observability/tracing thay vì các task citation/generation của Sprint 6.
+
+---
+
+## Sprint 6 — 04/05 → 10/05/2026
+
+| Task | Người làm | PR |
+|---|---|---|
+| Pipeline/README/WORKLOG Sprint 6 wrap-up | Nguyễn Bình Thành | #77 |
+| PIPELINE/README/CLAUDE documentation updates | Nguyễn Bình Thành | #52, #56, #57, #58, #61 |
+| Redesign `/course/[id]` — Master-Detail CourseTree | Nguyễn Bình Thành | #53, #54, #55 |
+| Merge stacked diagnostic fixes + diagnostic flow/generation tracker/session cache | Nguyễn Bình Thành | #51, #59, #60, #62, #63, #64 |
+| Citation source panel, inline markers, cache bypass, chunk ID fixes | Nguyễn Bình Thành | #65, #66, #67, #69, #70, #71, #72, #73, #74, #76, #91, #92 |
+| Prometheus/Grafana monitoring, guardrails, admin RBAC | Lê Kim Dũng | #75, #83, #87, #89 |
+| Railway Prometheus deployment fixes | Lê Kim Dũng | #78, #79, #80, #81, #82 |
+| MinerU over-200-pages handling và chunked generation refactor | Lê Minh Hoàng | #84, #85, #86, #88 |
+| Flashcards UI/UX improvements | Lê Minh Hoàng | #90 |
+
+---
+
 ### [Fix] Citation display và PdfPanel scroll — 10/05/2026
 
 **Người làm:** Nguyễn Bình Thành | **Ref:** PR #92 (`fix/citation-display-and-pdfpanel`)
@@ -25,7 +68,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-33] Chunked Stage 2 generation for oversized chapters — 10/05/2026
 
-**Người làm:** Lê Minh Hoàng | **Ref:** local implementation
+**Người làm:** Lê Minh Hoàng | **Ref:** PR #85, #86
 
 **Bối cảnh:** Stage 2 (`generate-content`) already works chapter-by-chapter, but a single chapter can still exceed the model context window when it contains too many lessons or very large raw contexts.
 
@@ -38,7 +81,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-32] Chunked Stage 1 generation for oversized markdown — 10/05/2026
 
-**Người làm:** Lê Minh Hoàng | **Ref:** local implementation
+**Người làm:** Lê Minh Hoàng | **Ref:** PR #84, #88
 
 **Bối cảnh:** `generate-course` có thể vượt context window khi PDF parse ra markdown quá dài, dẫn đến lỗi token limit trước khi course outline được tạo.
 
@@ -48,9 +91,12 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 - Giữ usage logging trên đường đi mới và thêm test cho small input, large input, và invalid input.
 
 **Ghi chú:** Stage 2 generate-per-chapter đã có sẵn ở `generate-content`; thay đổi này tập trung chặn token overflow ở Stage 1.
+
+---
+
 ### [Fix] Edge Case Hunting & Reliability Improvements — 10/05/2026
 
-**Người làm:** Antigravity (BMAD Agent) | **Ref:** ECH Review report
+**Người làm:** Lê Kim Dũng | **Ref:** PR #83, #87, #89
 
 **Bối cảnh:** Sau khi chạy `bmad-review-edge-case-hunter`, phát hiện một số điểm yếu trong luồng xử lý JSON và fallback nội dung có thể gây crash hoặc hiển thị lỗi `[object Object]` cho người dùng.
 
@@ -63,20 +109,9 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
-## Sprint 6 — 04/05 → 10/05/2026
-
-| Task | Người làm | PR |
-|---|---|---|
-| Source Base Cleanup & Documentation Reorg | Lê Kim Dũng | #cleanup-01 |
-| Redesign `/course/[id]` — Master-Detail CourseTree | Nguyễn Bình Thành | #53, #54, #55 |
-| Railway Deployment & Grafana Monitoring | Lê Kim Dũng | #monitoring-01 |
-| ... (giữ nguyên các task khác) ... | | |
-
----
-
 ### [ADR-33] Observability Stack (Prometheus & Grafana) trên Railway — 09/05/2026
 
-**Người làm:** Lê Kim Dũng | **Ref:** Conversation b925e6e2-c45f-4cb7-93c6-4098111a0c09
+**Người làm:** Lê Kim Dũng | **Ref:** PR #75, #78, #79, #80, #81, #82
 
 **Bối cảnh:** Hệ thống cần khả năng giám sát thời gian thực về hiệu năng, tỷ lệ lỗi AI, và tình trạng tài nguyên. Việc deploy manual hoặc dùng log đơn thuần không đủ để DevOps theo dõi sức khỏe hệ thống trên môi trường production (Railway).
 
@@ -186,7 +221,7 @@ Lý do: Lesson-range highlight hữu ích khi mở PdfPanel lần đầu (hiện
 
 ### [ADR-29] Direct client-side Firebase upload cho PDF + layout JSON persistence — 09/05/2026
 
-**Người làm:** Nguyễn Bình Thành | **Ref:** PR fix/citation-ui-storage
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #69 (`fix/citation-ui-storage`)
 
 **Bối cảnh:** Sau PR #65 (citation source excerpt), phát hiện 2 bug độc lập chặn toàn bộ citation panel:
 
@@ -329,18 +364,16 @@ Lý do DELETE nhanh hơn: bỏ được overhead chờ serial response chain (tr
 
 | Task | Người làm | PR |
 |---|---|---|
-| UKT Python service engine + Redis state + TypeScript adapter | Lê Kim Dũng | #40 |
-| Full-stack course generation workflow (context providers, repository adapters, API orchestration) + Persistent course management (Firestore) | Lê Kim Dũng | #41 |
-| Course viewer page (browse / study / edit modes) + Course planning & content transformation | Lê Kim Dũng | #42 |
-| Monitoring & alerting infrastructure (log persistence, observability adapters) + Diagnostic quiz generation & spaced-repetition prioritization | Lê Kim Dũng | #43 |
-| Traceability | Lê Kim Dũng | #44 |
-| Synapsy UI redesign + CourseFlow component split + diagnostic flow + generation bug fixes | Nguyễn Bình Thành | #46 |
+| Backend diagnostic quiz use case, SRS prioritization, monitoring, traceability | Lê Kim Dũng | #42, #43, #44 |
+| Sprint 5 worklog table | Nguyễn Bình Thành | #45 |
+| Synapsy UI redesign + CourseFlow component split | Nguyễn Bình Thành | #46 |
+| Diagnostic UI/flow, tree coloring, prefetch, first-generation quiz, course-scoped progress | Nguyễn Bình Thành | #47, #48, #49, #50 |
 
 ---
 
 ### [ADR-24] Tách CourseFlow + luồng chẩn đoán + sửa lỗi generation — 03/05/2026
 
-**Người làm:** Nguyễn Bình Thành | **Ref:** PR #46
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #46, #47, #48, #49, #50
 
 **Bối cảnh:** Sau Sprint 5, trang `/course/[id]` là một file monolithic ~1973 dòng, khó bảo trì. Đồng thời phát sinh nhiều lỗi nghiêm trọng trong luồng tạo khóa học: course cached không được lưu vào thư viện, màn hình chờ tạo khóa học không hiển thị, bài test chẩn đoán kích hoạt sai thời điểm.
 
@@ -383,18 +416,17 @@ Lý do DELETE nhanh hơn: bỏ được overhead chờ serial response chain (tr
 
 ## Sprint 4 — 20/04 → 26/04/2026
 
-| Task | Người làm | Deadline | PR |
-|---|---|---|---|
-| Learning Dashboard (`/dashboard`, save & browse courses) | Nguyễn Bình Thành | 21/04 | #19 |
-| Spaced Repetition System (SM2 + progress tracking + `/review` page) | Lê Kim Dũng | 22/04 | #22 |
-| Refactor DI: centralize adapter initialization | Lê Kim Dũng | 22/04 | #22 |
-| Course Player (`/course/[id]`) + Instant Load cache | Lê Kim Dũng | 22/04 | #22 |
-| Nâng cấp UI/UX trang Study & Edit (phím tắt, nguồn) | Nguyễn Bình Thành | 23/04 | #26, #27 |
-| Bổ sung Gamification (Streak, Heatmap, Mastery ring) | Nguyễn Bình Thành | 23/04 | #28, #36, #37 |
-| Giao diện Tracker tiến độ AI tạo bài | Nguyễn Bình Thành | 23/04 | #29 |
-| Nâng cấp trang Browse & Refactor Clean Architecture | Nguyễn Bình Thành | 23/04 | #30 |
-| Fix log hook UTF-8 encoding (Windows) | Nguyễn Bình Thành | 24/04 | #35 |
-| Chọn AI provider (Gemini / OpenAI fallback) | Lê Minh Hoàng | 24/04 | #34 |
+| Task | Người làm | PR |
+|---|---|---|
+| Learning Dashboard (`/dashboard`, save & browse courses) | Nguyễn Bình Thành | #19 |
+| Spaced Repetition System, DI refactor, Course Player, Firestore cache | Lê Kim Dũng | #22 |
+| Unified home, course sandbox, Study/Edit UX, generation tracker | Nguyễn Bình Thành | #24, #25, #26, #27, #28, #29 |
+| Browse progress filters + repository/use-case refactor | Nguyễn Bình Thành | #30 |
+| Worklog Sprint 4 update and PR workflow docs | Nguyễn Bình Thành | #33, #38 |
+| Chọn AI provider (Gemini / OpenAI fallback) | Lê Minh Hoàng | #34 |
+| Fix log hook UTF-8 encoding and course style border conflict | Nguyễn Bình Thành | #35, #39 |
+| Gamification follow-up: library mastery ring + 30-day heatmap | Nguyễn Bình Thành | #36, #37 |
+| UKT service, duplicate course flow, planning/content transformation groundwork | Lê Kim Dũng | #40, #41 |
 
 ---
 
@@ -423,7 +455,7 @@ Thêm vào đó, khi merge PR #30 (`feat/browse-progress-driven` → `main`), br
 
 ### [ADR-22] Nâng cấp UI/UX & Hệ thống tạo động lực học — 23/04/2026
 
-**Người làm:** Nguyễn Bình Thành | **Ref:** PR #26, #27, #28, #29, #31, #32
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #24, #25, #26, #27, #28, #29, #36, #37
 
 **Bối cảnh:** Trải nghiệm học cần mượt mà hơn và tạo được thói quen quay lại hàng ngày cho user. Đã quyết định bỏ "Citation popover" để giữ UI đơn giản.
 
@@ -457,7 +489,7 @@ Thêm vào đó, khi merge PR #30 (`feat/browse-progress-driven` → `main`), br
 
 ### [ADR-20] Spaced Repetition System — 22/04/2026
 
-**Người làm:** Lê Kim Dũng | **Ref:** SM2 algorithm, `/api/progress/*`, `/review` page
+**Người làm:** Lê Kim Dũng | **Ref:** PR #22
 
 **Bối cảnh:** Learner cần ôn tập ConceptCards theo rhythm tối ưu (spaced repetition).
 
@@ -477,7 +509,7 @@ Thêm vào đó, khi merge PR #30 (`feat/browse-progress-driven` → `main`), br
 
 ### [ADR-19] DI Refactoring — 22/04/2026
 
-**Người làm:** Lê Kim Dũng | **Ref:** `infrastructure/di.ts`
+**Người làm:** Lê Kim Dũng | **Ref:** PR #22
 
 **Bối cảnh:** Adapter instantiation scattered ở API routes → khó reuse, khó test.
 
@@ -494,7 +526,7 @@ Thêm vào đó, khi merge PR #30 (`feat/browse-progress-driven` → `main`), br
 
 ### [ADR-18] Course Repository Port + Adapters — 21/04/2026
 
-**Người làm:** Nguyễn Bình Thành | **Ref:** `core/ports/course-repository.port.ts`
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #19
 
 **Bối cảnh:** Sau generate course, learner save & browse later.
 
@@ -513,7 +545,7 @@ Thêm vào đó, khi merge PR #30 (`feat/browse-progress-driven` → `main`), br
 
 ### [ADR-17] Course Player + ConceptCard Flow — 21/04/2026
 
-**Người làm:** Lê Kim Dũng | **Ref:** `/course/[id]`, interactive player
+**Người làm:** Lê Kim Dũng | **Ref:** PR #22
 
 **Bối cảnh:** Dashboard lists courses; learner needs `/course/[id]` to view chapters/lessons.
 
@@ -529,7 +561,7 @@ Thêm vào đó, khi merge PR #30 (`feat/browse-progress-driven` → `main`), br
 
 ### [ADR-16] Firestore Adapter: Unified Cache + User Storage — 21/04/2026
 
-**Người làm:** Lê Kim Dũng | **Ref:** `infrastructure/adapters/firestore-course.adapter.ts`
+**Người làm:** Lê Kim Dũng | **Ref:** PR #22
 
 **Bối cảnh:** Generate course = expensive (AI tokens). Need caching + persistence.
 
@@ -546,15 +578,14 @@ Thêm vào đó, khi merge PR #30 (`feat/browse-progress-driven` → `main`), br
 
 ## Sprint 3 — 13/04 → 19/04/2026
 
-| Task | Người làm | Deadline | Trạng thái |
-|---|---|---|---|
-| Chuyển 2 stage sang GPT-4o-mini | Nguyễn Bình Thành | 16/04 | ✅ |
-| Thay source_text verbatim bằng outline do planner tạo | Nguyễn Bình Thành | 16/04 | ✅ |
-| Xóa Reveal.js + thêm ConceptCard (active recall) | Nguyễn Bình Thành | 17/04 | ✅ |
-| Cấu hình CI/CD Pipeline (GitHub Actions) | Lê Kim Dũng | 18/04 | ✅ |
-| Implement Authentication (Firebase + Session Cookie) | Lê Kim Dũng | 18/04 | ✅ |
-| API Routes: /login, /logout, /me | Lê Kim Dũng | 18/04 | ✅ |
-| Switch parser source: full.md → content_list.json | Nguyễn Bình Thành | 19/04 | ✅ |
+| Task | Người làm | PR |
+|---|---|---|
+| Author/log branch setup and early auth/doc support | Lê Kim Dũng | #7, #14, #15, #17 |
+| Docs consolidation, workflow rules, product pivot, hook fixes | Nguyễn Bình Thành | #8, #9, #10, #16 |
+| Chuyển 2 stage sang GPT-4o-mini | Nguyễn Bình Thành | #11 |
+| Thay source_text verbatim bằng outline do planner tạo | Nguyễn Bình Thành | #12 |
+| Xóa Reveal.js + thêm ConceptCard (active recall) | Nguyễn Bình Thành | #13 |
+| Parser classifier + content_list.json dedupe | Nguyễn Bình Thành | #18 |
 
 ---
 
@@ -708,22 +739,12 @@ type ConceptCard = {
 
 ## Sprint 1 — 05/04 → 12/04/2026. MVP
 
-| Task | Người làm | Deadline | Trạng thái |
-|---|---|---|---|
-| Next.js 15 setup (Tailwind, TypeScript, shadcn/ui) | Nguyễn Bình Thành | 05/04 | ✅ |
-| Kết nối MinerU API — parse PDF ra markdown | Nguyễn Bình Thành | 05/04 | ✅ |
-| Firebase Storage — trung gian upload file cho MinerU | Nguyễn Bình Thành | 05/04 | ✅ |
-| POST /api/parse-pdf — nhận PDF, trả markdown | Nguyễn Bình Thành | 05/04 | ✅ |
-| POST /api/generate-course — Gemini đọc markdown, trả Course JSON | Nguyễn Bình Thành | 05/04 | ✅ (chuyển sang OpenAI) |
-| UI upload + xem chapters/lessons | Nguyễn Bình Thành | 05/04 | ✅ |
-| Extract content_list_v2 từ MinerU zip | Nguyễn Bình Thành | 12/04 | ✅ |
-| Refactor schema: thêm Quiz, Course title; AI nhận contentList thay markdown | Nguyễn Bình Thành | 12/04 | ✅ |
-| SSE streaming: streamCourse() + progressive chapter rendering | Nguyễn Bình Thành | 12/04 | ✅ |
-| Stage 2: generateChapterContent() + /api/generate-content | Nguyễn Bình Thành | 12/04 | ✅ |
-| Reveal.js slide viewer (CDN, embedded mode) | Nguyễn Bình Thành | 12/04 | ✅ (sau đó bị xóa, xem ADR-12) |
-| Quiz UI: single-choice, show answer + explanation | Nguyễn Bình Thành | 12/04 | ✅ |
-| Fix Stage 2: bullet quality, source_text flow, speaker notes panel, Reveal theme | Nguyễn Bình Thành | 12/04 | ✅ |
-| Refactor codebase theo Clean Architecture | Lê Kim Dũng | 12/04 | ✅ |
+| Task | Người làm | PR |
+|---|---|---|
+| Weekly journal setup | Nguyễn Bình Thành | #1, #2 |
+| OpenAI migration from Gemini | Nguyễn Bình Thành | #3 |
+| Content-list pipeline, sidebar layout, schema/course generation updates | Nguyễn Bình Thành | #4 |
+| Author/log branch setup | Lê Kim Dũng | #5, #6 |
 
 ---
 

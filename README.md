@@ -10,16 +10,16 @@ Course viewer uses a **master-detail layout**: a fixed tree nav on the left (cha
 ## Stack
 
 - **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
-- **Backend**: Next.js API routes (`app/api/`)
-- **AI Stage 1**: OpenAI GPT-4o-mini (Planner — outlines chapters/lessons)
-- **AI Stage 2**: OpenAI GPT-4o-mini (Generator — expands outlines into ConceptCards)
+- **Backend**: Next.js API routes (`web/app/api/`)
+- **AI Stage 1**: Configurable AI provider chain (Planner — outlines chapters/lessons)
+- **AI Stage 2**: Configurable AI provider fallback (Generator — expands outlines into ConceptCards)
 - **Auth**: Firebase Auth (Google sign-in)
 - **Database**: Firebase Firestore (course + SRS progress persistence)
 - **Storage**: Firebase Storage (PDF + layout JSON; client-side upload, server-side Admin proxy)
 - **PDF parsing**: MinerU Precision API
 - **Monitoring**: Prometheus + Grafana (latency, token usage, system health)
 - **Security**: Role-Based Access Control (RBAC) via Firebase Custom Claims
-- **Task Management**: Redis-backed rate limiting and job queue
+- **Rate limiting/progress**: Redis-backed rate limiting and parse progress state
 
 ## Getting Started
 
@@ -40,9 +40,10 @@ bash scripts/setup_hooks.sh
 ### 3. Configure environment
 
 ```bash
-cp .env.example web/.env
-cp .env.example UKT/.env
+cp .env.example .env
 ```
+
+Docker Compose reads the root `.env`. If you run services manually, copy the same values into the service-local env file expected by your local command.
 
 Fill in `.env`:
 
@@ -51,9 +52,20 @@ AI_PROVIDER=openai
 
 OPENAI_API_KEY=
 OPENAI_MODEL=gpt-4o-mini
+OPENAI_GENERATOR_MODEL=gpt-4o-mini
 
 GEMINI_API_KEY=
 GEMINI_MODEL=gemini-2.0-flash
+
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_GENERATOR_MODEL=deepseek-v4-flash
+
+HUGGINGFACE_API_KEY=
+HUGGINGFACE_MODEL=meta-llama/Llama-3.1-8B-Instruct
+
+REDIS_URL=redis://localhost:6379
+DISCORD_WEBHOOK_URL=
 
 PDF_MINERU_BASE_URL=https://mineru.net/api/v4
 PDF_MINERU_API_KEY=
@@ -69,7 +81,7 @@ FIREBASE_STORAGE_BUCKET=
 UKT_SERVICE_URL=http://ukt-service:8000
 ```
 
-Set either `OPENAI_API_KEY` or `GEMINI_API_KEY` depending on the provider you want to use. `AI_LOG_SERVER` and `AI_LOG_API_KEY` are pre-filled in `.env.example`.
+Set at least one AI provider key. Stage 1 is wired through the provider chain in `web/infrastructure/di/ai.di.ts`; Stage 2 falls back across configured providers in `web/lib/ai.ts`. `AI_LOG_SERVER` and `AI_LOG_API_KEY` are pre-filled in `.env.example`.
 
 ### 4. Set up Firebase
 
@@ -91,7 +103,7 @@ Firebase Console → Firestore Database → Create database → choose **test mo
 
 **d) Create Firestore composite index**
 
-Run the app and visit `/dashboard` once. The server log will contain a `FAILED_PRECONDITION` error with a direct link like:
+Run the app and visit `/` once. The server log may contain a `FAILED_PRECONDITION` error with a direct link like:
 
 ```
 https://console.firebase.google.com/v1/r/project/<your-project>/firestore/indexes?create_composite=...
