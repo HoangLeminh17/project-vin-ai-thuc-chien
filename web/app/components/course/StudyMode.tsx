@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, Fragment } from 'react'
+import { useState, useEffect, useCallback, Fragment, useRef } from 'react'
 import { T } from '@/app/components/synapsy'
 import { FlatCard, RATING_META, submitRating } from './types'
 import { parseCitations } from '@/lib/citations'
@@ -45,8 +45,10 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props)
     }, 280)
   }, [card, idx, total, onExit])
 
+  const lastInitialCardId = useRef(initialCardId)
   useEffect(() => {
-    if (initialCardId) {
+    if (initialCardId && initialCardId !== lastInitialCardId.current) {
+      lastInitialCardId.current = initialCardId
       const newIdx = cards.findIndex(c => c.id === initialCardId)
       if (newIdx >= 0 && newIdx !== idx) {
         // Do a slide animation when card is changed externally
@@ -59,7 +61,7 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props)
         }, 150)
       }
     }
-  }, [initialCardId, cards])
+  }, [initialCardId, cards, idx])
 
   // Sync index to parent
   useEffect(() => {
