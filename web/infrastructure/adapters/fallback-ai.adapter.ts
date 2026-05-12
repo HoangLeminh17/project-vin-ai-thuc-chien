@@ -9,32 +9,58 @@ export class ChainAiAdapter implements IAiService {
   }
 
   async generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
-    let lastError: unknown;
+    const errors: { adapter: string; error: string }[] = [];
+    
     for (const adapter of this.adapters) {
       try {
         const name = adapter.constructor.name
         console.log(`[ChainAiAdapter] Trying AI provider: ${name}`)
         return await adapter.generateCourse(markdown)
-      } catch (e) {
-        console.warn(`[ChainAiAdapter] Provider ${adapter.constructor.name} failed:`, e)
-        lastError = e
+      } catch (e: any) {
+        const errorMsg = e?.message || String(e);
+        console.warn(`[ChainAiAdapter] Provider ${adapter.constructor.name} failed: ${errorMsg}`)
+        errors.push({ 
+          adapter: adapter.constructor.name, 
+          error: errorMsg 
+        });
       }
     }
-    throw new Error(`All AI adapters failed. Last error: ${lastError}`)
+    
+    // Provide detailed error message showing all failures
+    const errorSummary = errors
+      .map(e => `${e.adapter}: ${e.error}`)
+      .join('\n');
+    
+    throw new Error(
+      `All AI adapters failed.\n\nAttempted providers:\n${errorSummary}\n\n` +
+      `Ensure at least one of these is configured: OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, or HUGGINGFACE_API_KEY`
+    )
   }
 
   async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
-    let lastError: unknown;
+    const errors: { adapter: string; error: string }[] = [];
+    
     for (const adapter of this.adapters) {
       try {
         const name = adapter.constructor.name
         console.log(`[ChainAiAdapter] Trying AI provider for diagnostic: ${name}`)
         return await adapter.generateDiagnosticQuiz(chunks)
-      } catch (e) {
-        console.warn(`[ChainAiAdapter] Provider ${adapter.constructor.name} failed diagnostic:`, e)
-        lastError = e
+      } catch (e: any) {
+        const errorMsg = e?.message || String(e);
+        console.warn(`[ChainAiAdapter] Provider ${adapter.constructor.name} failed diagnostic: ${errorMsg}`)
+        errors.push({ 
+          adapter: adapter.constructor.name, 
+          error: errorMsg 
+        });
       }
     }
-    throw new Error(`All AI adapters failed diagnostic. Last error: ${lastError}`)
+    
+    const errorSummary = errors
+      .map(e => `${e.adapter}: ${e.error}`)
+      .join('\n');
+    
+    throw new Error(
+      `All AI adapters failed diagnostic.\n\nAttempted providers:\n${errorSummary}`
+    )
   }
 }

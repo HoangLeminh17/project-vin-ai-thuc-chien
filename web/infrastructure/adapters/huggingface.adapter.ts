@@ -1,5 +1,5 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
-import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
+import { PLANNER_PROMPT_LIGHTWEIGHT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
 import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
 
@@ -94,13 +94,20 @@ export class HuggingFaceAdapter implements IAiService {
   }
 
   async generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
-    // Truncate to approx 24k characters to stay within ~6k tokens (leaving room for prompt and output)
-    const MAX_CHARS = 24000;
+    // HuggingFace Router has 8192 token limit
+    // System prompt is ~600 tokens, so we have ~5600 tokens for content + buffer
+    // Conservative estimate: 1 token per 3.5 chars (accounting for system prompt overhead)
+    const PLANNER_TOKENS = 600;
+    const MAX_TOTAL_TOKENS = 8000;
+    const RESPONSE_BUFFER = 1000;
+    const maxContentTokens = MAX_TOTAL_TOKENS - PLANNER_TOKENS - RESPONSE_BUFFER;
+    const MAX_CHARS = Math.max(maxContentTokens * 3, 5000); // at least 5k chars
+    
     const truncatedMarkdown = markdown.length > MAX_CHARS 
       ? markdown.slice(0, MAX_CHARS) + '\n\n[CONTENT TRUNCATED DUE TO LENGTH]' 
       : markdown;
 
-    const { text, tokens } = await this.safeFetch(PLANNER_PROMPT, truncatedMarkdown)
+    const { text, tokens } = await this.safeFetch(PLANNER_PROMPT_LIGHTWEIGHT, truncatedMarkdown)
     const course = this.parseSecureJson<Course>(text)
 
     if (!course.chapters || !Array.isArray(course.chapters)) {
@@ -124,7 +131,8 @@ export class HuggingFaceAdapter implements IAiService {
   }
 
   async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
-    const maxChars = 15000;
+    // Reduce content for HuggingFace's token limit
+    const maxChars = 10000; // More conservative for diagnostic
     let currentChars = 0;
 
     const formattedContent = chunks

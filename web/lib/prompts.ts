@@ -55,6 +55,41 @@ Output schema:
 Now process this document:
 `
 
+export const PLANNER_PROMPT_LIGHTWEIGHT = `You are a curriculum designer. Organize document content into chapters and lessons.
+
+Rules:
+- "---" marks chapter boundary
+- "##" marks chapter — one per section
+- "###" marks lesson — one per section
+- Each lesson needs: title, key_concept (1 sentence), outline (3-5 bullet points)
+- Each chapter needs: quiz with topic
+- Skip: TOC, disclaimers, references, glossary, appendix, copyright
+- Output ONLY valid JSON
+
+Schema:
+{
+  "title": "Course title",
+  "chapters": [
+    {
+      "title": "Chapter",
+      "lessons": [
+        {
+          "title": "Lesson",
+          "key_concept": "One sentence idea",
+          "outline": [
+            { "point": "Fact 1", "chunks": [] },
+            { "point": "Fact 2", "chunks": [] }
+          ]
+        }
+      ],
+      "quiz": { "topic": "What to test" }
+    }
+  ]
+}
+
+Document:
+`
+
 export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating concept cards and quiz questions for a course chapter.
 
 Each lesson in the input has:
