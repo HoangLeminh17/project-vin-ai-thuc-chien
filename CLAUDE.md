@@ -89,6 +89,8 @@ If you finish a task in fewer than 5 commits, you almost certainly bundled too m
     3. `gh pr merge <PR1-number>` (This finally merges everything into `main`).
   - **CRITICAL:** NEVER merge the base PR into `main` before the higher PRs are merged down into it.
 - **Squash Alternative:** If the chain is broken or a human messed up the base branches, use `gh pr create --base main --head <leaf-branch>` to gather all stranded commits into one final PR, then merge it.
+- **Merge strategy default:** Preserve individual commits on `main` unless the user explicitly requests squash. Prefer **Create a merge commit** for stacked/multi-commit PRs when the commit history is meaningful. Use **Rebase and merge** only when the branch is linear and preserving commits without a merge commit is desired. Use **Squash and merge** only when the user explicitly says to squash, "gộp thành 1 commit", or otherwise confirms that one commit on `main` is desired.
+- **Ambiguous wording:** Vietnamese phrases like "gộp PR", "merge vào main", "commit lại", or "gộp lại" are not enough to choose squash. If the user talks about wanting "nhiều commits" or preserving history, do not squash; ask for confirmation if the merge strategy is still unclear.
 
 ### Atomic PR size
 Split features into three Stacked PRs instead of one large PR:
