@@ -1,9 +1,10 @@
 import { prometheusRegistry } from '@/infrastructure/adapters/prometheus.adapter'
 
-type ApiHandler = (req: Request, ...args: any[]) => Promise<Response>
+// Generic wrapper so it composes with NextRequest-based handlers/middlewares.
+type ApiHandler<TReq extends Request = Request> = (req: TReq, ...args: any[]) => Promise<any>
 
-export function withApiMetrics(routeName: string, handler: ApiHandler): ApiHandler {
-  return async (req: Request, ...args: any[]) => {
+export function withApiMetrics<TReq extends Request = Request>(routeName: string, handler: ApiHandler<TReq>): ApiHandler<TReq> {
+  return async (req: TReq, ...args: any[]) => {
     const start = Date.now()
     try {
       const res = await handler(req, ...args)
