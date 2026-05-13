@@ -6,4 +6,4 @@ COPY alertmanager.yml /etc/alertmanager/alertmanager.yml
 USER root
 
 # Start Alertmanager with env var substitution for the webhook URL
-ENTRYPOINT ["/bin/sh", "-c", "sed -i 's|\\${DISCORD_WEBHOOK_URL}|'\"$DISCORD_WEBHOOK_URL\"'|g' /etc/alertmanager/alertmanager.yml && /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager"]
+ENTRYPOINT ["/bin/sh", "-c", "BRIDGE_URL=${DISCORD_BRIDGE_URL:-http://discord-bridge.railway.internal:8080/alertmanager} && sed -i 's|\\${DISCORD_BRIDGE_URL}|'\"$BRIDGE_URL\"'|g' /etc/alertmanager/alertmanager.yml && /bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --storage.path=/alertmanager"]

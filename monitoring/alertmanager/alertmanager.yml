@@ -11,5 +11,5 @@ route:
 receivers:
   - name: 'discord-notifications'
     webhook_configs:
-      - url: '${DISCORD_WEBHOOK_URL}'
+      - url: '${DISCORD_BRIDGE_URL}'
         send_resolved: true
