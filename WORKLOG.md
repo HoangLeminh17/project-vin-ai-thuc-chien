@@ -39,6 +39,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 - Diagnostic chunk input bỏ `Detail:` và chỉ đưa outline + concept question + canonical answer vào prompt.
 - Citation validation chỉ validate marker trong `answer`, vì đây là source truth duy nhất của card mới.
 - Cache guard coi Stage 2 cache/saved content còn `detail` là stale để cùng một PDF/hash vẫn regenerate canonical cards thay vì reuse TL;DR/Chi tiết cũ.
+- StudyMode reveal cũng đổi label từ `TL;DR` sang `Câu trả lời` và không render legacy `detail`; SRS rating flow giữ nguyên.
 - SRS review UI chưa đổi trong phase này; SRS input tiếp tục gửi `concept.answer` làm đáp án canonical.
 
 **Ước tính giảm token:**

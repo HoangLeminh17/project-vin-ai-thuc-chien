@@ -594,7 +594,7 @@ The request includes `kcId` and `moduleId` from the concept card when available.
 | 2 | Good / nho roi | 1 day | `3` |
 | 3 | Easy / qua de | 4 days | `4` |
 
-`Space` reveals answer.
+`Space` reveals the canonical `answer` as `Câu trả lời`; legacy `detail` is not shown in the SRS reveal surface.
 
 ---
 
