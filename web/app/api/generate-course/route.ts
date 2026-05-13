@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
-import { generateCourseUseCase, courseRepository, logger, verifySessionUseCase, rateLimiter } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 import { getContentHash } from '@/lib/crypto-utils'
 import { normalizeCourseKnowledge } from '@/core/models/knowledge'
 
 const handler = async (req: NextRequest) => {
+  const { generateCourseUseCase, courseRepository, logger, verifySessionUseCase, rateLimiter } = await import('@/infrastructure/di')
   // 1. Verify User Session
   const session = req.cookies.get('session')?.value;
   const user = await verifySessionUseCase.execute(session);

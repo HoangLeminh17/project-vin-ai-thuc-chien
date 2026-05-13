@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
-import { verifySessionUseCase, courseRepository } from '@/infrastructure/registry'
 import { getBucket } from '@/lib/firebase-admin'
 import { handleApiError } from '@/lib/api-utils'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
 const handler = async (req: NextRequest) => {
+  const { verifySessionUseCase, courseRepository } = await import('@/infrastructure/registry')
   const session = req.cookies.get('session')?.value
   const user = await verifySessionUseCase.execute(session)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })

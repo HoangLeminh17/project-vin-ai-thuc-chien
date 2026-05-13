@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { usageRepository } from '@/infrastructure/di'
 import { withAdminAuth } from '@/lib/middlewares/with-admin-auth'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
@@ -7,6 +6,7 @@ export const dynamic = 'force-dynamic'
 
 export const GET = withApiMetrics('/api/admin/usage', withAdminAuth(async function (_req: NextRequest) {
   try {
+    const { usageRepository } = await import('@/infrastructure/di')
     const daily = await usageRepository.getDailyUsage(30)
     const recent = await usageRepository.getRecentUsage(50)
     

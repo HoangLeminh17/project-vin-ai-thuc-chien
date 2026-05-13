@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { createSessionUseCase } from '@/infrastructure/registry';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
 async function loginHandler(req: Request) {
   try {
+    const { createSessionUseCase } = await import('@/infrastructure/registry');
     const { idToken } = await req.json();
     if (!idToken) {
       return NextResponse.json({ error: 'ID Token is required' }, { status: 400 });

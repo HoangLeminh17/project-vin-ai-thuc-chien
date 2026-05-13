@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySessionUseCase, saveCourseUseCase, listCoursesUseCase, courseRepository } from '@/infrastructure/registry';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { handleApiError } from '@/lib/api-utils';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
 async function getHandler(req: NextRequest) {
+  const { verifySessionUseCase, listCoursesUseCase } = await import('@/infrastructure/registry');
   const session = req.cookies.get('session')?.value;
   const user = await verifySessionUseCase.execute(session);
   if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -14,6 +14,7 @@ async function getHandler(req: NextRequest) {
 }
 
 async function postHandler(req: NextRequest) {
+  const { verifySessionUseCase, saveCourseUseCase, courseRepository } = await import('@/infrastructure/registry');
   const session = req.cookies.get('session')?.value;
   const user = await verifySessionUseCase.execute(session);
   if (!user) return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });

@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
-import { verifySessionUseCase, getDueCardsUseCase } from '@/infrastructure/di';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
 async function handler() {
+  const { verifySessionUseCase, getDueCardsUseCase } = await import('@/infrastructure/di');
   const cookieStore = await cookies();
   const session = cookieStore.get('session')?.value;
   const user = await verifySessionUseCase.execute(session);

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { parseDocumentUseCase } from '@/infrastructure/registry'
 import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
@@ -7,6 +6,7 @@ import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 const MAX_SIZE = 20 * 1024 * 1024 // 20 MB
 
 const handler = async (req: NextRequest) => {
+  const { parseDocumentUseCase } = await import('@/infrastructure/registry')
   const formData = await req.formData()
   const file = formData.get('file')
 

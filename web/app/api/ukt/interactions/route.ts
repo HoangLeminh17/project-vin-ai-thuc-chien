@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 import { cookies } from 'next/headers'
-import { uktService, verifySessionUseCase } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 
 async function handler(req: NextRequest) {
+  const { uktService, verifySessionUseCase } = await import('@/infrastructure/di')
   const cookieStore = await cookies()
   const session = cookieStore.get('session')?.value
   const user = await verifySessionUseCase.execute(session)

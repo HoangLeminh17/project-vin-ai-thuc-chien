@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
-import { verifySessionUseCase, getCourseUseCase, deleteCourseUseCase, updateCourseUseCase } from '@/infrastructure/registry';
 import { handleApiError } from '@/lib/api-utils';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
@@ -8,6 +7,7 @@ import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 type Context = { params: Promise<{ id: string }> };
 
 async function getHandler(req: NextRequest, ctx: Context) {
+  const { verifySessionUseCase, getCourseUseCase } = await import('@/infrastructure/registry');
   const { id } = await ctx.params;
   const session = req.cookies.get('session')?.value;
   const user = await verifySessionUseCase.execute(session);
@@ -18,6 +18,7 @@ async function getHandler(req: NextRequest, ctx: Context) {
 }
 
 async function deleteHandler(req: NextRequest, ctx: Context) {
+  const { verifySessionUseCase, deleteCourseUseCase } = await import('@/infrastructure/registry');
   const { id } = await ctx.params;
   const session = req.cookies.get('session')?.value;
   const user = await verifySessionUseCase.execute(session);
@@ -28,6 +29,7 @@ async function deleteHandler(req: NextRequest, ctx: Context) {
 }
 
 async function patchHandler(req: NextRequest, ctx: Context) {
+  const { verifySessionUseCase, updateCourseUseCase } = await import('@/infrastructure/registry');
   const { id } = await ctx.params;
   const session = req.cookies.get('session')?.value;
   const user = await verifySessionUseCase.execute(session);

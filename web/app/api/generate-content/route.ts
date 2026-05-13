@@ -3,12 +3,12 @@ export const dynamic = 'force-dynamic'
 import { generateChapterContent } from '@/lib/ai'
 import type { Course, ChapterContent, CourseContent } from '@/lib/types'
 import { isLegacyOutline } from '@/lib/types'
-import { logger, courseRepository } from '@/infrastructure/di'
 import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
 const handler = async (req: NextRequest) => {
+  const { logger, courseRepository } = await import('@/infrastructure/di')
   let body;
   try {
     body = await req.json();

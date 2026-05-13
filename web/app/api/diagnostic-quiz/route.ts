@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
-import { generateDiagnosticQuizUseCase, verifySessionUseCase, rateLimiter } from '@/infrastructure/di'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
 export const POST = withApiMetrics('/api/diagnostic-quiz', async function POST(req: NextRequest) {
   try {
+    const { generateDiagnosticQuizUseCase, verifySessionUseCase, rateLimiter } = await import('@/infrastructure/di')
     // 1. Verify User Session
     const session = req.cookies.get('session')?.value;
     const user = await verifySessionUseCase.execute(session);
