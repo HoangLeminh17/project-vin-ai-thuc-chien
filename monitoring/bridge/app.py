@@ -127,6 +127,16 @@ async def alertmanager(request: Request) -> Dict[str, Any]:
     async with httpx.AsyncClient(timeout=timeout_s) as client:
         resp = await client.post(DISCORD_WEBHOOK_URL, json=payload)
 
+        # Discord's webhook validation sometimes rejects embeds with a vague
+        # {"embeds":["0"]} error. If that happens, fall back to a plain-text
+        # message so alert delivery still works.
+        if resp.status_code == 400 and payload.get("embeds"):
+            fallback = {
+                "username": payload.get("username") or DISCORD_USERNAME,
+                "content": payload.get("content") or "Alertmanager notification",
+            }
+            resp = await client.post(DISCORD_WEBHOOK_URL, json=fallback)
+
     if resp.status_code >= 400:
         raise HTTPException(status_code=502, detail=f"Discord webhook error: {resp.status_code}: {resp.text}")
     # Optionally log the response for debugging:
