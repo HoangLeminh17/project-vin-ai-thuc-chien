@@ -155,4 +155,15 @@ describe('validateCitationMarkers', () => {
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('[chunk-99-999]'))
     warn.mockRestore()
   })
+
+  it('ignores legacy detail markers because answer is the canonical source surface', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const validIds = new Set(['chunk-0-5'])
+    validateCitationMarkers(
+      makeChapter('Câu hợp lệ.[chunk-0-5]', 'Legacy detail marker.[chunk-99-999]'),
+      validIds,
+    )
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
 })

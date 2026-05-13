@@ -44,7 +44,6 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
     const empty = new Set<string>()
     for (const c of (allCards ?? cards)) {
       parseCitations(c.concept.answer, empty, map)
-      if (c.concept.detail) parseCitations(c.concept.detail, empty, map)
     }
     return map
   }, [allCards, cards])
@@ -150,10 +149,10 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
             </div>
           </div>
 
-          {/* TL;DR */}
+          {/* Canonical answer */}
           <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span className="sy-mono" style={{ fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>TL;DR</span>
+              <span className="sy-mono" style={{ fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Câu trả lời</span>
               {hasCitation &&  (
                 <button
                   onClick={() => setCitationOpen(v => !v)}
@@ -190,16 +189,6 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
             )}
           </div>
 
-          {/* Detail */}
-          {card.concept.detail && (
-            <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
-              <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Chi tiết</span>
-              <div className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, marginTop: 6 }}>
-                <CitedText text={card.concept.detail!} validChunkIds={validChunkIds} sharedMap={globalCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true) }} />
-              </div>
-            </div>
-          )}
-
           {/* AI proposal */}
           {(aiProposal !== null || aiLoading) && (
             <div style={{ border: `1.5px solid ${T.ink20}`, background: T.bgSoft, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
@@ -219,10 +208,10 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
             </div>
           )}
 
-          {/* Follow-ups */}
+          {/* AI tutor */}
           {card.concept.followUps.length > 0 && (
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px' }}>
-              <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Follow-up</span>
+              <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>AI tutor</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
                 {card.concept.followUps.map((q, i) => (
                   <button key={i} style={{ padding: '5px 12px', fontSize: 12, color: T.ink80, background: T.bgSunken, borderRadius: 20, display: 'flex', alignItems: 'center', gap: 5, border: `1px solid ${T.ink10}`, cursor: 'pointer' }}>

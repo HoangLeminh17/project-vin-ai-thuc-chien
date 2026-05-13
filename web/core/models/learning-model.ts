@@ -41,7 +41,7 @@ export type Course = {
 export type ConceptCard = {
   question: string
   answer: string
-  detail?: string
+  detail?: string // legacy; new cards use answer as the single source-backed response
   followUps: string[]
   kc_id?: string
   kc_name?: string
