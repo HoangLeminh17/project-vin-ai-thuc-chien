@@ -109,13 +109,13 @@
             "uid": "${datasource}"
       },
           "editorMode": "code",
-          "expr": "rate(synapsy_metrics_value_sum[5m]) / rate(synapsy_metrics_value_count[5m])",
-          "legendFormat": "{{useCase}}",
+          "expr": "sum by (metric_name, provider) (rate(synapsy_metrics_value_sum[5m])) / sum by (metric_name, provider) (rate(synapsy_metrics_value_count[5m]))",
+          "legendFormat": "{{metric_name}} | {{provider}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Use Case Latency (Next.js)",
+      "title": "Web Metrics Latency (avg)",
       "type": "timeseries"
     },
     {
@@ -167,7 +167,8 @@
                 "value": null
               }
             ]
-          }
+          },
+          "unit": "ops"
         },
         "overrides": []
       },
@@ -197,13 +198,13 @@
             "uid": "${datasource}"
           },
           "editorMode": "code",
-          "expr": "sum(rate(http_request_duration_seconds_sum[5m])) by (handler) / sum(rate(http_request_duration_seconds_count[5m])) by (handler)",
-          "legendFormat": "{{handler}}",
+          "expr": "sum by (event_name, status) (rate(synapsy_events_total[5m]))",
+          "legendFormat": "{{event_name}} | {{status}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "UKT Service Endpoint Latency",
+      "title": "Web Events Rate",
       "type": "timeseries"
     }
   ],
