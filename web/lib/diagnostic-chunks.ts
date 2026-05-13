@@ -61,7 +61,6 @@ export function buildDiagnosticChunks(
         outlinePoints ? `Outline:\n${outlinePoints}` : '',
         concept?.question ? `Concept question: ${stripCitationMarkers(concept.question)}` : '',
         concept?.answer ? `Concept answer: ${stripCitationMarkers(concept.answer)}` : '',
-        concept?.detail ? `Detail: ${stripCitationMarkers(concept.detail)}` : '',
       ].filter(Boolean)
 
       chunks.push({

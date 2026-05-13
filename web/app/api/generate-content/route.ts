@@ -6,6 +6,7 @@ import { isLegacyOutline } from '@/lib/types'
 import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
+import { chapterHasLegacyDetail } from '@/lib/course-content-version'
 
 const handler = async (req: NextRequest) => {
   const { logger, courseRepository } = await import('@/infrastructure/di')
@@ -30,7 +31,7 @@ const handler = async (req: NextRequest) => {
     const hasLegacyOutline = course.chapters[chapterIndex].lessons.some(l => isLegacyOutline(l.outline))
     if (hash && !hasLegacyOutline) {
       const cachedChapter = await courseRepository.getChapter(hash, chapterIndex)
-      if (cachedChapter) {
+      if (cachedChapter && !chapterHasLegacyDetail(cachedChapter)) {
         return NextResponse.json({ success: true, chapter: cachedChapter, fromCache: true })
       }
     }

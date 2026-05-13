@@ -88,6 +88,7 @@ describe('diagnostic chunks', () => {
     expect(chunks[0].text).toContain('Lesson: Lesson A')
     expect(chunks[0].text).toContain('Knowledge component: Homeostasis and feedback')
     expect(chunks[0].text).toContain('Concept answer: A is first.')
+    expect(chunks[0].text).not.toContain('Detail:')
     expect(chunks[0].text).not.toContain('[chunk-0-1]')
     expect(chunks[0]).toMatchObject({
       kc_id: 'physiology.homeostasis',

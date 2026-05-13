@@ -38,9 +38,9 @@ export type Course = {
 // Stage 2 — concept card + quiz content
 export type ConceptCard = {
   question: string    // active recall question e.g. "X hoạt động như thế nào?"
-  answer: string      // TL;DR 2-3 câu
-  detail?: string     // 3-5 câu, có analogy/ví dụ
-  followUps: string[] // 2 follow-up questions
+  answer: string      // canonical answer used for citations and SRS scoring input
+  detail?: string     // legacy; no longer generated as a separate answer surface
+  followUps: string[] // lightweight AI tutor prompts / follow-up questions
   kc_id?: string
   kc_name?: string
   module_id?: string

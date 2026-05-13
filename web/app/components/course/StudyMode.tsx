@@ -161,20 +161,13 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props)
             </>
           ) : (
             <>
-              {/* TL;DR */}
+              {/* Canonical answer */}
               <div style={{ padding: '16px 18px', background: T.accentSoft, borderRadius: 10, marginBottom: 14, borderLeft: `3px solid ${T.accent}` }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 5px' }}>TL;DR</p>
+                <p style={{ fontSize: 10, fontWeight: 700, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 5px' }}>Câu trả lời</p>
                 <p className="sy-serif" style={{ fontSize: 16, fontWeight: 500, margin: 0, lineHeight: 1.45, color: T.ink }}>
                   <CitedText text={card.concept.answer} />
                 </p>
               </div>
-
-              {/* Detail */}
-              {card.concept.detail && (
-                <p className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, margin: '0 0 16px' }}>
-                  <CitedText text={card.concept.detail} />
-                </p>
-              )}
 
               {/* Follow-ups */}
               {card.concept.followUps.length > 0 && (
