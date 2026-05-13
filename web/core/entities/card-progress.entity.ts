@@ -15,4 +15,6 @@ export interface CardProgress {
   question?: string; // Cache content for easy retrieval in SRS
   answer?: string;
   topic?: string; // Knowledge Component ID for UKT
+  kcId?: string;
+  moduleId?: string;
 }

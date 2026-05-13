@@ -12,8 +12,8 @@ async function handler(req: NextRequest) {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { cardId, rating, question, answer } = await req.json();
-  const nextProgress = await reviewCardUseCase.execute(user.id, cardId, rating, question, answer);
+  const { cardId, rating, question, answer, kcId, moduleId, topic } = await req.json();
+  const nextProgress = await reviewCardUseCase.execute(user.id, cardId, rating, question, answer, kcId ?? topic, moduleId);
   
   return NextResponse.json(nextProgress);
 }

@@ -1,8 +1,10 @@
 import type { Chapter, ChapterContent, OutlinePoint, QuizQuestion } from './types'
+import type { KnowledgeComponentRef } from '@/core/models/knowledge'
 
 export type Stage2LessonInput = {
   title: string
   key_concept: string
+  knowledge?: KnowledgeComponentRef
   outline: OutlinePoint[]
   raw_context?: string
 }
@@ -22,6 +24,7 @@ export function buildStage2ChapterInput(chapter: Chapter, rawContexts?: string[]
     lessons: chapter.lessons.map((lesson, index) => ({
       title: lesson.title,
       key_concept: lesson.key_concept,
+      knowledge: lesson.knowledge,
       outline: lesson.outline,
       ...(rawContexts?.[index] ? { raw_context: rawContexts[index] } : {}),
     })),

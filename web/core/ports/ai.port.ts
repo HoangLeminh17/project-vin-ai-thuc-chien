@@ -5,6 +5,10 @@ export type TokenUsage = { promptTokens: number; completionTokens: number; total
 export interface ContentChunk {
   id: string;
   text: string;
+  kc_id?: string;
+  kc_name?: string;
+  module_id?: string;
+  module_name?: string;
 }
 
 export interface IAiService {

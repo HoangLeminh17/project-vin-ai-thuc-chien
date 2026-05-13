@@ -10,17 +10,44 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| Diagnostic lesson-scoped coverage fix | Nguyen Binh Thanh | TBD |
-| Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
-| Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
-| Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
+| Stable Knowledge Components + UKT quiz/SRS signals | Nguyen Binh Thanh | #104, #105 |
+| Diagnostic lesson-scoped coverage + partial-coverage acceptance | Nguyen Binh Thanh | #103 |
+| Restore root AI logging scripts | Nguyen Binh Thanh | #102 |
+| Dependency cleanup after Next/React peer conflict | Lê Kim Dũng | #101 |
+| Manual environment setup clarification | Nguyen Binh Thanh | #100 |
+| Web package-lock sync for Docker `npm ci` | Nguyen Binh Thanh | #99 |
+| PIPELINE current-state documentation update | Nguyen Binh Thanh | #98 |
+| Sprint worklog tracking cleanup | Nguyen Binh Thanh | #97 |
 | Final monitoring restructure + `/api/auth/me` cleanup | Lê Kim Dũng | #96 |
+| Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
+| Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
+| Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-36] Stable Knowledge Components for UKT tracing - 14/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #104 (`feat/kc-pipeline-metadata`), PR #105 (`feat/kc-main-squash`)
+
+**Bối cảnh:** UKT cần trace tiến độ học xuyên nhiều session và nhiều tài liệu, nhưng `topic` cũ là free-text do LLM sinh nên không ổn định. Nếu cùng một nội dung lúc được gọi là "General physiology", lúc khác là "Physiology basics", UKT sẽ coi là hai kỹ năng khác nhau và spider chart/module mastery mất ý nghĩa.
+
+**Quyết định:**
+- Tạo registry y khoa cố định `medical-v1` gồm tối đa 8 module lớn: anatomy, physiology, pharmacology, microbiology, pathology, clinical, biochemistry, immunology.
+- Stage 1 Planner phải gán mỗi lesson vào `knowledge: { kc_id, kc_name, module_id, module_name, confidence }`; server normalize lại bằng `normalizeCourseKnowledge()` để `kc_id` deterministic.
+- Giữ fallback `{module}.general` để mọi lesson đều có KC hợp lệ nếu classifier chưa đủ chi tiết.
+- Stage 2 chỉ propagate metadata, không tự tạo KC identity mới; concept cards nhận `kc_id/module_id` từ lesson.
+- Diagnostic quiz và SRS đều gửi tín hiệu vào UKT: diagnostic dùng `/api/ukt/interactions`, review card dùng `/update` với `kc_id`.
+- Diagnostic prompt nhận `[[KC_ID]]`/`[[MODULE_ID]]`, nhưng use case vẫn overwrite metadata từ trusted chunk map để tránh LLM drift.
+
+**Kết quả:** Diagnostic response đã trả `student_id` thật và `knowledge_state` theo KC ổn định như `pathology.general`, `physiology.general`, `biochemistry.general`. `priority_order` dùng được cho ưu tiên học, còn spider chart có thể aggregate theo `module_id`.
+
+**Ghi chú merge:** PR #104 đã merge vào branch `fix/diagnostic-lesson-coverage`, không phải `main`. Khi đưa lên `main`, dùng Squash and merge để giữ nhiều commit làm việc trong PR nhưng chỉ tạo một commit tổng hợp trên `main`.
 
 ---
 
 ### [ADR-35] Diagnostic quiz maps 1-1 to lesson progress - 12/05/2026
 
-**Nguoi lam:** Nguyen Binh Thanh | **Ref:** `fix/diagnostic-lesson-coverage`
+**Nguoi lam:** Nguyen Binh Thanh | **Ref:** PR #103 (`fix/diagnostic-lesson-coverage`)
 
 **Boi canh:** Fresh generation dang prefetch diagnostic ngay sau chapter dau tien va gui raw MinerU markdown. API legacy boc markdown thanh chunk `legacy-full`, nen AI co the tra `source_chunk_id = legacy-full` thay vi key lesson `ci-li`. Ket qua: user lam diagnostic xong nhung CourseTree van hien nhieu lesson "Chua test".
 
@@ -32,6 +59,8 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 - Validate localStorage cache: questions/results cu dung `legacy-full` hoac khong cover du lesson ids se bi xoa va regenerate.
 
 **Ket qua:** Khi diagnostic generation thanh cong, moi lesson trong course co mot question map ve key `ci-li`; `DiagnosticResults` tao `diagnosticState["ci-li"]` va CourseTree khong con grey do sai id. Neu AI khong tra du coverage, UI chuyen `diagnostic-error` de retry/skip thay vi save cache hong.
+
+**Follow-up fix (14/05/2026):** Với tài liệu lớn, AI có thể trả ít câu hỏi hơn số lesson. Strict 100% coverage làm UI fail dù server trả 200. Đổi sang partial-coverage acceptance: questions chỉ cần non-empty, results được giữ nếu có ít nhất một key khớp lesson hiện tại, và lesson không có câu diagnostic vẫn grey "Chua test".
 
 ---
 

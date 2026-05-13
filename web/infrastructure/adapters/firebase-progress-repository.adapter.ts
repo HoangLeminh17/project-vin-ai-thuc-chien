@@ -109,6 +109,9 @@ export class FirebaseProgressRepository implements IProgressRepository {
       lastReviewedAt: data.lastReviewedAt?.toDate ? data.lastReviewedAt.toDate() : (data.lastReviewedAt ? new Date(data.lastReviewedAt) : undefined),
       question: data.question,
       answer: data.answer,
+      topic: data.topic,
+      kcId: data.kcId,
+      moduleId: data.moduleId,
     };
   }
 }

@@ -44,7 +44,7 @@ describe('GetPrioritizedDueCardsUseCase', () => {
     expect(mockUktService.predict).toHaveBeenCalledWith({
       student_id: 'user1',
       interactions: [],
-      total_minutes: 0
+      total_minutes: 45
     });
   });
 

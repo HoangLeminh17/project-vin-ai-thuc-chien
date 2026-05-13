@@ -1,5 +1,6 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
 import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
+import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
 import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
 
@@ -104,7 +105,7 @@ export class OpenAiAdapter implements IAiService {
     }
 
     const formattedContent = chunks
-      .map(chunk => `[[SOURCE_CHUNK_ID: ${chunk.id}]]\n${chunk.text}`)
+      .map(formatDiagnosticChunk)
       .join('\n\n---\n\n')
 
     let res: Response;

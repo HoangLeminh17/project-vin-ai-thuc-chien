@@ -111,6 +111,7 @@ def predict(req: PredictRequest):
         prior_state=prior_state,
         total_minutes=req.total_minutes,
     )
+    result.student_id = req.student_id
 
     # Lưu state mới
     store.set(req.student_id, result.knowledge_state)
@@ -124,9 +125,7 @@ def update(req: UpdateRequest):
     Cập nhật knowledge state sau khi học sinh đánh giá
     thẻ học (hard / ok / easy).
     """
-    current = store.get(req.student_id)
-    if not current:
-        raise HTTPException(status_code=404, detail="Chưa có state cho student_id này")
+    current = store.get(req.student_id) or {}
 
     updated = engine.update_state(
         current_state=current,

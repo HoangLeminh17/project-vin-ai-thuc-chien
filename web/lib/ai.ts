@@ -182,13 +182,31 @@ export async function generateCourse_UNUSED(
 function attachChunkRange(raw: ChapterContent, chapter: Chapter): ChapterContent {
   const lessons = raw.lessons.map((l, i) => {
     const src = chapter.lessons[i]
+    const knowledge = src?.knowledge
     if (!l.concept) {
-      return { ...l, concept: { question: `${src?.title ?? l.lesson_title} là gì?`, answer: src?.outline.slice(0, 2).join('. ') ?? '', followUps: [] } }
+      return {
+        ...l,
+        concept: {
+          question: `${src?.title ?? l.lesson_title} là gì?`,
+          answer: src?.outline.slice(0, 2).map(point => point.point).join('. ') ?? '',
+          followUps: [],
+          kc_id: knowledge?.kc_id,
+          kc_name: knowledge?.kc_name,
+          module_id: knowledge?.module_id,
+          module_name: knowledge?.module_name,
+          source_chunk_start: src?.source_chunk_start,
+          source_chunk_end: src?.source_chunk_end,
+        },
+      }
     }
     return {
       ...l,
       concept: {
         ...l.concept,
+        kc_id: knowledge?.kc_id,
+        kc_name: knowledge?.kc_name,
+        module_id: knowledge?.module_id,
+        module_name: knowledge?.module_name,
         source_chunk_start: src?.source_chunk_start,
         source_chunk_end: src?.source_chunk_end,
       },
@@ -391,7 +409,7 @@ export async function generateChapterContent(chapter: Chapter, rawContexts?: str
     partials.push(await generateChapterContentForInput(chapter, JSON.stringify(batch)))
   }
 
-  return mergeStage2ChapterOutputs(chapter.title, chapter.quiz.topic, partials)
+  return attachChunkRange(mergeStage2ChapterOutputs(chapter.title, chapter.quiz.topic, partials), chapter)
 }
 export async function extractFacts(content: string): Promise<string[]> {
   const messages = [

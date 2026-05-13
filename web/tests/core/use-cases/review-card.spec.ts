@@ -67,13 +67,15 @@ describe('ReviewCardUseCase', () => {
     const useCase = new ReviewCardUseCase(mockRepo as any, mockUktService as any);
     
     // Test with rating 1 (Hard) -> uktRating 'hard'
-    await useCase.execute('user1', 'card1', 1, 'Q', 'A', 'topic1');
+    const result = await useCase.execute('user1', 'card1', 1, 'Q', 'A', 'topic1', 'module1');
 
     expect(mockUktService.update).toHaveBeenCalledWith({
       student_id: 'user1',
       kc_id: 'topic1',
       rating: 'hard'
     });
+    expect(result.kcId).toBe('topic1');
+    expect(result.moduleId).toBe('module1');
 
     // Test with rating 3 (Easy) -> uktRating 'easy'
     await useCase.execute('user1', 'card2', 3, 'Q2', 'A2', 'topic2');

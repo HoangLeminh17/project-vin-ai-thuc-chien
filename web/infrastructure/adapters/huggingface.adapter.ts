@@ -1,5 +1,6 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
 import { PLANNER_PROMPT_LIGHTWEIGHT, DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT } from '@/lib/prompts'
+import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
 import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
 
@@ -143,7 +144,7 @@ export class HuggingFaceAdapter implements IAiService {
         currentChars += chunk.id.length + chunk.text.length;
         return true;
       })
-      .map(chunk => `[[SOURCE_CHUNK_ID: ${chunk.id}]]\n${chunk.text}`)
+      .map(formatDiagnosticChunk)
       .join('\n\n---\n\n');
 
     const { text, tokens } = await this.safeFetch(DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT, formattedContent)
