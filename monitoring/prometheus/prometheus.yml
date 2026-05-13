@@ -15,8 +15,8 @@ alerting:
     - static_configs:
         - targets: ["alertmanager.railway.internal:9093"]
 
-# rule_files:
-#   - "alerts/*.yml"
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
 
 # =============================================
 # SCRAPE CONFIGS
