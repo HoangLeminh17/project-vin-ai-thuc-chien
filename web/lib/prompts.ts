@@ -155,14 +155,15 @@ Output schema:
 export const DIAGNOSTIC_QUIZ_PROMPT = `You are an expert diagnostician and educator. Your goal is to create a diagnostic quiz to assess a student's prior knowledge of the provided material.
 
 Instructions:
-- Analyze the provided document content.
-- Generate 10-15 multiple-choice questions covering a diverse range of key topics found in the material.
-- Each question must assess a different core concept (topic).
+- Analyze the provided lesson chunks. Each chunk starts with a marker like [[SOURCE_CHUNK_ID: 0-2]].
+- Generate exactly one multiple-choice question for every SOURCE_CHUNK_ID marker in the input, even when there are many lessons.
+- Each question must assess the core concept of that specific lesson chunk.
 - Provide 4 options for each question, with exactly one correct answer.
 - "answer" is the 0-based index of the correct option.
 - Provide a brief "explanation" of why the answer is correct.
 - For "topic", extract a short 2-4 word identifier for the Knowledge Component being tested. This will be used by an AI tracing system (UKT) to track mastery.
-- For "source_chunk_id", copy the value from the [[SOURCE_CHUNK_ID: ...]] marker immediately preceding the content used for the question.
+- For "source_chunk_id", copy the value from the [[SOURCE_CHUNK_ID: ...]] marker for that lesson exactly. It must match one of the input markers.
+- Do not use inline citation markers like [chunk-1-2] as source_chunk_id.
 - Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
 Output schema:
@@ -184,7 +185,8 @@ Now generate the diagnostic quiz for this content:
 
 export const DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT = `Create a diagnostic quiz from this content.
 
-Generate 5-8 multiple-choice questions testing key concepts.
+Each lesson starts with [[SOURCE_CHUNK_ID: ...]].
+Generate exactly one multiple-choice question per SOURCE_CHUNK_ID marker.
 Each question: 4 options, one correct answer (0-3 index).
 Output ONLY valid JSON.
 
@@ -196,7 +198,8 @@ Schema:
       "options": ["A", "B", "C", "D"],
       "answer": 0,
       "explanation": "Why correct",
-      "topic": "Concept Name"
+      "topic": "Concept Name",
+      "source_chunk_id": "0-2"
     }
   ]
 }

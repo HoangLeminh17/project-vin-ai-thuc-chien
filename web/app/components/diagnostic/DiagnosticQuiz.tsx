@@ -23,9 +23,6 @@ export function DiagnosticQuiz({ course, questions, onComplete }: Props) {
   const handleSelect = (qi: number, oi: number) => {
     if (submitted) return
     setAnswers(prev => ({ ...prev, [qi]: oi }))
-    const nextIdx = questions.findIndex((_, i) => i > qi && answers[i] === undefined)
-    if (nextIdx !== -1) setTimeout(() => setCurrentQ(nextIdx), 180)
-    else if (qi < questions.length - 1) setTimeout(() => setCurrentQ(qi + 1), 180)
   }
 
   if (submitted) {

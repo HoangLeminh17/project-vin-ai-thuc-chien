@@ -7,6 +7,8 @@ import { useAuth } from './auth-context';
 import { useCourses } from '../hooks/use-courses';
 import { storage } from '@/lib/firebase-client';
 import { buildValidChunkIds, validateCitationMarkers } from '@/lib/citation-utils';
+import { buildDiagnosticChunks, diagnosticQuestionsCoverChunks } from '@/lib/diagnostic-chunks';
+import type { ContentChunk } from '@/core/ports/ai.port';
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -34,20 +36,19 @@ interface GenerationContextType extends GenerationState {
 
 const GenerationContext = createContext<GenerationContextType | undefined>(undefined);
 
-function buildMarkdown(title: string, course: Course, contentMap: Record<number, ChapterContent>): string {
-  const lines = [`# ${title}`]
-  course.chapters.forEach((ch, ci) => {
-    lines.push(`\n## ${ch.title}`)
-    const chContent = contentMap[ci]
-    if (!chContent) return
-    chContent.lessons.forEach((lesson, li) => {
-      lines.push(`\n### [${ci}-${li}] ${lesson.lesson_title}`)
-      lines.push(`Q: ${lesson.concept.question}`)
-      lines.push(`A: ${lesson.concept.answer}`)
-      if (lesson.concept.detail) lines.push(lesson.concept.detail)
-    })
-  })
-  return lines.join('\n')
+function cachedDiagnosticQuestionsCover(courseId: string, chunks: ContentChunk[]): boolean {
+  const cached = localStorage.getItem(`diagnosticQuestions_${courseId}`)
+  if (!cached) return false
+
+  try {
+    const questions = JSON.parse(cached)
+    if (diagnosticQuestionsCoverChunks(questions, chunks)) return true
+  } catch {
+    // Invalid cache will be removed below.
+  }
+
+  localStorage.removeItem(`diagnosticQuestions_${courseId}`)
+  return false
 }
 
 export function GenerationProvider({ children }: { children: React.ReactNode }) {
@@ -84,17 +85,23 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     setParseProgress(null);
   }, []);
 
-  const runDiagnosticPrefetch = useCallback((courseId: string, markdown: string) => {
+  const runDiagnosticPrefetch = useCallback((courseId: string, chunks: ContentChunk[]) => {
+    if (chunks.length === 0) {
+      setDiagnosticStatus('error')
+      return
+    }
+
     setDiagnosticStatus('loading')
     fetch('/api/diagnostic-quiz', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ markdown }),
+      body: JSON.stringify({ chunks }),
     })
       .then(res => res.json())
       .then(data => {
-        if (data.quiz?.questions?.length) {
-          localStorage.setItem(`diagnosticQuestions_${courseId}`, JSON.stringify(data.quiz.questions))
+        const questions = data.quiz?.questions ?? []
+        if (diagnosticQuestionsCoverChunks(questions, chunks)) {
+          localStorage.setItem(`diagnosticQuestions_${courseId}`, JSON.stringify(questions))
           setDiagnosticStatus('done')
         } else {
           setDiagnosticStatus('error')
@@ -289,11 +296,12 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           const map: Record<number, ChapterContent> = {}
           existing.courseContent.chapters.forEach((ch, i) => { map[i] = ch })
           setCourseContentMap(map)
+          const diagnosticChunks = buildDiagnosticChunks(existing.title, existing.course, map)
           if (
-            !localStorage.getItem(`diagnosticQuestions_${existing.id}`) &&
+            !cachedDiagnosticQuestionsCover(existing.id, diagnosticChunks) &&
             !localStorage.getItem(`diagnosticDone_${existing.id}`)
           ) {
-            runDiagnosticPrefetch(existing.id, buildMarkdown(existing.title, existing.course, map))
+            runDiagnosticPrefetch(existing.id, diagnosticChunks)
           }
           localStorage.setItem(`justGenerated_${existing.id}`, 'true')
           setSavedCourseId(existing.id);
@@ -323,7 +331,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           if (saved) {
             setSavedCourseId(saved.id);
             localStorage.setItem(`justGenerated_${saved.id}`, 'true')
-            runDiagnosticPrefetch(saved.id, buildMarkdown(resolvedCourse.title, resolvedCourse, map))
+            runDiagnosticPrefetch(saved.id, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, map))
           }
         }
         setStatus('done');
@@ -342,12 +350,13 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             setSavedCourseId(saved.id);
             localStorage.setItem(`justGenerated_${saved.id}`, 'true')
             const fallbackMap: Record<number, ChapterContent> = {}
-            chapterList.forEach((ch, i) => { fallbackMap[i] = ch })
-            runDiagnosticPrefetch(saved.id, buildMarkdown(resolvedCourse.title, resolvedCourse, fallbackMap))
+            results.forEach((ch, i) => { if (ch) fallbackMap[i] = ch })
+            runDiagnosticPrefetch(saved.id, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, fallbackMap))
           }
         }
         setStatus('done');
       } else {
+        const accumulatedChapterMap: Record<number, ChapterContent> = {}
         for (const i of chapters) {
           const chapterLessons = resolvedCourse!.chapters[i]?.lessons ?? []
           const rawContexts = chapterLessons.map(l => extractRawContext(contentList, l.source_chunk_start, l.source_chunk_end))
@@ -355,6 +364,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           if (ch) {
             if (validChunkIds.size > 0) validateCitationMarkers(ch, validChunkIds)
             accumulatedChapters.push(ch);
+            accumulatedChapterMap[i] = ch
             if (user && resolvedCourse) {
               const content: CourseContent = { chapters: [...accumulatedChapters] };
               if (!currentSavedId) {
@@ -363,14 +373,18 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
                   currentSavedId = saved.id;
                   setSavedCourseId(saved.id);
                   localStorage.setItem(`justGenerated_${saved.id}`, 'true')
-                  // Fire diagnostic quiz in parallel as soon as we have a courseId
-                  runDiagnosticPrefetch(saved.id, markdown)
                 }
               } else {
                 await updateCourse(currentSavedId, content);
               }
             }
           }
+        }
+        if (currentSavedId && user && resolvedCourse) {
+          runDiagnosticPrefetch(
+            currentSavedId,
+            buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, accumulatedChapterMap),
+          )
         }
         setStatus('done');
       }
