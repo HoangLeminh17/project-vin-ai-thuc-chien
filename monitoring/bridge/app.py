@@ -15,7 +15,8 @@ app = FastAPI(title="Alertmanager Discord Bridge", version="1.0.0")
 
 
 def _utc_now_iso() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    # Discord prefers RFC3339/ISO8601 timestamps without microseconds.
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _severity_color(sev: str) -> int:
@@ -94,8 +95,11 @@ def _build_payload(am: Dict[str, Any]) -> Dict[str, Any]:
     add_field("service", common_labels.get("service") or common_labels.get("job"))
     add_field("env", common_labels.get("environment") or common_labels.get("env"))
 
+    # Provide both `content` and `embeds` to maximize compatibility with
+    # different Discord webhook settings and validation.
     payload: Dict[str, Any] = {
         "username": DISCORD_USERNAME,
+        "content": f"{status.upper()}: {title}",
         "embeds": [embed],
     }
     if DISCORD_AVATAR_URL:
