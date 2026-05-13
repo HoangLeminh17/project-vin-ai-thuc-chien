@@ -8,6 +8,7 @@ import { useCourses } from '../hooks/use-courses';
 import { storage } from '@/lib/firebase-client';
 import { buildValidChunkIds, validateCitationMarkers } from '@/lib/citation-utils';
 import { buildDiagnosticChunks, diagnosticQuestionsCoverChunks } from '@/lib/diagnostic-chunks';
+import { courseContentHasLegacyDetail } from '@/lib/course-content-version';
 import type { ContentChunk } from '@/core/ports/ai.port';
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
@@ -292,7 +293,11 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       );
       if (existing) {
         const check = await fetch(`/api/courses/${existing.id}`)
-        if (check.ok && existing.courseContent?.chapters?.length) {
+        if (
+          check.ok &&
+          existing.courseContent?.chapters?.length &&
+          !courseContentHasLegacyDetail(existing.courseContent)
+        ) {
           const map: Record<number, ChapterContent> = {}
           existing.courseContent.chapters.forEach((ch, i) => { map[i] = ch })
           setCourseContentMap(map)
@@ -320,7 +325,12 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       const hasLegacyOutline = resolvedCourse.chapters.some(ch =>
         ch.lessons.some(l => isLegacyOutline(l.outline))
       )
-      if (fromCache && data.courseContent?.chapters?.length && !hasLegacyOutline) {
+      if (
+        fromCache &&
+        data.courseContent?.chapters?.length &&
+        !hasLegacyOutline &&
+        !courseContentHasLegacyDetail(data.courseContent)
+      ) {
         const cachedChapters = data.courseContent.chapters as ChapterContent[] || [];
         const map: Record<number, ChapterContent> = {};
         cachedChapters.forEach((ch: ChapterContent, i: number) => { map[i] = ch; });

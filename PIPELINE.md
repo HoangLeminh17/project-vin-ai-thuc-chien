@@ -449,7 +449,7 @@ Estimated reduction for new generated courses:
 | Collection/path | Key | Content | Bypass |
 | :--- | :--- | :--- | :--- |
 | `course_cache/{hash}` | markdown content hash | Stage 1 `Course` JSON | `force:true`, used when legacy `string[]` outline is detected |
-| `course_cache/{hash}/chapters/{i}` | chapter index | Stage 2 `ChapterContent` | skipped when chapter outline is legacy |
+| `course_cache/{hash}/chapters/{i}` | chapter index | Stage 2 `ChapterContent` | skipped when chapter outline is legacy or cached card content still has legacy `detail` |
 | `courses/{id}` | Firestore doc ID | SavedCourse, content hash, PDF/layout storage refs | n/a |
 
 ### Storage paths
