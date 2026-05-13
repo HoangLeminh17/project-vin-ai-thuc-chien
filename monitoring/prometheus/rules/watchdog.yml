@@ -1,0 +1,14 @@
+groups:
+  - name: meta
+    interval: 30s
+    rules:
+      # Standard "is alerting wired up" signal.
+      # Fires continuously; Alertmanager will group/repeat based on its route settings.
+      - alert: Watchdog
+        expr: vector(1)
+        labels:
+          severity: info
+          service: monitoring
+        annotations:
+          summary: "Alerting pipeline is working"
+          description: "This alert is always firing to verify Prometheus -> Alertmanager -> Discord bridge delivery."

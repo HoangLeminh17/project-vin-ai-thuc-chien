@@ -134,10 +134,25 @@ services:
       context: ./monitoring/alertmanager
       dockerfile: Dockerfile
     environment:
-      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - DISCORD_BRIDGE_URL=http://discord-bridge.railway.internal:8080/alertmanager
     ports:
       - "9093:9093"
     networks:
       default:
         aliases:
           - alertmanager.railway.internal
+
+  # Discord bridge for Alertmanager webhooks
+  discord-bridge:
+    build:
+      context: ./monitoring/bridge
+      dockerfile: Dockerfile
+    environment:
+      - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
+      - DISCORD_USERNAME=Alertmanager
+    ports:
+      - "8080:8080"
+    networks:
+      default:
+        aliases:
+          - discord-bridge.railway.internal
