@@ -1,5 +1,6 @@
 import { IAiService, TokenUsage } from '../ports/ai.port'
 import type { Course } from '../models/learning-model'
+import { normalizeCourseKnowledge } from '../models/knowledge'
 import { IUsageRepository } from '../ports/usage-repository.port'
 
 export class GenerateCourseUseCase {
@@ -22,6 +23,7 @@ export class GenerateCourseUseCase {
 
     if (estimatedTokens <= MAX_TOKENS) {
       const result = await this.aiService.generateCourse(markdown)
+      result.course = normalizeCourseKnowledge(result.course)
       if (result.tokens && this.usageRepo) {
         this.usageRepo.saveTokenUsage({
           timestamp: new Date().toISOString(),
@@ -128,6 +130,6 @@ export class GenerateCourseUseCase {
       }).catch(() => {});
     }
 
-    return { course: merged, tokens: summed }
+    return { course: normalizeCourseKnowledge(merged), tokens: summed }
   }
 }

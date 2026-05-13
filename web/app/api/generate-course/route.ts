@@ -4,6 +4,7 @@ import { generateCourseUseCase, courseRepository, logger, verifySessionUseCase, 
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 import { getContentHash } from '@/lib/crypto-utils'
+import { normalizeCourseKnowledge } from '@/core/models/knowledge'
 
 const handler = async (req: NextRequest) => {
   // 1. Verify User Session
@@ -49,9 +50,10 @@ const handler = async (req: NextRequest) => {
   if (!force) {
     const cached = await courseRepository.getFullCachedCourse(hash)
     if (cached) {
+      const course = normalizeCourseKnowledge(cached.course)
       return NextResponse.json({
         success: true,
-        course: cached.course,
+        course,
         courseContent: cached.content,
         fromCache: true,
         hash

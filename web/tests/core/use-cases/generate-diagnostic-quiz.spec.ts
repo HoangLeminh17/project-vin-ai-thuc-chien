@@ -95,4 +95,45 @@ describe('GenerateDiagnosticQuizUseCase', () => {
 
     expect(result.quiz.questions.map(q => q.source_chunk_id)).toEqual(['0-0', '0-1']);
   });
+
+  it('should attach KC metadata from the source chunk instead of trusting AI topic text', async () => {
+    const mockQuiz = {
+      questions: [
+        {
+          question: 'Question A?',
+          options: ['A', 'B', 'C', 'D'],
+          answer: 0,
+          explanation: 'Because A',
+          topic: 'AI free text',
+          kc_id: 'made.up',
+          source_chunk_id: '0-0'
+        }
+      ]
+    };
+
+    const mockAiService = {
+      generateCourse: vi.fn(),
+      generateDiagnosticQuiz: vi.fn().mockResolvedValue({ quiz: mockQuiz, tokens: null })
+    };
+
+    const useCase = new GenerateDiagnosticQuizUseCase(mockAiService);
+    const chunks = [{
+      id: '0-0',
+      text: 'A',
+      kc_id: 'physiology.homeostasis',
+      kc_name: 'Homeostasis and feedback',
+      module_id: 'physiology',
+      module_name: 'Physiology'
+    }];
+    const result = await useCase.execute(chunks);
+
+    expect(result.quiz.questions[0]).toMatchObject({
+      topic: 'Homeostasis and feedback',
+      kc_id: 'physiology.homeostasis',
+      kc_name: 'Homeostasis and feedback',
+      module_id: 'physiology',
+      module_name: 'Physiology',
+      source_chunk_id: '0-0'
+    });
+  });
 });

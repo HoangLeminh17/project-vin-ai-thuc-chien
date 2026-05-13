@@ -45,6 +45,7 @@ web/
     entities/                        # user/card-progress entities
     errors/                          # domain exceptions
     models/                          # learning-model, saved-course
+      knowledge.ts                   # fixed medical modules + deterministic KC registry
     ports/                           # Clean Architecture interfaces
     use-cases/                       # business logic
     utils/                           # SM2 + use-case logging
@@ -63,6 +64,8 @@ web/
     citation-utils.ts                # valid chunk IDs + marker validation
     citations.ts                     # parse citation markers for UI
     crypto-utils.ts                  # content hash
+    diagnostic-format.ts             # diagnostic prompt chunk markers incl. KC metadata
+    knowledge-prompt.ts              # prompt-facing fixed medical KC registry text
     prompts.ts                       # Planner, Stage 2, diagnostic prompts
     stage2-chunking.ts               # split/merge giant Stage 2 inputs
   scripts/
@@ -98,6 +101,7 @@ web/core/
     generate-course.usecase.ts
     parse-document.usecase.ts
   models/
+    knowledge.ts
     learning-model.ts
     saved-course.ts
 ```
@@ -154,6 +158,8 @@ UKT/
 ```
 
 UKT chay rieng o `http://localhost:8000` trong Docker Compose, duoc web app goi qua `UKT_SERVICE_URL`.
+
+`/predict` seeds or refreshes KC state from quiz interactions. `/update` also initializes a missing student state so SRS-only users can still produce UKT signals after skipping diagnostics.
 
 ### Monitoring
 
@@ -212,6 +218,7 @@ Docker Compose khoi dong Redis, UKT, web, Prometheus, Grafana, OpenTelemetry Col
 | GET | `/api/progress/stats` | `web/app/api/progress/stats/route.ts` | Due/new/learning/streak stats |
 | GET | `/api/progress/due` | `web/app/api/progress/due/route.ts` | Cards due for review |
 | POST | `/api/progress/review` | `web/app/api/progress/review/route.ts` | Submit SM2 rating |
+| POST | `/api/ukt/interactions` | `web/app/api/ukt/interactions/route.ts` | Seed UKT with KC-tagged diagnostic quiz interactions |
 
 ### Admin and health
 
@@ -250,9 +257,19 @@ type OutlinePoint = {
 type Lesson = {
   title: string
   key_concept: string
+  knowledge?: KnowledgeComponentRef
   outline: OutlinePoint[]
   source_chunk_start?: string
   source_chunk_end?: string
+}
+
+type KnowledgeComponentRef = {
+  kc_id: string
+  kc_name: string
+  module_id: string
+  module_name: string
+  map_version: string       // current default: medical-v1
+  confidence?: number
 }
 
 type Course = {
@@ -265,6 +282,10 @@ type ConceptCard = {
   answer: string
   detail?: string
   followUps: string[]
+  kc_id?: string
+  kc_name?: string
+  module_id?: string
+  module_name?: string
   source_chunk_start?: string
   source_chunk_end?: string
   source_chunk_id?: string      // legacy
@@ -276,6 +297,10 @@ type QuizQuestion = {
   options: string[]
   answer: number
   explanation: string
+  kc_id?: string
+  kc_name?: string
+  module_id?: string
+  module_name?: string
   source_chunk_id?: string
 }
 
@@ -298,6 +323,12 @@ type ProgressEntry = {
 }
 
 type ProgressMap = Record<string, ProgressEntry> // key = "ci-li"
+
+type CardProgress = {
+  topic?: string        // legacy KC id storage
+  kcId?: string         // deterministic KC id for UKT
+  moduleId?: string     // spider chart module axis
+}
 ```
 
 Generation state:
@@ -306,6 +337,34 @@ Generation state:
 type GenerationStatus = 'idle' | 'parsing' | 'generating' | 'done'
 type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error'
 ```
+
+---
+
+## Knowledge Components
+
+KC identity is now deterministic and registry-backed so UKT can trace mastery across sessions and documents.
+
+Source of truth:
+
+- `web/core/models/knowledge.ts`
+- `KNOWLEDGE_MAP_VERSION = medical-v1`
+- Fixed spider chart modules: Anatomy, Physiology, Pharmacology, Microbiology, Pathology, Clinical Medicine, Biochemistry, Immunology.
+- Each KC has stable `kc_id`, display `kc_name`, and parent `module_id`.
+
+Rules:
+
+- Stage 1 Planner must classify each lesson into `Lesson.knowledge`.
+- The Planner may only choose a `kc_id` from the fixed registry. It must not invent free-text KC IDs.
+- Server-side `normalizeCourseKnowledge()` validates LLM output and falls back deterministically to `{module}.general` or `clinical.general`.
+- Stage 2 does not own KC identity. It receives `knowledge` as input and `attachChunkRange()` attaches `kc_id/module_id` to generated concept cards.
+- Diagnostic quiz questions copy KC metadata from lesson chunks, then `GenerateDiagnosticQuizUseCase` overwrites AI output from the trusted chunk map.
+- UKT receives `kc_id`, not free-text `topic`.
+
+Spider chart semantics:
+
+- Axis = `module_id` from the fixed module list.
+- Axis score should aggregate UKT `p_correct` or `mu` across KCs in that module.
+- Diagnostic and SRS both write signals to the same KC namespace.
 
 ---
 
@@ -335,6 +394,7 @@ POST /api/generate-course
     |
     | Stage 1 Planner through GenerateCourseUseCase
     | ChainAiAdapter prefers configured providers from di/ai.di.ts
+    | lessons are normalized with deterministic Lesson.knowledge KC metadata
     | cache: course_cache/{hash}
     |
     | if cached outline is legacy string[]:
@@ -344,6 +404,7 @@ POST /api/generate-content
     |
     | Stage 2 Generator per chapter
     | input = chapter outline + raw_context extracted from contentList
+    | input also carries Lesson.knowledge; concept cards get kc_id/module_id attached post-generation
     | large chapter input is split/merged by stage2-chunking.ts
     | cache: course_cache/{hash}/chapters/{i}
     |
@@ -352,7 +413,7 @@ POST /api/generate-content
 Save partial/full course to Firestore courses/{id}
     |
     | after full course content is available:
-    | build one diagnostic chunk per lesson id ("ci-li")
+    | build one diagnostic chunk per lesson id ("ci-li") with trusted kc_id/module_id metadata
     | fire-and-forget POST /api/diagnostic-quiz with { chunks }
     | localStorage diagnosticQuestions_{id}
     v
@@ -421,10 +482,12 @@ Main branches inside `startGeneration()`:
 
 - Sets `diagnosticStatus = 'loading'`.
 - POSTs to `/api/diagnostic-quiz`.
-- Input chunks are built by `lib/diagnostic-chunks.ts`; each lesson becomes `{ id: "ci-li", text }`.
+- Input chunks are built by `lib/diagnostic-chunks.ts`; each lesson becomes `{ id: "ci-li", text, kc_id, kc_name, module_id, module_name }`. Text is truncated to 400 characters per chunk to keep prompt size manageable for large courses.
+- AI adapter formatting adds `[[KC_ID: ...]]` and module markers next to each `[[SOURCE_CHUNK_ID: ...]]`.
+- `GenerateDiagnosticQuizUseCase` normalizes `source_chunk_id` and overwrites quiz KC metadata from the trusted chunk map.
 - Inline source citations like `[chunk-X-Y]` are stripped from chunk text before diagnostic generation.
-- On success stores `diagnosticQuestions_{id}` in `localStorage` only if questions cover every lesson chunk id.
-- On failure, empty response, or incomplete coverage sets `diagnosticStatus = 'error'`.
+- On success stores `diagnosticQuestions_{id}` in `localStorage` if at least one question is returned (`diagnosticQuestionsAreValid`). Partial coverage is accepted - lessons without a question simply remain grey in CourseTree.
+- On failure or empty response sets `diagnosticStatus = 'error'`.
 
 ---
 
@@ -468,9 +531,11 @@ Rules:
 
 - `justGenerated_{id}` is consumed on first mount and still routes through `diagnostic-intro`.
 - `diagnosticDone_{id}` skips the intro and restores `diagnosticResults_{id}` when present.
-- Cached `diagnosticQuestions_{id}` are consumed before calling `/api/diagnostic-quiz` only when they cover every lesson chunk id.
-- Stale `diagnosticQuestions_{id}` / `diagnosticResults_{id}` using legacy ids such as `legacy-full` are discarded and regenerated.
+- Cached `diagnosticQuestions_{id}` are consumed if they are non-empty (`diagnosticQuestionsAreValid`). Strict full-coverage is no longer required - a partial quiz is usable.
+- Stale `diagnosticResults_{id}` are discarded only when none of the result keys match any current lesson id (`diagnosticResultsAreRelevant`). Partial results from large-course diagnostics are preserved.
+- Stale `diagnosticQuestions_{id}` using the legacy `legacy-full` id (no valid lesson keys) are discarded and regenerated.
 - `diagnostic-error` gives retry/skip instead of silently skipping.
+- On diagnostic completion, `DiagnosticResults` posts KC-tagged interactions to `/api/ukt/interactions`; local coloring continues even if UKT is unavailable.
 
 LocalStorage keys:
 
@@ -505,6 +570,8 @@ Mastery priority in `lessonMastery()`:
 ## SRS Review
 
 `StudyMode` submits ratings to `/api/progress/review`.
+
+The request includes `kcId` and `moduleId` from the concept card when available. `ReviewCardUseCase` stores `kcId/moduleId` on `CardProgress`, keeps `topic` as a legacy alias, and calls UKT `/update` with `kc_id = kcId`.
 
 | Rating | Label | Interval intent | Key |
 | :--- | :--- | :--- | :--- |

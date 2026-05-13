@@ -47,7 +47,31 @@ export function DiagnosticResults({ questions, answers, onComplete }: Props) {
   const r = 42
   const circumference = 2 * Math.PI * r
 
-  const handleStart = () => onComplete(buildResults(questions, answers))
+  const handleStart = async () => {
+    const timestamp = Math.floor(Date.now() / 1000)
+    const interactions = questions
+      .map((q, index) => ({
+        question_id: index + 1,
+        kc_id: q.kc_id,
+        response: answers[index] === q.answer ? 1 : 0,
+        timestamp: timestamp + index,
+      }))
+      .filter(interaction => Boolean(interaction.kc_id))
+
+    if (interactions.length > 0) {
+      try {
+        await fetch('/api/ukt/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ interactions, total_minutes: 45 }),
+        })
+      } catch {
+        // UKT is advisory; local diagnostic coloring should still continue.
+      }
+    }
+
+    onComplete(buildResults(questions, answers))
+  }
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: T.bg, overflow: 'hidden', fontFamily: T.fontSans }}>

@@ -7,6 +7,7 @@ function normalizeDiagnosticQuiz(quiz: DiagnosticQuiz, chunks: ContentChunk[]): 
   if (orderedIds.length === 0) return quiz
 
   const validIds = new Set(orderedIds)
+  const chunkById = new Map(chunks.map(chunk => [chunk.id, chunk]))
   const usedIds = new Set<string>()
 
   return {
@@ -26,8 +27,15 @@ function normalizeDiagnosticQuiz(quiz: DiagnosticQuiz, chunks: ContentChunk[]): 
         usedIds.add(normalizedId)
       }
 
+      const sourceChunk = normalizedId ? chunkById.get(normalizedId) : undefined
+
       return {
         ...question,
+        topic: sourceChunk?.kc_name ?? question.topic,
+        kc_id: sourceChunk?.kc_id ?? question.kc_id,
+        kc_name: sourceChunk?.kc_name ?? question.kc_name,
+        module_id: sourceChunk?.module_id ?? question.module_id,
+        module_name: sourceChunk?.module_name ?? question.module_name,
         source_chunk_id: normalizedId,
       }
     }),

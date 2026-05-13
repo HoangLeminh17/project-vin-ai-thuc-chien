@@ -21,7 +21,7 @@ export class GetPrioritizedDueCardsUseCase {
       const prediction = await this.uktService.predict({
         student_id: userId,
         interactions: interactions || [],
-        total_minutes: 0 // placeholder
+        total_minutes: 45
       });
 
       const priorityOrder = prediction.priority_order || [];
@@ -30,8 +30,8 @@ export class GetPrioritizedDueCardsUseCase {
       // If a card's topic is in priorityOrder, sort by its index (lower index = higher priority).
       // If not in priorityOrder, put it at the end.
       return dueCards.sort((a, b) => {
-        const topicA = a.topic || '';
-        const topicB = b.topic || '';
+        const topicA = a.kcId || a.topic || '';
+        const topicB = b.kcId || b.topic || '';
         
         const idxA = priorityOrder.indexOf(topicA);
         const idxB = priorityOrder.indexOf(topicB);

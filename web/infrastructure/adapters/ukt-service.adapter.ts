@@ -25,7 +25,22 @@ export class UKTServiceAdapter implements IUKTService {
   }
 
   async predict(req: PredictRequest): Promise<PredictResponse> {
-    return this.uktFetch<PredictResponse>('/predict', req);
+    const now = Math.floor(Date.now() / 1000);
+    return this.uktFetch<PredictResponse>('/predict', {
+      ...req,
+      total_minutes: Math.max(5, req.total_minutes || 45),
+      interactions: req.interactions.map((interaction, index) => {
+        const parsedQuestionId = typeof interaction.question_id === 'number'
+          ? interaction.question_id
+          : Number.parseInt(interaction.question_id, 10);
+
+        return {
+          ...interaction,
+          question_id: Number.isFinite(parsedQuestionId) ? parsedQuestionId : index + 1,
+          timestamp: interaction.timestamp ?? now + index,
+        };
+      }),
+    });
   }
 
   async update(req: UpdateRequest): Promise<UpdateResponse> {

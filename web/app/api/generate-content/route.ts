@@ -65,6 +65,10 @@ const handler = async (req: NextRequest) => {
             ? l.outline.slice(0, 2).join('. ') 
             : l.outline.slice(0, 2).map(o => o.point).join('. '),
           followUps: [] as string[],
+          kc_id: l.knowledge?.kc_id,
+          kc_name: l.knowledge?.kc_name,
+          module_id: l.knowledge?.module_id,
+          module_name: l.knowledge?.module_name,
         },
       })),
       quiz: {

@@ -19,6 +19,14 @@ const course: Course = {
         {
           title: 'Lesson A',
           key_concept: 'Concept A',
+          knowledge: {
+            kc_id: 'physiology.homeostasis',
+            kc_name: 'Homeostasis and feedback',
+            module_id: 'physiology',
+            module_name: 'Physiology',
+            map_version: 'medical-v1',
+            confidence: 0.9,
+          },
           source_chunk_start: 'chunk-0-1',
           source_chunk_end: 'chunk-0-2',
           outline: [{ point: 'Outline A [chunk-0-1]', chunks: ['chunk-0-1'] }],
@@ -26,6 +34,14 @@ const course: Course = {
         {
           title: 'Lesson B',
           key_concept: 'Concept B',
+          knowledge: {
+            kc_id: 'pharmacology.pharmacodynamics',
+            kc_name: 'Pharmacodynamics',
+            module_id: 'pharmacology',
+            module_name: 'Pharmacology',
+            map_version: 'medical-v1',
+            confidence: 0.8,
+          },
           source_chunk_start: 'chunk-0-3',
           source_chunk_end: 'chunk-0-4',
           outline: [{ point: 'Outline B', chunks: ['chunk-0-3'] }],
@@ -70,8 +86,15 @@ describe('diagnostic chunks', () => {
     expect(chunks).toHaveLength(2)
     expect(chunks.map(chunk => chunk.id)).toEqual(['0-0', '0-1'])
     expect(chunks[0].text).toContain('Lesson: Lesson A')
+    expect(chunks[0].text).toContain('Knowledge component: Homeostasis and feedback')
     expect(chunks[0].text).toContain('Concept answer: A is first.')
     expect(chunks[0].text).not.toContain('[chunk-0-1]')
+    expect(chunks[0]).toMatchObject({
+      kc_id: 'physiology.homeostasis',
+      kc_name: 'Homeostasis and feedback',
+      module_id: 'physiology',
+      module_name: 'Physiology',
+    })
   })
 
   it('can build chunks directly from a saved course', () => {

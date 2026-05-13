@@ -8,9 +8,10 @@ export interface KCState {
 export interface PredictRequest {
   student_id: string;
   interactions: Array<{
-    question_id: string;
+    question_id: number | string;
     kc_id: string;
     response: number; // 0 or 1
+    timestamp?: number;
   }>;
   total_minutes: number;
 }

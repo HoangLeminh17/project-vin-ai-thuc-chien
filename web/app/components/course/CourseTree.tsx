@@ -63,11 +63,18 @@ function flattenCards(course: SavedCourse): FlatCard[] {
     const chContent = content.chapters[ci]
     if (!chContent) return
     chContent.lessons.forEach((lesson, li) => {
+      const knowledge = ch.lessons[li]?.knowledge
       cards.push({
         id: `${ci}-${li}`,
         ci, chapterTitle: ch.title,
         li, lessonTitle: lesson.lesson_title,
-        concept: lesson.concept,
+        concept: {
+          ...lesson.concept,
+          kc_id: lesson.concept.kc_id ?? knowledge?.kc_id,
+          kc_name: lesson.concept.kc_name ?? knowledge?.kc_name,
+          module_id: lesson.concept.module_id ?? knowledge?.module_id,
+          module_name: lesson.concept.module_name ?? knowledge?.module_name,
+        },
       })
     })
   })

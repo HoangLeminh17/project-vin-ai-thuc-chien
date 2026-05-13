@@ -27,6 +27,9 @@ export async function submitRating(card: FlatCard, ratingIndex: number) {
       rating: ratingIndex,
       question: card.concept.question,
       answer: card.concept.answer,
+      kcId: card.concept.kc_id,
+      moduleId: card.concept.module_id,
+      topic: card.concept.kc_id,
     }),
   })
 }

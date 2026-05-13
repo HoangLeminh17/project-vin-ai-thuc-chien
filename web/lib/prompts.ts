@@ -1,4 +1,8 @@
+import { KNOWLEDGE_MAP_PROMPT_CONTEXT } from './knowledge-prompt'
+
 export const PLANNER_PROMPT = `You are a curriculum designer. Given a document's content, your job is to organize it into a structured course with chapters and lessons.
+
+${KNOWLEDGE_MAP_PROMPT_CONTEXT}
 
 Instructions:
 - Read the entire content carefully.
@@ -12,6 +16,11 @@ Instructions:
 - Group the remaining content into logical chapters and lessons.
 - Include ALL topics found in the document as separate lessons. Do NOT merge multiple topics into one lesson. Do NOT skip any topic even if it seems minor.
 - Each lesson should have a clear title and a one-sentence key_concept summary.
+- Each lesson MUST include a knowledge object:
+  { "kc_id": "...", "kc_name": "...", "module_id": "...", "module_name": "...", "map_version": "medical-v1", "confidence": 0.0-1.0 }
+  - Choose kc_id only from the Knowledge Components list above. Never invent or rewrite kc_id.
+  - kc_name, module_id, and module_name must exactly match that selected kc_id.
+  - If no specific KC fits, choose the .general KC for the best matching module.
 - Each chapter MUST have a quiz with a topic string — a short description of what should be tested at the end of the chapter.
 - outline: Extract 4–8 factual bullet points for this lesson. Each bullet MUST be an object:
   { "point": "Factual statement...", "chunks": ["chunk-X-Y", ...] }
@@ -37,6 +46,14 @@ Output schema:
         {
           "title": "Lesson title",
           "key_concept": "One sentence summarizing the key idea",
+          "knowledge": {
+            "kc_id": "physiology.homeostasis",
+            "kc_name": "Homeostasis and feedback",
+            "module_id": "physiology",
+            "module_name": "Physiology",
+            "map_version": "medical-v1",
+            "confidence": 0.85
+          },
           "source_chunk_start": "chunk-1-5",
           "source_chunk_end": "chunk-1-9",
           "outline": [
@@ -57,11 +74,14 @@ Now process this document:
 
 export const PLANNER_PROMPT_LIGHTWEIGHT = `You are a curriculum designer. Organize document content into chapters and lessons.
 
+${KNOWLEDGE_MAP_PROMPT_CONTEXT}
+
 Rules:
 - "---" marks chapter boundary
 - "##" marks chapter — one per section
 - "###" marks lesson — one per section
-- Each lesson needs: title, key_concept (1 sentence), outline (3-5 bullet points)
+- Each lesson needs: title, key_concept (1 sentence), knowledge, outline (3-5 bullet points)
+- knowledge.kc_id MUST come from the Knowledge Components list above. Never invent kc_id.
 - Each chapter needs: quiz with topic
 - Skip: TOC, disclaimers, references, glossary, appendix, copyright
 - Output ONLY valid JSON
@@ -76,6 +96,14 @@ Schema:
         {
           "title": "Lesson",
           "key_concept": "One sentence idea",
+          "knowledge": {
+            "kc_id": "clinical.general",
+            "kc_name": "General clinical reasoning",
+            "module_id": "clinical",
+            "module_name": "Clinical Medicine",
+            "map_version": "medical-v1",
+            "confidence": 0.5
+          },
           "outline": [
             { "point": "Fact 1", "chunks": [] },
             { "point": "Fact 2", "chunks": [] }
@@ -93,6 +121,7 @@ Document:
 export const STAGE2_CHAPTER_PROMPT = `You are an instructional designer creating concept cards and quiz questions for a course chapter.
 
 Each lesson in the input has:
+- \`knowledge\`: deterministic KC metadata with kc_id/module_id selected from the medical knowledge map
 - \`outline\`: structured key points, each with a \`point\` (factual statement) and \`chunks\` (source chunk IDs)
 - \`raw_context\`: verbatim text from the original source document for that lesson (the ground truth)
 
@@ -156,12 +185,17 @@ export const DIAGNOSTIC_QUIZ_PROMPT = `You are an expert diagnostician and educa
 
 Instructions:
 - Analyze the provided lesson chunks. Each chunk starts with a marker like [[SOURCE_CHUNK_ID: 0-2]].
+- A chunk may also include [[KC_ID: ...]], [[KC_NAME: ...]], [[MODULE_ID: ...]], and [[MODULE_NAME: ...]] markers.
 - Generate exactly one multiple-choice question for every SOURCE_CHUNK_ID marker in the input, even when there are many lessons.
 - Each question must assess the core concept of that specific lesson chunk.
 - Provide 4 options for each question, with exactly one correct answer.
 - "answer" is the 0-based index of the correct option.
 - Provide a brief "explanation" of why the answer is correct.
-- For "topic", extract a short 2-4 word identifier for the Knowledge Component being tested. This will be used by an AI tracing system (UKT) to track mastery.
+- For "topic", use the KC_NAME marker when available; otherwise use a short 2-4 word label.
+- For "kc_id", copy the KC_ID marker exactly when available.
+- For "kc_name", copy the KC_NAME marker exactly when available.
+- For "module_id", copy the MODULE_ID marker exactly when available.
+- For "module_name", copy the MODULE_NAME marker exactly when available.
 - For "source_chunk_id", copy the value from the [[SOURCE_CHUNK_ID: ...]] marker for that lesson exactly. It must match one of the input markers.
 - Do not use inline citation markers like [chunk-1-2] as source_chunk_id.
 - Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
@@ -175,6 +209,10 @@ Output schema:
       "answer": 0,
       "explanation": "Brief explanation",
       "topic": "Core Concept Name",
+      "kc_id": "clinical.general",
+      "kc_name": "General clinical reasoning",
+      "module_id": "clinical",
+      "module_name": "Clinical Medicine",
       "source_chunk_id": "0-2"
     }
   ]
@@ -186,6 +224,7 @@ Now generate the diagnostic quiz for this content:
 export const DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT = `Create a diagnostic quiz from this content.
 
 Each lesson starts with [[SOURCE_CHUNK_ID: ...]].
+If present, copy [[KC_ID: ...]], [[KC_NAME: ...]], [[MODULE_ID: ...]], and [[MODULE_NAME: ...]] into each question.
 Generate exactly one multiple-choice question per SOURCE_CHUNK_ID marker.
 Each question: 4 options, one correct answer (0-3 index).
 Output ONLY valid JSON.
@@ -199,6 +238,10 @@ Schema:
       "answer": 0,
       "explanation": "Why correct",
       "topic": "Concept Name",
+      "kc_id": "clinical.general",
+      "kc_name": "General clinical reasoning",
+      "module_id": "clinical",
+      "module_name": "Clinical Medicine",
       "source_chunk_id": "0-2"
     }
   ]

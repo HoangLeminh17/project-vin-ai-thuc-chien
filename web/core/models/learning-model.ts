@@ -1,3 +1,5 @@
+import type { KnowledgeComponentRef } from './knowledge'
+
 /**
  * Domain models for Learning content.
  * Located in Core to prevent leakage of Infrastructure/External schemas.
@@ -11,6 +13,7 @@ export type OutlinePoint = {
 export type Lesson = {
   title: string
   key_concept: string
+  knowledge?: KnowledgeComponentRef
   outline: OutlinePoint[]
   source_chunk_start?: string
   source_chunk_end?: string
@@ -40,6 +43,10 @@ export type ConceptCard = {
   answer: string
   detail?: string
   followUps: string[]
+  kc_id?: string
+  kc_name?: string
+  module_id?: string
+  module_name?: string
   source_chunk_start?: string  // attached post-generation from Stage 1 lesson
   source_chunk_end?: string    // attached post-generation from Stage 1 lesson
   // Legacy fields kept for backward-compat with older saved courses
@@ -52,6 +59,10 @@ export type QuizQuestion = {
   options: string[]
   answer: number
   explanation: string
+  kc_id?: string
+  kc_name?: string
+  module_id?: string
+  module_name?: string
   source_chunk_id?: string
 }
 
@@ -80,6 +91,10 @@ export type DiagnosticQuestion = {
   explanation: string
   source_chunk_id?: string
   topic: string
+  kc_id?: string
+  kc_name?: string
+  module_id?: string
+  module_name?: string
 }
 
 export type DiagnosticQuiz = {
