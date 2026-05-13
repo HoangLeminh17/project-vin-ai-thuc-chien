@@ -10,7 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | TBD |
+| Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | #107 |
 | Stable Knowledge Components + UKT quiz/SRS signals | Nguyen Binh Thanh | #104, #105 |
 | Diagnostic lesson-scoped coverage + partial-coverage acceptance | Nguyen Binh Thanh | #103 |
 | Restore root AI logging scripts | Nguyen Binh Thanh | #102 |
@@ -28,7 +28,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-37] Canonical ConceptCard answer and AI tutor follow-ups - 14/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR TBD (`feat/canonical-card-answer`)
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #107 (`feat/canonical-card-answer`)
 
 **Bối cảnh:** Card editor đang tách `TL;DR` và `Chi tiết` thành hai answer surfaces. Hai field có thể khác nội dung và khác citation, làm learner khó biết đâu là câu trả lời chính thống. Khi thêm cosine similarity/active recall scoring, nhiều answer surfaces sẽ làm muddy source và có nguy cơ chấm điểm theo text không giống UI user vừa học.
 
