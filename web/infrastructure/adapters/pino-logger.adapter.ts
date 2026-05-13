@@ -1,6 +1,7 @@
 import pino from 'pino';
 import { ILoggerPort } from '@/core/ports/logger.port';
 import { logStore } from '../log-store';
+import { createRequire } from 'node:module';
 
 
 export class PinoLoggerAdapter implements ILoggerPort {
@@ -14,12 +15,31 @@ export class PinoLoggerAdapter implements ILoggerPort {
     const lokiUrl = process.env.LOKI_URL || process.env.LOKI_HOST
 
     if (lokiUrl) {
+      // In Next.js `output: 'standalone'`, packages referenced only by string
+      // can be omitted from the output file trace. Force a resolvable target.
+      let transportTarget: string | null = null
+      try {
+        const req = createRequire(__filename)
+        // Ensure it is included/resolvable in standalone output.
+        req('pino-loki')
+        transportTarget = req.resolve('pino-loki')
+      } catch (e) {
+        // If pino-loki isn't present in the runtime image, fall back to stdout.
+        // This avoids crashing the whole app due to logging.
+        console.warn('[Logger] pino-loki not available; falling back to stdout', e)
+      }
+
+      if (!transportTarget) {
+        this.logger = pino({ level })
+        return
+      }
+
       this.logger = pino(
         {
           level,
         },
         pino.transport({
-          target: 'pino-loki',
+          target: transportTarget,
           options: {
             host: lokiUrl,
             labels: {
