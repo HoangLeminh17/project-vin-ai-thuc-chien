@@ -1,6 +1,5 @@
 import { IRateLimitProvider, RateLimitResult } from '@/core/ports/rate-limit.port'
 import Redis from 'ioredis'
-import { InfrastructureError } from '@/core/errors/domain-error'
 
 export interface RedisRateLimitConfig {
   url: string

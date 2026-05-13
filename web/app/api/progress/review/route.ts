@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { verifySessionUseCase, reviewCardUseCase } from '@/infrastructure/di';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
 async function handler(req: NextRequest) {
   const cookieStore = await cookies();
@@ -17,4 +18,4 @@ async function handler(req: NextRequest) {
   return NextResponse.json(nextProgress);
 }
 
-export const POST = withApiLogging('ReviewCard', handler);
+export const POST = withApiLogging('ReviewCard', withApiMetrics('/api/progress/review', handler as any));

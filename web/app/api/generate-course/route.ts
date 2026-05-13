@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 import { generateCourseUseCase, courseRepository, logger, verifySessionUseCase, rateLimiter } from '@/infrastructure/di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 import { getContentHash } from '@/lib/crypto-utils'
 
 const handler = async (req: NextRequest) => {
@@ -73,4 +74,4 @@ const handler = async (req: NextRequest) => {
   return NextResponse.json({ success: true, course, tokens, fromCache: false, hash })
 }
 
-export const POST = withApiLogging('/api/generate-course', handler)
+export const POST = withApiLogging('/api/generate-course', withApiMetrics('/api/generate-course', handler))

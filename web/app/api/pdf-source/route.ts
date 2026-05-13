@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import fs from 'fs/promises'
 import path from 'path'
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
 const OUTPUT_DIR = path.join(process.cwd(), '.mineru-output')
 
-export async function GET(req: NextRequest) {
+export const GET = withApiMetrics('/api/pdf-source', async function GET(req: NextRequest) {
   const filePath = req.nextUrl.searchParams.get('path')
   if (!filePath) {
     return NextResponse.json({ error: 'Missing path param' }, { status: 400 })
@@ -28,4 +29,4 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'File not found' }, { status: 404 })
   }
-}
+})

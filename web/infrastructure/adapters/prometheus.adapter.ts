@@ -6,6 +6,8 @@ export class PrometheusAdapter implements IMonitoringPort {
   private readonly exceptionCounter: Counter
   private readonly eventCounter: Counter
   private readonly metricHistogram: Histogram
+  private readonly apiRequestCounter: Counter
+  private readonly apiRequestDurationMs: Histogram
 
   constructor() {
     this.registry = new Registry()
@@ -35,6 +37,22 @@ export class PrometheusAdapter implements IMonitoringPort {
       buckets: [100, 500, 1000, 2000, 5000, 10000, 30000, 60000], 
       registers: [this.registry],
     })
+
+    // API request metrics (App Router API routes)
+    this.apiRequestCounter = new Counter({
+      name: 'synapsy_api_requests_total',
+      help: 'Total API requests',
+      labelNames: ['route', 'method', 'status'],
+      registers: [this.registry],
+    })
+
+    this.apiRequestDurationMs = new Histogram({
+      name: 'synapsy_api_request_duration_ms',
+      help: 'API request duration in milliseconds',
+      labelNames: ['route', 'method', 'status'],
+      buckets: [5, 10, 25, 50, 100, 250, 500, 1000, 2000, 5000, 10000, 30000],
+      registers: [this.registry],
+    })
   }
 
   captureException(error: Error, context?: Record<string, any>): void {
@@ -54,6 +72,16 @@ export class PrometheusAdapter implements IMonitoringPort {
       metric_name: name,
       provider: tags?.provider || 'none'
     }, value)
+  }
+
+  trackApiRequest(route: string, method: string, status: number, durationMs: number): void {
+    const labels = {
+      route: route || 'unknown',
+      method: (method || 'UNKNOWN').toUpperCase(),
+      status: String(status || 0),
+    }
+    this.apiRequestCounter.inc(labels)
+    this.apiRequestDurationMs.observe(labels, durationMs)
   }
 
   /**

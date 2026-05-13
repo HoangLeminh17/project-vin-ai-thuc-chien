@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifySessionUseCase, saveCourseUseCase, listCoursesUseCase, courseRepository } from '@/infrastructure/registry';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { handleApiError } from '@/lib/api-utils';
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
 async function getHandler(req: NextRequest) {
   const session = req.cookies.get('session')?.value;
@@ -42,5 +43,5 @@ async function postHandler(req: NextRequest) {
   return NextResponse.json({ success: true, course: saved });
 }
 
-export const GET = withApiLogging('/api/courses', (req) => getHandler(req).catch(e => handleApiError(e, 'GET /api/courses')));
-export const POST = withApiLogging('/api/courses', (req) => postHandler(req).catch(e => handleApiError(e, 'POST /api/courses')));
+export const GET = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req) => getHandler(req as any).catch(e => handleApiError(e, 'GET /api/courses')) as any));
+export const POST = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req) => postHandler(req as any).catch(e => handleApiError(e, 'POST /api/courses')) as any));

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createSessionUseCase } from '@/infrastructure/registry';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
 async function loginHandler(req: Request) {
   try {
@@ -30,4 +31,4 @@ async function loginHandler(req: Request) {
   }
 }
 
-export const POST = withApiLogging('LoginAPI', loginHandler);
+export const POST = withApiLogging('LoginAPI', withApiMetrics('/api/auth/login', loginHandler));

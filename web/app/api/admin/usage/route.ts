@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { usageRepository } from '@/infrastructure/di'
 import { withAdminAuth } from '@/lib/middlewares/with-admin-auth'
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
 export const dynamic = 'force-dynamic'
 
-export const GET = withAdminAuth(async function (_req: NextRequest) {
+export const GET = withApiMetrics('/api/admin/usage', withAdminAuth(async function (_req: NextRequest) {
   try {
     const daily = await usageRepository.getDailyUsage(30)
     const recent = await usageRepository.getRecentUsage(50)
@@ -20,5 +21,5 @@ export const GET = withAdminAuth(async function (_req: NextRequest) {
       error: error.message || 'Failed to fetch usage data' 
     }, { status: 500 })
   }
-})
+}))
 

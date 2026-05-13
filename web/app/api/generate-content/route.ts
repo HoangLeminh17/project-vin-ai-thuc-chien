@@ -6,6 +6,7 @@ import { isLegacyOutline } from '@/lib/types'
 import { logger, courseRepository } from '@/infrastructure/di'
 import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
 const handler = async (req: NextRequest) => {
   let body;
@@ -77,6 +78,6 @@ const handler = async (req: NextRequest) => {
   return NextResponse.json({ success: true, courseContent })
 }
 
-export const POST = withApiLogging('/api/generate-content', withAuth(handler))
+export const POST = withApiLogging('/api/generate-content', withApiMetrics('/api/generate-content', withAuth(handler)))
 
 

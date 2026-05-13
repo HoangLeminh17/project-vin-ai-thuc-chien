@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 import { generateDiagnosticQuizUseCase, verifySessionUseCase, rateLimiter } from '@/infrastructure/di'
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
-export async function POST(req: NextRequest) {
+export const POST = withApiMetrics('/api/diagnostic-quiz', async function POST(req: NextRequest) {
   try {
     // 1. Verify User Session
     const session = req.cookies.get('session')?.value;
@@ -42,4 +43,4 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
   }
-}
+})

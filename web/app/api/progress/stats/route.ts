@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { verifySessionUseCase, getSRSStatsUseCase } from '@/infrastructure/di';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
 async function handler() {
   const cookieStore = await cookies();
@@ -15,4 +16,4 @@ async function handler() {
   return NextResponse.json(stats);
 }
 
-export const GET = withApiLogging('GetSRSStats', handler);
+export const GET = withApiLogging('GetSRSStats', withApiMetrics('/api/progress/stats', handler as any));

@@ -3,6 +3,7 @@ import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { verifySessionUseCase, courseRepository } from '@/infrastructure/registry'
 import { getBucket } from '@/lib/firebase-admin'
 import { handleApiError } from '@/lib/api-utils'
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
 const handler = async (req: NextRequest) => {
   const session = req.cookies.get('session')?.value
@@ -28,4 +29,4 @@ const handler = async (req: NextRequest) => {
   })
 }
 
-export const GET = withApiLogging('/api/layout-serve', (req) => handler(req).catch(e => handleApiError(e, 'GET /api/layout-serve')))
+export const GET = withApiLogging('/api/layout-serve', withApiMetrics('/api/layout-serve', (req) => handler(req as any).catch(e => handleApiError(e, 'GET /api/layout-serve')) as any))

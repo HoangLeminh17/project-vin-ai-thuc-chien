@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { progressStore } from '@/infrastructure/di/progress.di'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
 const handler = async (req: NextRequest) => {
   const taskId = req.nextUrl.searchParams.get('taskId')
@@ -18,4 +19,4 @@ const handler = async (req: NextRequest) => {
   return NextResponse.json({ success: true, progress })
 }
 
-export const GET = withApiLogging('/api/parse-pdf/progress', handler)
+export const GET = withApiLogging('/api/parse-pdf/progress', withApiMetrics('/api/parse-pdf/progress', handler))
