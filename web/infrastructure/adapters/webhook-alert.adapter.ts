@@ -7,6 +7,18 @@ export class WebhookAlertAdapter implements IAlertPort {
     }
   }
 
+  private get webhookKind(): 'discord' | 'slack' {
+    // Slack incoming webhooks are typically under hooks.slack.com/services/...
+    if (/hooks\.slack\.com\/services\//i.test(this.webhookUrl)) return 'slack'
+    return 'discord'
+  }
+
+  private formatContext(context?: AlertContext): string {
+    if (!context) return ''
+    const lines = Object.entries(context).map(([k, v]) => `${k}: ${String(v)}`)
+    return lines.length ? `\n${lines.join('\n')}` : ''
+  }
+
   private async postToWebhook(payload: any): Promise<void> {
     if (!this.webhookUrl) {
       console.warn('[WebhookAlertAdapter/Local]', JSON.stringify(payload, null, 2));
@@ -23,7 +35,11 @@ export class WebhookAlertAdapter implements IAlertPort {
       });
 
       if (!response.ok) {
-        console.error(`[WebhookAlertAdapter] Failed to send alert. Status: ${response.status}`);
+        let bodyText = ''
+        try {
+          bodyText = await response.text()
+        } catch {}
+        console.error(`[WebhookAlertAdapter] Failed to send alert. Status: ${response.status}`, bodyText.slice(0, 1000));
       }
     } catch (e) {
       console.error('[WebhookAlertAdapter] Error sending alert webhook:', e);
@@ -31,61 +47,67 @@ export class WebhookAlertAdapter implements IAlertPort {
   }
 
   async sendAlert(message: string, context?: AlertContext): Promise<void> {
-    const payload = {
-      content: `🚨 **ALERT:** ${message}`,
-      embeds: [
-        {
-          title: 'Alert Context',
-          color: 16753920, // Orange
-          fields: context ? Object.entries(context).map(([key, value]) => ({
-            name: key,
-            value: String(value),
-            inline: true
-          })) : [],
-          timestamp: new Date().toISOString()
-        }
-      ]
-    };
+    const payload = this.webhookKind === 'slack'
+      ? { text: `:rotating_light: ALERT: ${message}${this.formatContext(context)}` }
+      : {
+          content: `🚨 **ALERT:** ${message}`,
+          embeds: [
+            {
+              title: 'Alert Context',
+              color: 16753920, // Orange
+              fields: context ? Object.entries(context).map(([key, value]) => ({
+                name: key,
+                value: String(value),
+                inline: true
+              })) : [],
+              timestamp: new Date().toISOString()
+            }
+          ]
+        };
 
     await this.postToWebhook(payload);
   }
 
   async sendErrorAlert(error: Error, context?: AlertContext): Promise<void> {
-    const payload = {
-      content: `💥 **CRITICAL ERROR:** ${error.message}`,
-      embeds: [
-        {
-          title: 'Error Details',
-          description: `\`\`\`\n${error.stack || 'No stack trace'}\n\`\`\``,
-          fields: context ? Object.entries(context).map(([key, value]) => ({
-            name: key,
-            value: String(value),
-            inline: true
-          })) : [],
-          timestamp: new Date().toISOString()
-        }
-      ]
-    };
+    const payload = this.webhookKind === 'slack'
+      ? { text: `:boom: CRITICAL ERROR: ${error.message}${this.formatContext({ ...(context || {}), stack: error.stack || 'No stack trace' })}` }
+      : {
+          content: `💥 **CRITICAL ERROR:** ${error.message}`,
+          embeds: [
+            {
+              title: 'Error Details',
+              description: `\`\`\`\n${error.stack || 'No stack trace'}\n\`\`\``,
+              fields: context ? Object.entries(context).map(([key, value]) => ({
+                name: key,
+                value: String(value),
+                inline: true
+              })) : [],
+              timestamp: new Date().toISOString()
+            }
+          ]
+        };
 
     await this.postToWebhook(payload);
   }
 
   async sendSuccessAlert(message: string, context?: AlertContext): Promise<void> {
-    const payload = {
-      content: `✅ **SUCCESS:** ${message}`,
-      embeds: [
-        {
-          title: 'Event Details',
-          color: 3066993, // Green
-          fields: context ? Object.entries(context).map(([key, value]) => ({
-            name: key,
-            value: String(value),
-            inline: true
-          })) : [],
-          timestamp: new Date().toISOString()
-        }
-      ]
-    };
+    const payload = this.webhookKind === 'slack'
+      ? { text: `:white_check_mark: SUCCESS: ${message}${this.formatContext(context)}` }
+      : {
+          content: `✅ **SUCCESS:** ${message}`,
+          embeds: [
+            {
+              title: 'Event Details',
+              color: 3066993, // Green
+              fields: context ? Object.entries(context).map(([key, value]) => ({
+                name: key,
+                value: String(value),
+                inline: true
+              })) : [],
+              timestamp: new Date().toISOString()
+            }
+          ]
+        };
 
     await this.postToWebhook(payload);
   }
