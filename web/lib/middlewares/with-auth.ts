@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySessionUseCase } from '@/infrastructure/di';
 
 type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<Response | NextResponse>;
 
@@ -13,6 +12,9 @@ export function withAuth(handler: ApiHandler): ApiHandler {
     const sessionCookie = req.cookies.get('session')?.value;
     
     try {
+      // Lazy-load DI to avoid pulling in Firebase/admin initialization
+      // when the request will be rejected early.
+      const { verifySessionUseCase } = await import('@/infrastructure/di');
       const user = await verifySessionUseCase.execute(sessionCookie);
       
       if (!user) {

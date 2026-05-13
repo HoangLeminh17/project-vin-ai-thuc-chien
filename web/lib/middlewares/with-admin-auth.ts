@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifySessionUseCase } from '@/infrastructure/di';
 
 type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<Response | NextResponse>;
 
@@ -15,6 +14,9 @@ export function withAdminAuth(handler: ApiHandler): ApiHandler {
     }
     
     try {
+      // Lazy-load DI so metrics scraping with SCRAPER_TOKEN doesn't
+      // require Firebase/admin initialization.
+      const { verifySessionUseCase } = await import('@/infrastructure/di');
       const user = await verifySessionUseCase.execute(sessionCookie);
       
       if (!user) {
