@@ -129,5 +129,7 @@ async def alertmanager(request: Request) -> Dict[str, Any]:
 
     if resp.status_code >= 400:
         raise HTTPException(status_code=502, detail=f"Discord webhook error: {resp.status_code}: {resp.text}")
+    # Optionally log the response for debugging:
+    # print(f"Discord response: {resp.status_code}: {resp.text}")
 
     return {"status": "sent"}
