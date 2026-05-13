@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | #107 |
 | Stable Knowledge Components + UKT quiz/SRS signals | Nguyen Binh Thanh | #104, #105 |
 | Diagnostic lesson-scoped coverage + partial-coverage acceptance | Nguyen Binh Thanh | #103 |
 | Restore root AI logging scripts | Nguyen Binh Thanh | #102 |
@@ -22,6 +23,34 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-37] Canonical ConceptCard answer and AI tutor follow-ups - 14/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #107 (`feat/canonical-card-answer`)
+
+**Bối cảnh:** Card editor đang tách `TL;DR` và `Chi tiết` thành hai answer surfaces. Hai field có thể khác nội dung và khác citation, làm learner khó biết đâu là câu trả lời chính thống. Khi thêm cosine similarity/active recall scoring, nhiều answer surfaces sẽ làm muddy source và có nguy cơ chấm điểm theo text không giống UI user vừa học.
+
+**Quyết định:**
+- Stage 2 chỉ sinh một `answer` canonical, source-backed, có inline citation markers.
+- `detail` giữ optional để backward compatible với saved courses cũ, nhưng không còn được generate hoặc render như một ô đáp án riêng trong `EditMode`.
+- `followUps` được giữ lại vì ngắn, tốn ít token, và dùng như AI tutor prompts. Follow-up không có citation và không tham gia active-recall scoring.
+- Diagnostic chunk input bỏ `Detail:` và chỉ đưa outline + concept question + canonical answer vào prompt.
+- Citation validation chỉ validate marker trong `answer`, vì đây là source truth duy nhất của card mới.
+- Cache guard coi Stage 2 cache/saved content còn `detail` là stale để cùng một PDF/hash vẫn regenerate canonical cards thay vì reuse TL;DR/Chi tiết cũ.
+- StudyMode reveal cũng đổi label từ `TL;DR` sang `Câu trả lời` và không render legacy `detail`; SRS rating flow giữ nguyên.
+- Xóa nút `nguồn` riêng trong `EditMode`; user mở source trực tiếp bằng citation number cạnh từng claim.
+- SRS review UI chưa đổi trong phase này; SRS input tiếp tục gửi `concept.answer` làm đáp án canonical.
+
+**Ước tính giảm token:**
+- Prompt: giảm khoảng 94 prompt tokens cho mỗi Stage 2 chapter call do schema/rules ngắn hơn.
+- Completion: giảm khoảng 100-220 completion tokens mỗi lesson vì không còn emit `detail` 3-5 câu.
+- Stage 2 completion: giảm ước tính 15-30%, tùy độ dài answer và quiz.
+- Tổng Stage 2 tokens: giảm ước tính 8-18% khi `raw_context` dài.
+- Tổng pipeline: giảm ước tính 5-12% vì Stage 1, raw_context input và quiz vẫn giữ nguyên.
+
+**Kết quả:** Edit tab có một ô `Câu trả lời` canonical và AI tutor/follow-up prompts phía sau. Source citation và input chấm active recall sau này đều quy về một answer duy nhất.
 
 ---
 

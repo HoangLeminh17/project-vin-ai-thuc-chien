@@ -28,7 +28,6 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
   const [aiInput, setAiInput] = useState('')
   const [aiProposal, setAiProposal] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
-  const [citationOpen, setCitationOpen] = useState(false)
   const [showSource, setShowSource] = useState(false)
   const [selectedChunkId, setSelectedChunkId] = useState<string | null>(null)
   const [validChunkIds, setValidChunkIds] = useState<Set<string>>(new Set())
@@ -44,14 +43,12 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
     const empty = new Set<string>()
     for (const c of (allCards ?? cards)) {
       parseCitations(c.concept.answer, empty, map)
-      if (c.concept.detail) parseCitations(c.concept.detail, empty, map)
     }
     return map
   }, [allCards, cards])
   // New courses use source_chunk_start; legacy courses fall back to source_chunk_id
   const chunkStart = card?.concept.source_chunk_start ?? card?.concept.source_chunk_id ?? null
   const chunkEnd   = card?.concept.source_chunk_end   ?? card?.concept.source_chunk_id ?? null
-  const hasCitation = !!chunkStart
 
   useEffect(() => {
     if (controlledCardId != null) setSelectedId(controlledCardId)
@@ -74,7 +71,6 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
 
   // Reset citation state when active card changes
   useEffect(() => {
-    setCitationOpen(false)
     setShowSource(false)
     setSelectedChunkId(null)
   }, [selectedId])
@@ -150,55 +146,15 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
             </div>
           </div>
 
-          {/* TL;DR */}
+          {/* Canonical answer */}
           <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span className="sy-mono" style={{ fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>TL;DR</span>
-              {hasCitation &&  (
-                <button
-                  onClick={() => setCitationOpen(v => !v)}
-                  style={{
-                    marginLeft: 'auto', fontSize: 11, fontWeight: 600,
-                    color: citationOpen ? T.accent : T.ink60,
-                    background: citationOpen ? `${T.accent}18` : 'transparent',
-                    border: `1px solid ${citationOpen ? T.accent : T.ink20}`,
-                    borderRadius: 5, cursor: 'pointer', padding: '2px 7px',
-                    lineHeight: 1.6, display: 'flex', alignItems: 'center', gap: 3,
-                  }}>
-                  ① nguồn
-                </button>
-              )}
+              <span className="sy-mono" style={{ fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Câu trả lời</span>
             </div>
             <div className="sy-serif" style={{ fontSize: 15, fontWeight: 500, color: T.ink, lineHeight: 1.5 }}>
-              <CitedText text={card.concept.answer} validChunkIds={validChunkIds} sharedMap={globalCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true); setCitationOpen(false) }} />
+              <CitedText text={card.concept.answer} validChunkIds={validChunkIds} sharedMap={globalCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true) }} />
             </div>
-            {/* Citation popover */}
-            {hasCitation && citationOpen && (
-              <div style={{ marginTop: 12, padding: '10px 14px', background: '#fffbee', borderRadius: 8, border: `1px solid #f0e27a` }}>
-                <p className="sy-serif" style={{ fontSize: 12, color: '#333', margin: '0 0 8px', lineHeight: 1.5, fontStyle: 'italic' }}>
-                  Trích xuất từ: {chunkStart}{chunkEnd && chunkEnd !== chunkStart ? ` → ${chunkEnd}` : ''}
-                </p>
-                
-                {layoutStorageUrl ? (
-                  <button onClick={() => { setShowSource(true); setCitationOpen(false) }} style={{ fontSize: 11, color: '#ff6b00', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontWeight: 600 }}>
-                    Xem trong tài liệu →
-                  </button>
-                ) : (
-                  <span style={{ fontSize: 11, color: '#999' }}>Chưa có tài liệu nguồn</span>
-                )}
-              </div>
-            )}
           </div>
-
-          {/* Detail */}
-          {card.concept.detail && (
-            <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
-              <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Chi tiết</span>
-              <div className="sy-serif" style={{ fontSize: 14, lineHeight: 1.65, color: T.ink80, marginTop: 6 }}>
-                <CitedText text={card.concept.detail!} validChunkIds={validChunkIds} sharedMap={globalCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true) }} />
-              </div>
-            </div>
-          )}
 
           {/* AI proposal */}
           {(aiProposal !== null || aiLoading) && (
@@ -219,10 +175,10 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
             </div>
           )}
 
-          {/* Follow-ups */}
+          {/* AI tutor */}
           {card.concept.followUps.length > 0 && (
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px' }}>
-              <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Follow-up</span>
+              <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>AI tutor</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
                 {card.concept.followUps.map((q, i) => (
                   <button key={i} style={{ padding: '5px 12px', fontSize: 12, color: T.ink80, background: T.bgSunken, borderRadius: 20, display: 'flex', alignItems: 'center', gap: 5, border: `1px solid ${T.ink10}`, cursor: 'pointer' }}>
@@ -258,7 +214,7 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
         </div>
       </div>
 
-      {/* Document reader — slides in from the right when user clicks "Xem trong tài liệu" */}
+      {/* Document reader — slides in from the right when user clicks a citation number */}
       {showSource && layoutStorageUrl && (
         <div style={{ width: 420, flexShrink: 0, borderLeft: `1px solid ${T.ink10}`, overflow: 'hidden' }}>
           <PdfPanel

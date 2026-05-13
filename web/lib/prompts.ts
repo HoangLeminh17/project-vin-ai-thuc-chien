@@ -135,11 +135,10 @@ Rules for concept cards:
 - question: active recall question about the lesson's core idea
   - Use forms like "X hoạt động như thế nào?", "Tại sao ...?", "X là gì và khi nào dùng?"
   - Do NOT use "Giải thích X" form
-- answer: TL;DR 2-3 dense sentences, no bullets, answer the question directly — grounded in raw_context
+- answer: canonical answer, 2-4 dense sentences, no bullets, answer the question directly — grounded in raw_context
   - After each factual sentence, append the chunk marker(s) from the outline bullet(s) you drew that fact from
   - Format: "Sentence text.[chunk-X-Y]" or "Sentence text.[chunk-X-Y][chunk-X-Z]" for facts spanning multiple bullets
   - Example: "Statin ức chế HMG-CoA reductase, giảm tổng hợp cholesterol nội sinh.[chunk-2-15]"
-- detail: 3-5 sentences expanding the answer, same marker rules as answer
 - followUps: exactly 2 genuine follow-up questions — NO markers (open questions, not grounded in a single chunk)
 - Transition/framing sentences (e.g. "Ngoài ra...", "Điều này có nghĩa là...") do NOT get markers
 - Only use chunk IDs that appear in the \`chunks\` field of the outline bullets — never invent IDs
@@ -162,7 +161,6 @@ Output schema:
       "concept": {
         "question": "X hoạt động như thế nào?",
         "answer": "Câu trả lời 1.[chunk-1-5] Câu trả lời 2.[chunk-1-8]",
-        "detail": "Chi tiết mở rộng.[chunk-1-5][chunk-1-6] Thêm ví dụ cụ thể.[chunk-1-9]",
         "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"]
       }
     }

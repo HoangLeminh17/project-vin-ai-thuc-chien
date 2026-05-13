@@ -279,9 +279,9 @@ type Course = {
 
 type ConceptCard = {
   question: string
-  answer: string
-  detail?: string
-  followUps: string[]
+  answer: string              // canonical source-backed answer, used by edit UI + SRS input
+  detail?: string             // legacy only; new Stage 2 no longer generates it
+  followUps: string[]         // lightweight AI tutor prompts, not citation/scoring truth
   kc_id?: string
   kc_name?: string
   module_id?: string
@@ -405,6 +405,7 @@ POST /api/generate-content
     | Stage 2 Generator per chapter
     | input = chapter outline + raw_context extracted from contentList
     | input also carries Lesson.knowledge; concept cards get kc_id/module_id attached post-generation
+    | emits one canonical source-backed answer + followUps; detail is legacy only
     | large chapter input is split/merged by stage2-chunking.ts
     | cache: course_cache/{hash}/chapters/{i}
     |
@@ -413,12 +414,25 @@ POST /api/generate-content
 Save partial/full course to Firestore courses/{id}
     |
     | after full course content is available:
-    | build one diagnostic chunk per lesson id ("ci-li") with trusted kc_id/module_id metadata
+    | build one diagnostic chunk per lesson id ("ci-li") from outline + canonical answer + trusted kc_id/module_id metadata
     | fire-and-forget POST /api/diagnostic-quiz with { chunks }
     | localStorage diagnosticQuestions_{id}
     v
 status = done
 ```
+
+### Canonical answer token impact
+
+Stage 2 now keeps `answer` as the only source-backed card response and stops asking the model for `detail`.
+`followUps` stay because they are short tutor prompts and do not muddy citations or active-recall scoring.
+
+Estimated reduction for new generated courses:
+
+- Prompt: about 94 fewer prompt tokens per Stage 2 chapter call from the smaller schema/rules.
+- Completion: about 100-220 fewer completion tokens per lesson because the 3-5 sentence `detail` field is no longer emitted.
+- Stage 2 completion: roughly 15-30% lower, depending on answer length and quiz size.
+- Total Stage 2 tokens: roughly 8-18% lower when raw_context is large.
+- Full pipeline tokens: roughly 5-12% lower because Stage 1 planning, raw_context input, and quizzes still remain.
 
 ### Parse details
 
@@ -435,7 +449,7 @@ status = done
 | Collection/path | Key | Content | Bypass |
 | :--- | :--- | :--- | :--- |
 | `course_cache/{hash}` | markdown content hash | Stage 1 `Course` JSON | `force:true`, used when legacy `string[]` outline is detected |
-| `course_cache/{hash}/chapters/{i}` | chapter index | Stage 2 `ChapterContent` | skipped when chapter outline is legacy |
+| `course_cache/{hash}/chapters/{i}` | chapter index | Stage 2 `ChapterContent` | skipped when chapter outline is legacy or cached card content still has legacy `detail` |
 | `courses/{id}` | Firestore doc ID | SavedCourse, content hash, PDF/layout storage refs | n/a |
 
 ### Storage paths
@@ -551,7 +565,7 @@ LocalStorage keys:
 `CourseTree` is the course viewer:
 
 - Left pane: fixed 300px chapter/lesson/card tree.
-- Right pane: card detail area.
+- Right pane: card editor/detail area.
 - Detail tabs: `EditMode` and `StudyMode`.
 - Header CTA: review due cards starts a study overlay for all due cards.
 - Keyboard navigation: left/right arrows move between cards when not typing.
@@ -580,7 +594,7 @@ The request includes `kcId` and `moduleId` from the concept card when available.
 | 2 | Good / nho roi | 1 day | `3` |
 | 3 | Easy / qua de | 4 days | `4` |
 
-`Space` reveals answer.
+`Space` reveals the canonical `answer` as `Câu trả lời`; legacy `detail` is not shown in the SRS reveal surface.
 
 ---
 
@@ -602,8 +616,8 @@ Flow:
 
 1. `content-list-converter.ts` injects `<a id="chunk-...">` anchors into markdown.
 2. Stage 1 Planner outputs `OutlinePoint.chunks[]`.
-3. Stage 2 adds inline markers like `[chunk-0-5-123]` to `answer` and `detail`.
-4. `validateCitationMarkers()` warns when generated markers are not in `buildValidChunkIds(contentList)`.
+3. Stage 2 adds inline markers like `[chunk-0-5-123]` to the canonical `answer`.
+4. `validateCitationMarkers()` warns when generated answer markers are not in `buildValidChunkIds(contentList)`.
 5. `parseCitations()` converts text to `Segment[]`.
 6. `EditMode` renders valid markers as clickable citation numbers.
 7. `PdfPanel` loads layout JSON and scrolls/highlights source chunks.

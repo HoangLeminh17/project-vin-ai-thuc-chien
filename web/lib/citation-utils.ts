@@ -25,7 +25,7 @@ export function validateCitationMarkers(
   validChunkIds: Set<string>,
 ): void {
   chapter.lessons.forEach(lesson => {
-    const fields: Array<string | undefined> = [lesson.concept.answer, lesson.concept.detail]
+    const fields: Array<string | undefined> = [lesson.concept.answer]
     fields.forEach(text => {
       if (!text) return
       CITATION_MARKER_RE.lastIndex = 0
