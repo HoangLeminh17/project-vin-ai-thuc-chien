@@ -108,6 +108,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Configure npm for self-hosted runner
+        run: |
+          mkdir -p ~/.npm-global
+          npm config set prefix '~/.npm-global'
+      - name: Install Railway CLI
+        run: npm install @railway/cli
       - name: Deploy Web App to Railway
         run: npx railway up --service web --environment production --detach
 
@@ -129,5 +135,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      - name: Configure npm for self-hosted runner
+        run: |
+          mkdir -p ~/.npm-global
+          npm config set prefix '~/.npm-global'
+      - name: Install Railway CLI
+        run: npm install @railway/cli
       - name: Deploy UKT Service to Railway
         run: npx railway up --service ukt-service --environment production --detach
