@@ -159,7 +159,7 @@ UKT/
 
 UKT chay rieng o `http://localhost:8000` trong Docker Compose, duoc web app goi qua `UKT_SERVICE_URL`.
 
-`/predict` seeds or refreshes KC state from quiz interactions. `/update` also initializes a missing student state so SRS-only users can still produce UKT signals after skipping diagnostics.
+`/predict` seeds or refreshes KC state from quiz interactions. `/update` also initializes a missing student state so SRS-only users can still produce UKT signals after skipping diagnostics. `/state/{student_id}` returns the persisted KC state for dashboard aggregation.
 
 ### Monitoring
 
@@ -219,6 +219,7 @@ Docker Compose khoi dong Redis, UKT, web, Prometheus, Grafana, OpenTelemetry Col
 | GET | `/api/progress/due` | `web/app/api/progress/due/route.ts` | Cards due for review |
 | POST | `/api/progress/review` | `web/app/api/progress/review/route.ts` | Submit SM2 rating |
 | POST | `/api/ukt/interactions` | `web/app/api/ukt/interactions/route.ts` | Seed UKT with KC-tagged diagnostic quiz interactions |
+| GET | `/api/ukt/mastery` | `web/app/api/ukt/mastery/route.ts` | Authenticated dashboard UKT state + 8-module mastery aggregation |
 
 ### Admin and health
 
@@ -335,6 +336,8 @@ type ModuleMasteryPoint = {
   module_name: string
   score: number | null  // average UKT p_correct across KCs in this module
   percent: number | null
+  uncertainty: number | null       // average UKT sigma across KCs in this module
+  certaintyPercent: number | null  // 1 - uncertainty, shown in the dashboard list
   evidenceCount: number
   kcIds: string[]
 }
@@ -374,8 +377,10 @@ Spider chart semantics:
 - Axis = `module_id` from the fixed module list.
 - `aggregateModuleMastery()` returns exactly 8 axes in `MEDICAL_MODULES` order.
 - Axis score aggregates UKT `p_correct` across KCs in that module, falling back to `mu` only when `p_correct` is unavailable.
+- Axis uncertainty aggregates UKT `sigma`; the UI shows this as a soft band on the spider chart and as certainty percent (`1 - sigma`) in the side list.
 - Unknown / unseen modules render as no-data axes, not as mastered content.
-- Diagnostic and SRS both write signals to the same KC namespace.
+- Diagnostic and SRS both write signals to the same KC namespace. Chapter quiz attempts should use `/api/ukt/interactions` with the same `kc_id` metadata when the chapter quiz UI is wired.
+- Main dashboard reads persisted UKT state through `/api/ukt/mastery`, so the chart is a user personalization surface, not only a post-diagnostic result widget.
 
 ---
 
@@ -527,6 +532,7 @@ Main branches inside `startGeneration()`:
 - Shows `GenerationScreen` while `status === 'generating' || status === 'done'`.
 - Refreshes library when generation resets from a non-idle state back to `idle`.
 - De-duplicates library courses by `contentHash`, then title fallback.
+- For signed-in users, fetches `/api/ukt/mastery` and renders the 8-axis UKT spider chart on the main page before the activity heatmap. The chart starts with no-data axes when UKT has no state yet.
 
 `PipelineTracker` displays:
 
@@ -597,6 +603,7 @@ Mastery priority in `lessonMastery()`:
 `StudyMode` submits ratings to `/api/progress/review`.
 
 The request includes `kcId` and `moduleId` from the concept card when available. `ReviewCardUseCase` stores `kcId/moduleId` on `CardProgress`, keeps `topic` as a legacy alias, and calls UKT `/update` with `kc_id = kcId`.
+UKT `/update` initializes missing student state, so SRS-only users can still build dashboard module mastery even if they skipped diagnostics.
 
 | Rating | Label | Interval intent | Key |
 | :--- | :--- | :--- | :--- |
@@ -700,6 +707,8 @@ Docker Compose from repo root:
 ```bash
 docker-compose up --build
 ```
+
+Root Docker Compose defaults `REDIS_URL` to `redis://redis:6379` for both web and UKT if `.env` does not override it. Redis uses AOF plus the `redis-data` named volume so local UKT mastery state survives normal container restarts instead of falling back to in-memory state.
 
 Ports in local Docker:
 
