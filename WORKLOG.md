@@ -10,8 +10,9 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| Dashboard UKT mastery + certainty spider chart | Nguyen Binh Thanh | #109 |
-| UKT module mastery spider chart | Nguyen Binh Thanh | #108 |
+| Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | #110 |
+| Dashboard cá nhân hóa UKT + spider chart độ chắc chắn | Nguyen Binh Thanh | #109 |
+| Spider chart UKT theo module y khoa | Nguyen Binh Thanh | #108 |
 | Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | #107 |
 | Stable Knowledge Components + UKT quiz/SRS signals | Nguyen Binh Thanh | #104, #105 |
 | Diagnostic lesson-scoped coverage + partial-coverage acceptance | Nguyen Binh Thanh | #103 |
@@ -28,7 +29,23 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
-### [ADR-39] Dashboard UKT mastery surface - 14/05/2026
+### [ADR-40] Việt hóa copy sau dashboard UKT - 14/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #110 (`refactor/vietnamese-ukt-copy`)
+
+**Bối cảnh:** Sau khi dashboard UKT chạy được, một số bề mặt user-facing vẫn còn English copy như `UKT mastery`, `Medical module spider chart`, Admin Monitor labels và README/PIPELINE đoạn mới. Product muốn ưu tiên tiếng Việt cho UI và documentation, nhưng giữ thuật ngữ kỹ thuật khi cần rõ contract.
+
+**Quyết định:**
+- Việt hóa text nhìn thấy trong spider chart UKT, trạng thái đồng bộ UKT ở diagnostic result và Admin Monitor.
+- Chart hiển thị tên module bằng tiếng Việt: Giải phẫu, Sinh lý, Dược lý, Vi sinh, Bệnh lý, Lâm sàng, Hóa sinh, Miễn dịch.
+- README, PIPELINE và WORKLOG đổi các đoạn user-facing mới sang tiếng Việt; giữ route/API field/code identifier như `kc_id`, `p_correct`, `sigma`, `/api/ukt/mastery`.
+- Không dịch prompt/schema contract trong `web/lib/prompts.ts` để tránh làm thay đổi hành vi LLM và provider parsing.
+
+**Kết quả mong đợi:** App và tài liệu chính nhất quán tiếng Việt hơn, còn thuật ngữ kỹ thuật vẫn đủ rõ để dev/test không bị nhầm contract.
+
+---
+
+### [ADR-39] Dashboard cá nhân hóa UKT - 14/05/2026
 
 **Người làm:** Nguyen Binh Thanh | **Ref:** PR #109 (`feat/dashboard-ukt-mastery`)
 
@@ -38,28 +55,28 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 - UKT service thêm `GET /state/{student_id}` để trả persisted `knowledge_state` theo KC.
 - Web thêm `/api/ukt/mastery`: verify session, đọc UKT state của user hiện tại, aggregate thành 8 module từ `MEDICAL_MODULES`.
 - Main dashboard gọi `/api/ukt/mastery` và render spider chart trước activity heatmap. User mới vẫn thấy đủ 8 trục ở trạng thái no-data.
-- `aggregateModuleMastery()` giờ gom cả `p_correct`/`mu` cho mastery và `sigma` cho uncertainty; UI vẽ band uncertainty và hiện certainty percent.
+- `aggregateModuleMastery()` giờ gom cả `p_correct`/`mu` cho mức nắm vững và `sigma` cho độ không chắc; UI vẽ band độ không chắc và hiện phần trăm độ chắc.
 - Root `docker-compose.yml` default `REDIS_URL=redis://redis:6379` cho web/UKT và bật Redis AOF + named volume để state không rơi về in-memory khi local `.env` chưa set Redis.
 - Chapter quiz signal sẽ dùng cùng `/api/ukt/interactions` với `kc_id` khi chapter quiz UI được nối vào luồng submit; hiện tại diagnostic và SRS đã ghi vào cùng KC namespace.
 
-**Kết quả mong đợi:** Main page trở thành nơi soi mastery/certainty theo module xuyên suốt diagnostic và SRS history; chart không còn bị giới hạn trong màn hình diagnostic result.
+**Kết quả mong đợi:** Main page trở thành nơi soi mức nắm vững/độ chắc theo module xuyên suốt lịch sử diagnostic và SRS; chart không còn bị giới hạn trong màn hình kết quả diagnostic.
 
 ---
 
-### [ADR-38] UKT module spider chart - 14/05/2026
+### [ADR-38] Spider chart UKT theo module - 14/05/2026
 
 **Người làm:** Nguyen Binh Thanh | **Ref:** PR #108 (`feat/spider-chart-structure`)
 
 **Bối cảnh:** Sau PR #104/#105, UKT đã nhận `kc_id` ổn định và trả `knowledge_state` theo KC. Product cần một lớp hiển thị theo module lớn để learner nhìn nhanh điểm mạnh/yếu theo 8 trục y khoa thay vì đọc từng KC rời rạc.
 
 **Quyết định:**
-- Spider chart dùng đúng 8 axis từ `MEDICAL_MODULES`: Anatomy, Physiology, Pharmacology, Microbiology, Pathology, Clinical Medicine, Biochemistry, Immunology.
-- Source score là UKT `knowledge_state[KC].p_correct`; nếu thiếu mới fallback sang `mu`.
+- Spider chart dùng đúng 8 axis từ `MEDICAL_MODULES`: Giải phẫu, Sinh lý, Dược lý, Vi sinh, Bệnh lý, Lâm sàng, Hóa sinh, Miễn dịch.
+- Điểm nguồn là UKT `knowledge_state[KC].p_correct`; nếu thiếu mới fallback sang `mu`.
 - `aggregateModuleMastery()` gom nhiều KC cùng `module_id` bằng trung bình cộng và trả đủ 8 module theo thứ tự registry.
 - Module chưa có KC evidence hiển thị dạng no-data (`score = null`), không coi là 0% mastery.
 - Diagnostic results sync `/api/ukt/interactions` và hiển thị spider chart ngay trên màn hình kết quả. Nếu UKT lỗi, diagnostic coloring local vẫn tiếp tục như trước.
 
-**Kết quả mong đợi:** Learner thấy mastery theo module ngay sau diagnostic quiz; SRS vẫn tiếp tục cập nhật cùng KC namespace để spider chart có thể mở rộng thành dashboard bền vững sau này.
+**Kết quả mong đợi:** Learner thấy mức nắm vững theo module ngay sau diagnostic quiz; SRS vẫn tiếp tục cập nhật cùng KC namespace để spider chart có thể mở rộng thành dashboard bền vững sau này.
 
 ---
 
