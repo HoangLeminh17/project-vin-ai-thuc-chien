@@ -19,7 +19,7 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from app.schemas import PredictRequest, PredictResponse, UpdateRequest, UpdateResponse
+from app.schemas import PredictRequest, PredictResponse, StateResponse, UpdateRequest, UpdateResponse
 from app.ukt_engine import UKTEngine
 from app.state_store import StateStore
 from app.notifications import notify_model_loaded, notify_error
@@ -90,6 +90,14 @@ else:
 @app.get("/health")
 def health():
     return {"status": "ok", "model_loaded": engine is not None}
+
+
+@app.get("/state/{student_id}", response_model=StateResponse)
+def state(student_id: str):
+    return StateResponse(
+        student_id=student_id,
+        knowledge_state=store.get(student_id) or {},
+    )
 
 
 @app.post("/predict", response_model=PredictResponse)

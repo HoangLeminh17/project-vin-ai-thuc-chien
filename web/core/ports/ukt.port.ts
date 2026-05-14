@@ -25,6 +25,11 @@ export interface PredictResponse {
   session_recommendation: string;
 }
 
+export interface StateResponse {
+  student_id: string;
+  knowledge_state: Record<string, KCState>;
+}
+
 export interface UpdateRequest {
   student_id: string;
   kc_id: string;
@@ -40,5 +45,6 @@ export interface UpdateResponse {
 
 export interface IUKTService {
   predict(req: PredictRequest): Promise<PredictResponse>;
+  getState(studentId: string): Promise<StateResponse>;
   update(req: UpdateRequest): Promise<UpdateResponse>;
 }
