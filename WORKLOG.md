@@ -10,7 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| UKT module mastery spider chart | Nguyen Binh Thanh | TBD |
+| UKT module mastery spider chart | Nguyen Binh Thanh | #108 |
 | Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | #107 |
 | Stable Knowledge Components + UKT quiz/SRS signals | Nguyen Binh Thanh | #104, #105 |
 | Diagnostic lesson-scoped coverage + partial-coverage acceptance | Nguyen Binh Thanh | #103 |
@@ -29,7 +29,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-38] UKT module spider chart - 14/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** `feat/spider-chart-structure`
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #108 (`feat/spider-chart-structure`)
 
 **Bối cảnh:** Sau PR #104/#105, UKT đã nhận `kc_id` ổn định và trả `knowledge_state` theo KC. Product cần một lớp hiển thị theo module lớn để learner nhìn nhanh điểm mạnh/yếu theo 8 trục y khoa thay vì đọc từng KC rời rạc.
 
