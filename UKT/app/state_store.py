@@ -9,6 +9,7 @@ import json
 import logging
 
 logger = logging.getLogger(__name__)
+DEFAULT_STATE_TTL_SECONDS = 90 * 86400
 
 
 class StateStore:
@@ -41,13 +42,27 @@ class StateStore:
             return json.loads(raw) if raw else None
         return self._mem.get(key)
 
-    def set(self, student_id: str, state: dict, ttl_seconds: int = 86400):
-        """Lưu state, mặc định TTL 24h."""
+    def _jsonable_state(self, state: dict) -> dict:
+        normalized = {}
+        for kc_id, value in state.items():
+            if hasattr(value, "model_dump"):
+                normalized[kc_id] = value.model_dump()
+            elif hasattr(value, "dict"):
+                normalized[kc_id] = value.dict()
+            elif isinstance(value, dict):
+                normalized[kc_id] = value
+            else:
+                normalized[kc_id] = dict(value)
+        return normalized
+
+    def set(self, student_id: str, state: dict, ttl_seconds: int = DEFAULT_STATE_TTL_SECONDS):
+        """Lưu state, mặc định TTL 90 ngày."""
         key = f"ukt:state:{student_id}"
+        normalized = self._jsonable_state(state)
         if self._redis:
-            self._redis.setex(key, ttl_seconds, json.dumps(state))
+            self._redis.setex(key, ttl_seconds, json.dumps(normalized))
         else:
-            self._mem[key] = state
+            self._mem[key] = normalized
 
     def delete(self, student_id: str):
         key = f"ukt:state:{student_id}"

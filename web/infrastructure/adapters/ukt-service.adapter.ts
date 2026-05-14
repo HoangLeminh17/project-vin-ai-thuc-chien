@@ -1,4 +1,4 @@
-import { IUKTService, PredictRequest, PredictResponse, UpdateRequest, UpdateResponse } from '@/core/ports/ukt.port';
+import { IUKTService, PredictRequest, PredictResponse, StateResponse, UpdateRequest, UpdateResponse } from '@/core/ports/ukt.port';
 import { InfrastructureError } from '@/core/errors/domain-error';
 
 export class UKTServiceAdapter implements IUKTService {
@@ -11,6 +11,22 @@ export class UKTServiceAdapter implements IUKTService {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new InfrastructureError(`UKT Service Error (${res.status}): ${text}`);
+      }
+
+      return await res.json();
+    } catch (e) {
+      if (e instanceof InfrastructureError) throw e;
+      throw new InfrastructureError(`Connection error to UKT Service: ${path}`, e);
+    }
+  }
+
+  private async uktGet<T>(path: string): Promise<T> {
+    try {
+      const res = await fetch(`${this.baseUrl}${path}`, { method: 'GET' });
 
       if (!res.ok) {
         const text = await res.text();
@@ -41,6 +57,10 @@ export class UKTServiceAdapter implements IUKTService {
         };
       }),
     });
+  }
+
+  async getState(studentId: string): Promise<StateResponse> {
+    return this.uktGet<StateResponse>(`/state/${encodeURIComponent(studentId)}`);
   }
 
   async update(req: UpdateRequest): Promise<UpdateResponse> {

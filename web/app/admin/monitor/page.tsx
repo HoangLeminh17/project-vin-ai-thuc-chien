@@ -38,7 +38,7 @@ export default function AdminMonitorPage() {
   const [usage, setUsage] = useState<{ daily: any[], recent: TokenUsageRecord[] }>({ daily: [], recent: [] });
   const [loading, setLoading] = useState(true);
   
-  // Filter states
+  // Trạng thái lọc
   const [filterLevel, setFilterLevel] = useState<'all' | 'error'>('all');
   const [filterHighLatency, setFilterHighLatency] = useState(false);
 
@@ -62,7 +62,7 @@ export default function AdminMonitorPage() {
         setUsage({ daily: data.daily || [], recent: data.recent || [] });
       }
     } catch (err) {
-      console.error('Failed to fetch monitoring data', err);
+      console.error('Không tải được dữ liệu giám sát', err);
     } finally {
       setLoading(false);
     }
@@ -70,14 +70,14 @@ export default function AdminMonitorPage() {
 
   useEffect(() => {
     if (!authLoading && (!user || role !== 'admin')) {
-      // Small delay to allow the user to see what's happening or just redirect
+      // Chờ ngắn để người dùng kịp thấy trạng thái trước khi chuyển hướng.
       const timer = setTimeout(() => router.push('/dashboard'), 3000);
       return () => clearTimeout(timer);
     }
     
     if (user && role === 'admin') {
       fetchData();
-      const interval = setInterval(fetchData, 10000); // Poll every 10 seconds
+      const interval = setInterval(fetchData, 10000); // Poll mỗi 10 giây
       return () => clearInterval(interval);
     }
   }, [user, role, authLoading, router, fetchData]);
@@ -86,7 +86,7 @@ export default function AdminMonitorPage() {
     ? usage.daily[usage.daily.length - 1].total 
     : 0;
 
-  // Filtered logs logic
+  // Lọc log theo điều kiện hiển thị
   const filteredLogs = logs.filter(log => {
     if (filterLevel === 'error' && log.level !== 'error') return false;
     if (filterHighLatency) {
@@ -101,7 +101,7 @@ export default function AdminMonitorPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Verifying authorization...</p>
+          <p className="text-gray-600">Đang kiểm tra quyền truy cập...</p>
         </div>
       </div>
     );
@@ -116,13 +116,13 @@ export default function AdminMonitorPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 15.632c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Không có quyền truy cập</h1>
           <p className="text-gray-600 mb-8">
-            You do not have the required permissions to view this dashboard. 
-            Redirecting you back to safety...
+            Tài khoản này chưa có quyền xem bảng giám sát.
+            Hệ thống sẽ đưa bạn về trang chính.
           </p>
           <Link href="/dashboard" className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors w-full">
-            Back to Dashboard
+            Về trang chính
           </Link>
         </div>
       </div>
@@ -132,8 +132,8 @@ export default function AdminMonitorPage() {
   if (loading) {
     return (
       <div className="min-h-screen p-8 bg-gray-50 text-gray-900">
-        <h1 className="text-2xl font-bold mb-6">System Monitor</h1>
-        <p>Loading system metrics...</p>
+        <h1 className="text-2xl font-bold mb-6">Giám sát hệ thống</h1>
+        <p>Đang tải metrics hệ thống...</p>
       </div>
     );
   }
@@ -143,24 +143,24 @@ export default function AdminMonitorPage() {
 
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold tracking-tight text-gray-900">System Monitor</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">Giám sát hệ thống</h1>
           <Link href="/dashboard" className="text-blue-600 hover:underline text-sm font-medium">
-            ← Back to Dashboard
+            ← Về trang chính
           </Link>
         </div>
 
-        {/* Metrics Overview */}
+        {/* Tổng quan metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">System Status</h3>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Trạng thái hệ thống</h3>
             <div className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded-full ${metrics?.status === 'up' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-              <span className="text-2xl font-bold capitalize">{metrics?.status || 'Unknown'}</span>
+              <span className="text-2xl font-bold capitalize">{metrics?.status === 'up' ? 'Ổn định' : metrics?.status === 'down' ? 'Có lỗi' : 'Chưa rõ'}</span>
             </div>
           </div>
           
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Errors (Last 24h)</h3>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Lỗi trong 24h</h3>
             <div className="flex items-center gap-2">
               <span className={`text-2xl font-bold ${(metrics?.errorCountToday || 0) > 0 ? 'text-red-600' : 'text-gray-900'}`}>
                 {metrics?.errorCountToday || 0}
@@ -169,14 +169,14 @@ export default function AdminMonitorPage() {
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Avg Latency</h3>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Độ trễ TB</h3>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold">{metrics?.averageLatencyMs || 0} ms</span>
             </div>
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-500 mb-1">Tokens Today</h3>
+            <h3 className="text-sm font-medium text-gray-500 mb-1">Token hôm nay</h3>
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold text-indigo-600">
                 {totalTokensToday.toLocaleString()}
@@ -186,24 +186,24 @@ export default function AdminMonitorPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Real-time Log Stream */}
+          {/* Luồng log thời gian thực */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[600px]">
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-              <h2 className="font-semibold text-gray-800">Real-time Log Stream</h2>
+              <h2 className="font-semibold text-gray-800">Log thời gian thực</h2>
               <div className="flex items-center gap-3">
-                {/* Filters */}
+                {/* Bộ lọc */}
                 <div className="flex bg-gray-200 p-0.5 rounded-lg text-[10px]">
                   <button 
                     onClick={() => setFilterLevel('all')}
                     className={`px-2 py-1 rounded-md transition-all ${filterLevel === 'all' ? 'bg-white shadow-sm font-bold text-gray-900' : 'text-gray-500'}`}
                   >
-                    All
+                    Tất cả
                   </button>
                   <button 
                     onClick={() => setFilterLevel('error')}
                     className={`px-2 py-1 rounded-md transition-all ${filterLevel === 'error' ? 'bg-red-500 text-white font-bold' : 'text-gray-500'}`}
                   >
-                    Errors
+                    Lỗi
                   </button>
                 </div>
                 <button 
@@ -214,14 +214,14 @@ export default function AdminMonitorPage() {
                       : 'bg-white border-gray-200 text-gray-500'
                   }`}
                 >
-                  High Latency
+                  Trễ cao
                 </button>
               </div>
             </div>
             
             <div className="flex-1 overflow-auto p-4 bg-gray-900 font-mono text-[11px]">
               {filteredLogs.length === 0 ? (
-                <div className="text-gray-500 text-center py-8">No logs match the current filters</div>
+                <div className="text-gray-500 text-center py-8">Không có log phù hợp với bộ lọc hiện tại</div>
               ) : (
                 <div className="space-y-1">
                   {filteredLogs.map((log) => (
@@ -248,19 +248,19 @@ export default function AdminMonitorPage() {
             </div>
           </div>
 
-          {/* Token Usage Tracking */}
+          {/* Theo dõi token */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[500px]">
             <div className="px-6 py-4 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
-              <h2 className="font-semibold text-gray-800">Token Usage History</h2>
-              <span className="text-xs text-gray-500">Last 50 requests</span>
+              <h2 className="font-semibold text-gray-800">Lịch sử dùng token</h2>
+              <span className="text-xs text-gray-500">50 request gần nhất</span>
             </div>
             
             <div className="flex-1 overflow-auto">
               <table className="w-full text-left text-sm border-collapse">
                 <thead className="bg-gray-50 sticky top-0">
                   <tr>
-                    <th className="px-4 py-2 font-medium text-gray-500 border-b">Time</th>
-                    <th className="px-4 py-2 font-medium text-gray-500 border-b">Type</th>
+                    <th className="px-4 py-2 font-medium text-gray-500 border-b">Thời gian</th>
+                    <th className="px-4 py-2 font-medium text-gray-500 border-b">Loại</th>
                     <th className="px-4 py-2 font-medium text-gray-500 border-b">Model</th>
                     <th className="px-4 py-2 font-medium text-gray-500 border-b text-right">Tokens</th>
                   </tr>
@@ -268,7 +268,7 @@ export default function AdminMonitorPage() {
                 <tbody>
                   {usage.recent.length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-gray-400">No usage data recorded yet</td>
+                      <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Chưa có dữ liệu sử dụng</td>
                     </tr>
                   ) : (
                     usage.recent.map((rec, i) => (
@@ -296,9 +296,9 @@ export default function AdminMonitorPage() {
               </table>
             </div>
             
-            {/* Daily Summary Bar (Simple CSS visualization) */}
+            {/* Tổng quan hằng ngày */}
             <div className="p-4 bg-gray-50 border-t border-gray-200">
-              <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">Last 7 Days</h4>
+              <h4 className="text-xs font-bold text-gray-400 uppercase mb-3 tracking-wider">7 ngày gần nhất</h4>
               <div className="flex items-end gap-2 h-20">
                 {usage.daily.slice(-7).map((day, i) => {
                   const max = Math.max(...usage.daily.map(d => d.total), 1);

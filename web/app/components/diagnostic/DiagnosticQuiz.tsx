@@ -28,6 +28,7 @@ export function DiagnosticQuiz({ course, questions, onComplete }: Props) {
   if (submitted) {
     return (
       <DiagnosticResults
+        courseId={course.id}
         questions={questions}
         answers={answers}
         onComplete={onComplete}

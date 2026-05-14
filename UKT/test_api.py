@@ -219,6 +219,7 @@ def test_prior_state_integration():
 def test_state_store_memory():
     """StateStore in-memory hoạt động đúng."""
     from app.state_store import StateStore
+    from app.schemas import KCState
 
     store = StateStore()
     state = {"kc_1": {"mu": 0.7, "sigma": 0.2, "p_correct": 0.65, "aleatory_flag": False}}
@@ -227,8 +228,16 @@ def test_state_store_memory():
     retrieved = store.get("student_001")
     assert retrieved == state, "State phải được lưu và lấy đúng"
 
+    model_state = {"kc_2": KCState(mu=0.5, sigma=0.3, p_correct=0.52, aleatory_flag=False)}
+    store.set("student_002", model_state)
+    assert store.get("student_002") == {
+        "kc_2": {"mu": 0.5, "sigma": 0.3, "p_correct": 0.52, "aleatory_flag": False}
+    }, "StateStore phai normalize Pydantic KCState truoc khi luu"
+
     store.delete("student_001")
     assert store.get("student_001") is None, "State phải bị xóa"
+    store.delete("student_002")
+    assert store.get("student_002") is None, "State phai bi xoa"
     print("[PASS] test_state_store_memory")
 
 

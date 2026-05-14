@@ -1,29 +1,29 @@
-# Synapsy — AI Flashcard Course Generator
+# Synapsy — Trình tạo khóa học flashcard bằng AI
 
-Upload a PDF, parse it to structured markdown (MinerU API), then use a two-stage AI pipeline to generate chapters, lessons, and **ConceptCard flashcards** with built-in **spaced repetition (SRS)**.
+Tải PDF lên, chuyển thành markdown có cấu trúc bằng MinerU API, rồi dùng pipeline AI hai bước để tạo chương, bài học và **ConceptCard flashcards** có tích hợp **spaced repetition (SRS)**.
 
-Course viewer uses a **master-detail layout**: a fixed tree nav on the left (chapters → lessons → cards inline) and a card detail pane on the right with Edit and Study tabs.
+Màn hình học dùng layout **master-detail**: cây điều hướng cố định bên trái (chương → bài học → thẻ) và khung chi tiết bên phải với tab chỉnh sửa/học.
 
 ![App demo](image.png)
 <!-- Replace with a better screenshot or screen recording when available -->
 
-## Stack
+## Công nghệ
 
 - **Frontend**: Next.js 15, React 19, Tailwind CSS, TypeScript
 - **Backend**: Next.js API routes (`web/app/api/`)
-- **AI Stage 1**: Configurable AI provider chain (Planner — outlines chapters/lessons)
-- **AI Stage 2**: Configurable AI provider fallback (Generator — expands outlines into ConceptCards)
+- **AI Stage 1**: Provider chain có thể cấu hình (Planner — lập outline chương/bài)
+- **AI Stage 2**: Provider fallback có thể cấu hình (Generator — mở rộng outline thành ConceptCards)
 - **Auth**: Firebase Auth (Google sign-in)
-- **Database**: Firebase Firestore (course + SRS progress persistence)
-- **Storage**: Firebase Storage (PDF + layout JSON; client-side upload, server-side Admin proxy)
+- **Database**: Firebase Firestore (lưu course + tiến độ SRS)
+- **Storage**: Firebase Storage (PDF + layout JSON; client upload, server proxy bằng Admin SDK)
 - **PDF parsing**: MinerU Precision API
-- **Monitoring**: Prometheus + Grafana (latency, token usage, system health)
-- **Security**: Role-Based Access Control (RBAC) via Firebase Custom Claims
-- **Rate limiting/progress**: Redis-backed rate limiting and parse progress state
+- **Giám sát**: Prometheus + Grafana (latency, token usage, system health)
+- **Bảo mật**: Role-Based Access Control (RBAC) qua Firebase Custom Claims
+- **Rate limiting/progress**: Redis cho rate limit và trạng thái parse progress
 
-## Getting Started
+## Bắt đầu
 
-### 1. Clone and install
+### 1. Clone và cài đặt
 
 ```bash
 git clone <repo-url>
@@ -32,34 +32,34 @@ cd web
 npm install
 ```
 
-### 2. Install git hooks (required, run once)
+### 2. Cài git hooks (bắt buộc, chạy một lần)
 
 ```bash
 bash scripts/setup_hooks.sh
 ```
 
-### 3. Configure environment
+### 3. Cấu hình môi trường
 
 ```bash
 cd ..
 cp .env.example .env
 ```
 
-Run the copy command from the repository root. Docker Compose reads this root `.env`.
+Chạy lệnh copy từ repo root. Docker Compose đọc file `.env` ở root.
 
-When running the web app manually from `web/`, Next.js only loads env files from `web/`. Keep a service-local copy in sync before starting the dev server:
+Khi chạy web app thủ công từ `web/`, Next.js chỉ đọc env trong `web/`. Hãy đồng bộ một bản `.env` local trước khi khởi động dev server:
 
 ```bash
 cp .env web/.env
 ```
 
-On Windows PowerShell:
+Trên Windows PowerShell:
 
 ```powershell
 Copy-Item .env web\.env
 ```
 
-Fill in `.env`:
+Điền `.env`:
 
 ```
 AI_PROVIDER=openai
@@ -83,68 +83,68 @@ DISCORD_WEBHOOK_URL=
 
 PDF_MINERU_BASE_URL=https://mineru.net/api/v4
 PDF_MINERU_API_KEY=
-# Get at: mineru.net → sign up → API Management
+# Lấy tại: mineru.net → sign up → API Management
 
 FIREBASE_PROJECT_ID=
 FIREBASE_CLIENT_EMAIL=
 FIREBASE_PRIVATE_KEY=
 FIREBASE_STORAGE_BUCKET=
-# Get at: Firebase Console → Project Settings → Service Accounts → Generate new private key
+# Lấy tại: Firebase Console → Project Settings → Service Accounts → Generate new private key
 
-# UKT Service Configuration
+# Cấu hình UKT Service
 UKT_SERVICE_URL=http://ukt-service:8000
 ```
 
-Set at least one AI provider key. Stage 1 is wired through the provider chain in `web/infrastructure/di/ai.di.ts`; Stage 2 falls back across configured providers in `web/lib/ai.ts`. `AI_LOG_SERVER` and `AI_LOG_API_KEY` are pre-filled in `.env.example`.
+Set ít nhất một AI provider key. Stage 1 đi qua provider chain trong `web/infrastructure/di/ai.di.ts`; Stage 2 fallback qua các provider đã cấu hình trong `web/lib/ai.ts`. `AI_LOG_SERVER` và `AI_LOG_API_KEY` đã được điền sẵn trong `.env.example`.
 
-### 4. Set up Firebase
+### 4. Thiết lập Firebase
 
-This project uses Firebase Auth, Storage, and Firestore. All three must be enabled in the same Firebase project.
+Dự án dùng Firebase Auth, Storage và Firestore. Cần bật cả ba trong cùng một Firebase project.
 
-**a) Create a Firebase project**
+**a) Tạo Firebase project**
 
-Go to [Firebase Console](https://console.firebase.google.com) → Add project.
+Vào [Firebase Console](https://console.firebase.google.com) → Add project.
 
-**b) Enable Google sign-in**
+**b) Bật Google sign-in**
 
 Firebase Console → Authentication → Sign-in method → Google → Enable.
 
-**c) Enable Firestore**
+**c) Bật Firestore**
 
 Firebase Console → Firestore Database → Create database → choose **test mode** → select region `asia-southeast1` → Create.
 
-> If you get a "Cloud Firestore API is disabled" error, go to Google Cloud Console → APIs & Services → Enable **Cloud Firestore API** for your project first.
+> Nếu gặp lỗi "Cloud Firestore API is disabled", vào Google Cloud Console → APIs & Services → bật **Cloud Firestore API** cho project trước.
 
-**d) Create Firestore composite index**
+**d) Tạo Firestore composite index**
 
-Run the app and visit `/` once. The server log may contain a `FAILED_PRECONDITION` error with a direct link like:
+Chạy app và mở `/` một lần. Server log có thể hiện lỗi `FAILED_PRECONDITION` kèm link trực tiếp như:
 
 ```
 https://console.firebase.google.com/v1/r/project/<your-project>/firestore/indexes?create_composite=...
 ```
 
-Copy that link from the terminal, open it in your browser → Firebase Console will show a pre-filled form → click **Create index**. Wait ~1–2 min for status to change from **Building** to **Enabled**.
+Copy link đó từ terminal, mở trong browser → Firebase Console sẽ hiện form đã điền sẵn → bấm **Create index**. Chờ khoảng 1–2 phút để trạng thái đổi từ **Building** sang **Enabled**.
 
-**e) Get service account credentials**
+**e) Lấy service account credentials**
 
 Firebase Console → Project Settings → Service Accounts → Generate new private key → download JSON → copy values into `.env`.
 
-**f) Enable Firebase Storage + deploy rules**
+**f) Bật Firebase Storage + deploy rules**
 
 Firebase Console → Storage → Get started → choose **production mode** → select the same region as Firestore.
 
-Then deploy the Storage security rules (allows authenticated browser uploads to `course-pdfs/` and `course-layouts/`):
+Sau đó deploy Storage security rules (cho phép user đã đăng nhập upload browser vào `course-pdfs/` và `course-layouts/`):
 
 ```bash
 firebase login          # one-time, opens browser
 firebase deploy --only storage
 ```
 
-> If `firebase` CLI is not installed: `npm install -g firebase-tools`
+> Nếu chưa cài `firebase` CLI: `npm install -g firebase-tools`
 
-**g) Add client-side Firebase env vars**
+**g) Thêm Firebase env vars phía client**
 
-Beside the server-side `FIREBASE_*` vars (from service account), you also need browser-side vars. Go to Firebase Console → Project Settings → General → Your apps → Web app → SDK setup and configuration → copy the `firebaseConfig` values into `.env`:
+Bên cạnh các biến server-side `FIREBASE_*` (từ service account), cần thêm biến cho browser. Vào Firebase Console → Project Settings → General → Your apps → Web app → SDK setup and configuration → copy các giá trị `firebaseConfig` vào `.env`:
 
 ```
 NEXT_PUBLIC_FIREBASE_API_KEY=
@@ -155,9 +155,9 @@ NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
 NEXT_PUBLIC_FIREBASE_APP_ID=
 ```
 
-### 5. Run (Recommended: Docker)
+### 5. Chạy app (khuyến nghị: Docker)
 
-Run this section from the repository root. If dependencies need refreshing, run `npm install` from `web/` first.
+Chạy phần này từ repo root. Nếu cần refresh dependencies, chạy `npm install` trong `web/` trước.
 
 Hệ thống hiện tại bao gồm Web App (Next.js) và UKT Microservice (Python). Cách tốt nhất để chạy toàn bộ là sử dụng Docker Compose:
 
@@ -174,29 +174,29 @@ docker-compose up --build
 - **Admin Monitor**: http://localhost:3002/admin/monitor (Yêu cầu quyền Admin)
 - **Health Check**: http://localhost:8000/health
 
-### 6. Run (Development: Manual)
+### 6. Chạy thủ công khi phát triển
 
 Nếu muốn chạy riêng lẻ để phát triển:
 
 **Web App:**
 ```bash
-# From the repository root:
+# Từ repo root:
 cp .env web/.env
 cd web
 npm run dev
 ```
 
-If you start from the repository root in PowerShell, use `Copy-Item .env web\.env` instead of `cp .env web/.env`.
+Nếu dùng PowerShell từ repo root, dùng `Copy-Item .env web\.env` thay cho `cp .env web/.env`.
 
 **UKT Service:**
 ```bash
-# From the repository root:
+# Từ repo root:
 cd UKT
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-## 🛡️ Security & Roles (RBAC)
+## 🛡️ Bảo mật và phân quyền (RBAC)
 
 Dự án sử dụng cơ chế phân quyền dựa trên **Firebase Custom Claims**.
 
@@ -218,27 +218,27 @@ Hệ thống sử dụng các middleware chuyên dụng:
 - `withAdminAuth`: Chặn quyền truy cập các API nhạy cảm (Logs, Usage, Metrics).
 - `withApiLogging`: Tự động ghi log chi tiết mọi request và response.
 
-## 🚀 Deployment & Monitoring
+## 🚀 Deploy và giám sát
 
-### 1. Production Deployment (Railway)
+### 1. Production deployment (Railway)
 Dự án được thiết kế để chạy tối ưu trên **Railway**. Xem hướng dẫn chi tiết tại:
 - **Web App & UKT Service**: Tự động deploy qua GitHub integration.
-- **Monitoring Stack**: Hướng dẫn deploy Prometheus & Grafana tại **[monitoring/README.md](monitoring/README.md)**.
+- **Stack giám sát**: Hướng dẫn deploy Prometheus & Grafana tại **[monitoring/README.md](monitoring/README.md)**.
 
-### 2. Observability
+### 2. Quan sát hệ thống
 Hệ thống tích hợp sẵn bộ công cụ giám sát:
 - **Prometheus**: Thu thập metrics từ các service qua `/api/metrics` (chỉ dành cho Admin).
 - **Grafana**: Dashboard trực quan hóa chuyên sâu.
 - **Admin Dashboard**: Giao diện quản trị trực tiếp trên Web App để theo dõi Logs và Usage.
 - **Discord Alerts**: Cảnh báo lỗi hệ thống thời gian thực.
 
-## AI Logging
+## AI logging
 
-Prompts and tool calls are automatically logged when you use any supported AI tool (Claude Code, Cursor, Codex, Gemini, Copilot). No manual steps needed after running `setup_hooks.sh`. Logs go to `.ai-log/session.jsonl` and are submitted on `git push`.
+Prompt và tool call được tự động log khi dùng AI tool được hỗ trợ (Claude Code, Cursor, Codex, Gemini, Copilot). Sau khi chạy `setup_hooks.sh`, không cần thao tác thủ công thêm. Log nằm ở `.ai-log/session.jsonl` và được submit khi `git push`.
 
-### 📑 Documentation
+### 📑 Tài liệu
 
-#### Core Docs
+#### Tài liệu chính
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — Bản đồ kiến trúc hệ thống và luồng dữ liệu.
 - **[CLAUDE.md](CLAUDE.md)** — Hướng dẫn cho AI (Claude) về quy trình PR, git và kiến trúc.
 - **[CONVENTIONS.md](CONVENTIONS.md)** — Quy chuẩn phát triển code, testing và chiến lược xử lý lỗi.
@@ -246,7 +246,7 @@ Prompts and tool calls are automatically logged when you use any supported AI to
 - **[PIPELINE.md](PIPELINE.md)** — Bản đồ file, cấu trúc dữ liệu và chi tiết luồng AI Pipeline.
 - **[WORKLOG.md](WORKLOG.md)** — Nhật ký quyết định kỹ thuật (ADRs) và phân công task.
 
-#### 🛠️ BMAD Management (Busy Madman)
+#### 🛠️ Quản lý BMAD (Busy Madman)
 Tài liệu quản lý dự án tại `_bmad-output/`:
 - **[TRACK.md](_bmad-output/TRACK.md)** — Project heartbeat, theo dõi trạng thái và các bước tiếp theo.
 - **[initialization_plan.md](_bmad-output/initialization_plan.md)** — Kế hoạch khởi tạo BMAD và đánh giá độ phức tạp.

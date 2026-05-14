@@ -43,6 +43,11 @@ class PredictResponse(BaseModel):
     )
 
 
+class StateResponse(BaseModel):
+    student_id: str
+    knowledge_state: dict[str, KCState] = Field(default_factory=dict)
+
+
 class UpdateRequest(BaseModel):
     student_id: str
     kc_id: str
