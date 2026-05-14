@@ -10,7 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | TBD |
+| Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | #110 |
 | Dashboard cá nhân hóa UKT + spider chart độ chắc chắn | Nguyen Binh Thanh | #109 |
 | Spider chart UKT theo module y khoa | Nguyen Binh Thanh | #108 |
 | Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | #107 |
@@ -31,7 +31,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-40] Việt hóa copy sau dashboard UKT - 14/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** TBD (`refactor/vietnamese-ukt-copy`)
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #110 (`refactor/vietnamese-ukt-copy`)
 
 **Bối cảnh:** Sau khi dashboard UKT chạy được, một số bề mặt user-facing vẫn còn English copy như `UKT mastery`, `Medical module spider chart`, Admin Monitor labels và README/PIPELINE đoạn mới. Product muốn ưu tiên tiếng Việt cho UI và documentation, nhưng giữ thuật ngữ kỹ thuật khi cần rõ contract.
 
