@@ -1,13 +1,20 @@
 'use client'
 
+import { useEffect, useMemo, useState } from 'react'
 import { SynapsyLogo, T } from '@/app/components/synapsy'
+import { KnowledgeSpiderChart } from '@/app/components/knowledge/KnowledgeSpiderChart'
 import { DiagnosticQuestion } from '@/core/models/learning-model'
+import type { PredictResponse } from '@/core/ports/ukt.port'
+import { aggregateModuleMastery } from '@/lib/ukt-module-mastery'
 
 interface Props {
+  courseId: string
   questions: DiagnosticQuestion[]
   answers: Record<number, number>
   onComplete: (results: Record<string, number>) => void
 }
+
+type UktSyncStatus = 'idle' | 'loading' | 'ready' | 'unavailable'
 
 // lesson/topic score percent → map lessonId/topic → pct for CourseTree coloring
 function buildResults(questions: DiagnosticQuestion[], answers: Record<number, number>): Record<string, number> {
@@ -25,10 +32,77 @@ function buildResults(questions: DiagnosticQuestion[], answers: Record<number, n
   return out
 }
 
-export function DiagnosticResults({ questions, answers, onComplete }: Props) {
+function buildUktInteractions(questions: DiagnosticQuestion[], answers: Record<number, number>) {
+  const timestamp = Math.floor(Date.now() / 1000)
+  return questions
+    .map((q, index) => ({
+      question_id: index + 1,
+      kc_id: q.kc_id,
+      response: answers[index] === q.answer ? 1 : 0,
+      timestamp: timestamp + index,
+    }))
+    .filter(interaction => Boolean(interaction.kc_id))
+}
+
+function interactionFingerprint(interactions: ReturnType<typeof buildUktInteractions>) {
+  return interactions
+    .map(interaction => `${interaction.question_id}:${interaction.kc_id}:${interaction.response}`)
+    .join('|')
+}
+
+export function DiagnosticResults({ courseId, questions, answers, onComplete }: Props) {
   const scored = questions.map((q, i) => ({ ...q, userAnswer: answers[i], isCorrect: answers[i] === q.answer }))
   const totalCorrect = scored.filter(q => q.isCorrect).length
   const pct = Math.round((totalCorrect / questions.length) * 100)
+  const [uktPrediction, setUktPrediction] = useState<PredictResponse | null>(null)
+  const [uktStatus, setUktStatus] = useState<UktSyncStatus>('idle')
+  const interactions = useMemo(() => buildUktInteractions(questions, answers), [questions, answers])
+  const moduleMastery = useMemo(
+    () => aggregateModuleMastery(uktPrediction?.knowledge_state ?? {}),
+    [uktPrediction],
+  )
+
+  useEffect(() => {
+    if (interactions.length === 0) return
+
+    const fingerprint = interactionFingerprint(interactions)
+    const cacheKey = `uktDiagnosticPrediction_${courseId}_${fingerprint}`
+    let cancelled = false
+
+    try {
+      const cached = sessionStorage.getItem(cacheKey)
+      if (cached) {
+        setUktPrediction(JSON.parse(cached))
+        setUktStatus('ready')
+        return
+      }
+    } catch {
+      // Ignore corrupted advisory cache and ask UKT again.
+    }
+
+    setUktStatus('loading')
+    fetch('/api/ukt/interactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ interactions, total_minutes: 45 }),
+    })
+      .then(async res => {
+        if (!res.ok) throw new Error('UKT sync failed')
+        return res.json()
+      })
+      .then(data => {
+        const prediction = data.prediction as PredictResponse | undefined
+        if (!prediction || cancelled) return
+        setUktPrediction(prediction)
+        setUktStatus('ready')
+        try { sessionStorage.setItem(cacheKey, JSON.stringify(prediction)) } catch { /* ignore */ }
+      })
+      .catch(() => {
+        if (!cancelled) setUktStatus('unavailable')
+      })
+
+    return () => { cancelled = true }
+  }, [courseId, interactions])
 
   // Chapter score breakdown (group by topic prefix or all questions)
   const topicGroups: Record<string, { total: number; correct: number }> = {}
@@ -48,28 +122,6 @@ export function DiagnosticResults({ questions, answers, onComplete }: Props) {
   const circumference = 2 * Math.PI * r
 
   const handleStart = async () => {
-    const timestamp = Math.floor(Date.now() / 1000)
-    const interactions = questions
-      .map((q, index) => ({
-        question_id: index + 1,
-        kc_id: q.kc_id,
-        response: answers[index] === q.answer ? 1 : 0,
-        timestamp: timestamp + index,
-      }))
-      .filter(interaction => Boolean(interaction.kc_id))
-
-    if (interactions.length > 0) {
-      try {
-        await fetch('/api/ukt/interactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ interactions, total_minutes: 45 }),
-        })
-      } catch {
-        // UKT is advisory; local diagnostic coloring should still continue.
-      }
-    }
-
     onComplete(buildResults(questions, answers))
   }
 
@@ -121,6 +173,24 @@ export function DiagnosticResults({ questions, answers, onComplete }: Props) {
               </p>
             </div>
           </div>
+
+          {uktPrediction ? (
+            <KnowledgeSpiderChart points={moduleMastery} />
+          ) : uktStatus === 'loading' ? (
+            <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 18px', marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 800, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>UKT mastery</p>
+                <p style={{ fontSize: 14, color: T.ink60, margin: 0 }}>Đang đồng bộ knowledge tracing...</p>
+              </div>
+              <div style={{ width: 24, height: 24, border: `3px solid ${T.ink10}`, borderTopColor: T.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+              <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
+            </div>
+          ) : uktStatus === 'unavailable' ? (
+            <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '14px 18px', marginBottom: 28 }}>
+              <p style={{ fontSize: 11, fontWeight: 800, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>UKT mastery</p>
+              <p style={{ fontSize: 13, color: T.ink60, margin: 0 }}>UKT chưa phản hồi lúc này. Kết quả local vẫn được lưu để vào khóa học.</p>
+            </div>
+          ) : null}
 
           {/* Topic breakdown */}
           <div style={{ marginBottom: 28 }}>

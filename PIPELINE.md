@@ -329,6 +329,15 @@ type CardProgress = {
   kcId?: string         // deterministic KC id for UKT
   moduleId?: string     // spider chart module axis
 }
+
+type ModuleMasteryPoint = {
+  module_id: string
+  module_name: string
+  score: number | null  // average UKT p_correct across KCs in this module
+  percent: number | null
+  evidenceCount: number
+  kcIds: string[]
+}
 ```
 
 Generation state:
@@ -363,7 +372,9 @@ Rules:
 Spider chart semantics:
 
 - Axis = `module_id` from the fixed module list.
-- Axis score should aggregate UKT `p_correct` or `mu` across KCs in that module.
+- `aggregateModuleMastery()` returns exactly 8 axes in `MEDICAL_MODULES` order.
+- Axis score aggregates UKT `p_correct` across KCs in that module, falling back to `mu` only when `p_correct` is unavailable.
+- Unknown / unseen modules render as no-data axes, not as mastered content.
 - Diagnostic and SRS both write signals to the same KC namespace.
 
 ---
@@ -549,7 +560,7 @@ Rules:
 - Stale `diagnosticResults_{id}` are discarded only when none of the result keys match any current lesson id (`diagnosticResultsAreRelevant`). Partial results from large-course diagnostics are preserved.
 - Stale `diagnosticQuestions_{id}` using the legacy `legacy-full` id (no valid lesson keys) are discarded and regenerated.
 - `diagnostic-error` gives retry/skip instead of silently skipping.
-- On diagnostic completion, `DiagnosticResults` posts KC-tagged interactions to `/api/ukt/interactions`; local coloring continues even if UKT is unavailable.
+- On diagnostic completion, `DiagnosticResults` posts KC-tagged interactions to `/api/ukt/interactions`, receives UKT `knowledge_state`, aggregates it into the 8-module spider chart, and local coloring continues even if UKT is unavailable.
 
 LocalStorage keys:
 
