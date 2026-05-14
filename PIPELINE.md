@@ -159,7 +159,7 @@ UKT/
 
 UKT chay rieng o `http://localhost:8000` trong Docker Compose, duoc web app goi qua `UKT_SERVICE_URL`.
 
-`/predict` seeds or refreshes KC state from quiz interactions. `/update` also initializes a missing student state so SRS-only users can still produce UKT signals after skipping diagnostics. `/state/{student_id}` returns the persisted KC state for dashboard aggregation.
+`/predict` seed hoặc refresh KC state từ quiz interactions. `/update` cũng khởi tạo state còn thiếu để user chỉ dùng SRS vẫn có tín hiệu UKT sau khi bỏ qua diagnostic. `/state/{student_id}` trả persisted KC state để dashboard aggregate.
 
 ### Monitoring
 
@@ -219,7 +219,7 @@ Docker Compose khoi dong Redis, UKT, web, Prometheus, Grafana, OpenTelemetry Col
 | GET | `/api/progress/due` | `web/app/api/progress/due/route.ts` | Cards due for review |
 | POST | `/api/progress/review` | `web/app/api/progress/review/route.ts` | Submit SM2 rating |
 | POST | `/api/ukt/interactions` | `web/app/api/ukt/interactions/route.ts` | Seed UKT with KC-tagged diagnostic quiz interactions |
-| GET | `/api/ukt/mastery` | `web/app/api/ukt/mastery/route.ts` | Authenticated dashboard UKT state + 8-module mastery aggregation |
+| GET | `/api/ukt/mastery` | `web/app/api/ukt/mastery/route.ts` | UKT state của user đã đăng nhập + aggregate mastery theo 8 module |
 
 ### Admin and health
 
@@ -334,10 +334,10 @@ type CardProgress = {
 type ModuleMasteryPoint = {
   module_id: string
   module_name: string
-  score: number | null  // average UKT p_correct across KCs in this module
+  score: number | null  // trung bình UKT p_correct của các KC trong module
   percent: number | null
-  uncertainty: number | null       // average UKT sigma across KCs in this module
-  certaintyPercent: number | null  // 1 - uncertainty, shown in the dashboard list
+  uncertainty: number | null       // trung bình UKT sigma của các KC trong module
+  certaintyPercent: number | null  // 1 - uncertainty, hiển thị ở dashboard
   evidenceCount: number
   kcIds: string[]
 }
@@ -360,7 +360,7 @@ Source of truth:
 
 - `web/core/models/knowledge.ts`
 - `KNOWLEDGE_MAP_VERSION = medical-v1`
-- Fixed spider chart modules: Anatomy, Physiology, Pharmacology, Microbiology, Pathology, Clinical Medicine, Biochemistry, Immunology.
+- Fixed spider chart modules: Giải phẫu, Sinh lý, Dược lý, Vi sinh, Bệnh lý, Lâm sàng, Hóa sinh, Miễn dịch (registry id vẫn dùng English slugs).
 - Each KC has stable `kc_id`, display `kc_name`, and parent `module_id`.
 
 Rules:
@@ -375,12 +375,12 @@ Rules:
 Spider chart semantics:
 
 - Axis = `module_id` from the fixed module list.
-- `aggregateModuleMastery()` returns exactly 8 axes in `MEDICAL_MODULES` order.
-- Axis score aggregates UKT `p_correct` across KCs in that module, falling back to `mu` only when `p_correct` is unavailable.
-- Axis uncertainty aggregates UKT `sigma`; the UI shows this as a soft band on the spider chart and as certainty percent (`1 - sigma`) in the side list.
-- Unknown / unseen modules render as no-data axes, not as mastered content.
-- Diagnostic and SRS both write signals to the same KC namespace. Chapter quiz attempts should use `/api/ukt/interactions` with the same `kc_id` metadata when the chapter quiz UI is wired.
-- Main dashboard reads persisted UKT state through `/api/ukt/mastery`, so the chart is a user personalization surface, not only a post-diagnostic result widget.
+- `aggregateModuleMastery()` luôn trả đúng 8 axis theo thứ tự `MEDICAL_MODULES`.
+- Axis score aggregate UKT `p_correct` của các KC trong module đó, chỉ fallback sang `mu` khi không có `p_correct`.
+- Axis độ không chắc aggregate UKT `sigma`; UI vẽ thành band mềm trên spider chart và hiện phần trăm độ chắc (`1 - sigma`) trong list bên cạnh.
+- Module unknown / chưa có dữ liệu hiển thị dạng no-data, không coi là đã mastered.
+- Diagnostic và SRS đều ghi signal vào cùng KC namespace. Chapter quiz attempt nên dùng `/api/ukt/interactions` với cùng metadata `kc_id` khi UI chapter quiz được nối vào submit flow.
+- Main dashboard đọc persisted UKT state qua `/api/ukt/mastery`, nên chart là bề mặt cá nhân hóa user, không chỉ là widget sau diagnostic.
 
 ---
 
@@ -532,7 +532,7 @@ Main branches inside `startGeneration()`:
 - Shows `GenerationScreen` while `status === 'generating' || status === 'done'`.
 - Refreshes library when generation resets from a non-idle state back to `idle`.
 - De-duplicates library courses by `contentHash`, then title fallback.
-- For signed-in users, fetches `/api/ukt/mastery` and renders the 8-axis UKT spider chart on the main page before the activity heatmap. The chart starts with no-data axes when UKT has no state yet.
+- Với user đã đăng nhập, fetch `/api/ukt/mastery` và render spider chart UKT 8 trục trên main page trước activity heatmap. Khi UKT chưa có state, chart vẫn hiện đủ axis ở trạng thái no-data.
 
 `PipelineTracker` displays:
 
@@ -587,7 +587,7 @@ LocalStorage keys:
 - Header CTA: review due cards starts a study overlay for all due cards.
 - Keyboard navigation: left/right arrows move between cards when not typing.
 
-Mastery priority in `lessonMastery()`:
+Thứ tự ưu tiên mức nắm vững trong `lessonMastery()`:
 
 1. SRS entry newer than `course.createdAt`:
    - `REVIEW` and not due -> 100
@@ -661,7 +661,7 @@ Flow:
 
 ---
 
-## Observability
+## Quan sát hệ thống
 
 Web app:
 
@@ -708,7 +708,7 @@ Docker Compose from repo root:
 docker-compose up --build
 ```
 
-Root Docker Compose defaults `REDIS_URL` to `redis://redis:6379` for both web and UKT if `.env` does not override it. Redis uses AOF plus the `redis-data` named volume so local UKT mastery state survives normal container restarts instead of falling back to in-memory state.
+Root Docker Compose default `REDIS_URL=redis://redis:6379` cho cả web và UKT nếu `.env` không override. Redis bật AOF và dùng named volume `redis-data`, nên UKT mastery state local sống qua các lần restart container bình thường thay vì rơi về in-memory state.
 
 Ports in local Docker:
 

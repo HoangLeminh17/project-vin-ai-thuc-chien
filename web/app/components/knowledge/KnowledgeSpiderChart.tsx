@@ -10,6 +10,16 @@ const CENTER = SIZE / 2
 const RADIUS = 96
 const GRID_LEVELS = [0.25, 0.5, 0.75, 1]
 const UNCERTAINTY_FALLBACK = 0.15
+const MODULE_LABELS: Record<string, string> = {
+  anatomy: 'Giải phẫu',
+  physiology: 'Sinh lý',
+  pharmacology: 'Dược lý',
+  microbiology: 'Vi sinh',
+  pathology: 'Bệnh lý',
+  clinical: 'Lâm sàng',
+  biochemistry: 'Hóa sinh',
+  immunology: 'Miễn dịch',
+}
 
 function polarPoint(index: number, total: number, ratio: number) {
   const angle = -Math.PI / 2 + (index / total) * Math.PI * 2
@@ -51,6 +61,10 @@ function labelAnchor(angle: number) {
   return 'middle'
 }
 
+function displayModuleName(point: ModuleMasteryPoint) {
+  return MODULE_LABELS[point.module_id] ?? point.module_name
+}
+
 export function KnowledgeSpiderChart({ points }: Props) {
   const dataPolygon = polygonFor(points, point => point.score ?? 0)
   const hasEvidence = points.some(point => point.evidenceCount > 0)
@@ -61,19 +75,19 @@ export function KnowledgeSpiderChart({ points }: Props) {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, marginBottom: 8 }}>
         <div>
           <p style={{ fontSize: 11, fontWeight: 800, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>
-            UKT mastery
+            Bản đồ UKT
           </p>
           <h3 style={{ fontSize: 18, fontWeight: 800, color: T.ink, letterSpacing: '-0.03em', margin: 0 }}>
-            Medical module spider chart
+            Mức độ nắm vững theo module y khoa
           </h3>
         </div>
         <span className="sy-mono" style={{ fontSize: 11, color: T.ink60, whiteSpace: 'nowrap' }}>
-          p_correct + sigma
+          mastery + độ chắc
         </span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, alignItems: 'center' }}>
-        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="UKT mastery by medical module" style={{ width: '100%', maxWidth: 340, margin: '0 auto', display: 'block' }}>
+        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Mức độ nắm vững UKT theo module y khoa" style={{ width: '100%', maxWidth: 340, margin: '0 auto', display: 'block' }}>
           {GRID_LEVELS.map(level => (
             <polygon
               key={level}
@@ -97,7 +111,7 @@ export function KnowledgeSpiderChart({ points }: Props) {
                   dominantBaseline="middle"
                   style={{ fontSize: 10, fontWeight: 700, fill: point.evidenceCount > 0 ? T.ink : T.ink40 }}
                 >
-                  {point.module_name}
+                  {displayModuleName(point)}
                 </text>
               </g>
             )
@@ -146,14 +160,14 @@ export function KnowledgeSpiderChart({ points }: Props) {
 
         <div style={{ display: 'grid', gap: 8 }}>
           <div className="sy-mono" style={{ display: 'grid', gridTemplateColumns: '1fr 46px', gap: 10, fontSize: 9, fontWeight: 700, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            <span>Mastery</span>
-            <span style={{ textAlign: 'right' }}>Sure</span>
+            <span>Nắm vững</span>
+            <span style={{ textAlign: 'right' }}>Chắc</span>
           </div>
           {points.map(point => (
             <div key={point.module_id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'center' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>{point.module_name}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: T.ink }}>{displayModuleName(point)}</span>
                   <span className="sy-mono" style={{ fontSize: 11, fontWeight: 700, color: point.percent === null ? T.ink40 : T.ink }}>
                     {point.percent === null ? '--' : `${point.percent}%`}
                   </span>
