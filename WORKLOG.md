@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Dashboard UKT mastery + certainty spider chart | Nguyen Binh Thanh | #109 |
 | UKT module mastery spider chart | Nguyen Binh Thanh | #108 |
 | Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | #107 |
 | Stable Knowledge Components + UKT quiz/SRS signals | Nguyen Binh Thanh | #104, #105 |
@@ -24,6 +25,24 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-39] Dashboard UKT mastery surface - 14/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #109 (`feat/dashboard-ukt-mastery`)
+
+**Bối cảnh:** PR #108 mới hiển thị spider chart ngay sau diagnostic quiz. Product cần chart này là bề mặt cá nhân hóa ở main page: đọc lịch sử tín hiệu UKT đã tích lũy của user, không phụ thuộc việc vừa làm diagnostic xong.
+
+**Quyết định:**
+- UKT service thêm `GET /state/{student_id}` để trả persisted `knowledge_state` theo KC.
+- Web thêm `/api/ukt/mastery`: verify session, đọc UKT state của user hiện tại, aggregate thành 8 module từ `MEDICAL_MODULES`.
+- Main dashboard gọi `/api/ukt/mastery` và render spider chart trước activity heatmap. User mới vẫn thấy đủ 8 trục ở trạng thái no-data.
+- `aggregateModuleMastery()` giờ gom cả `p_correct`/`mu` cho mastery và `sigma` cho uncertainty; UI vẽ band uncertainty và hiện certainty percent.
+- Root `docker-compose.yml` default `REDIS_URL=redis://redis:6379` cho web/UKT và bật Redis AOF + named volume để state không rơi về in-memory khi local `.env` chưa set Redis.
+- Chapter quiz signal sẽ dùng cùng `/api/ukt/interactions` với `kc_id` khi chapter quiz UI được nối vào luồng submit; hiện tại diagnostic và SRS đã ghi vào cùng KC namespace.
+
+**Kết quả mong đợi:** Main page trở thành nơi soi mastery/certainty theo module xuyên suốt diagnostic và SRS history; chart không còn bị giới hạn trong màn hình diagnostic result.
 
 ---
 

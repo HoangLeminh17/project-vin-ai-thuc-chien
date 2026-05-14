@@ -10,6 +10,8 @@ import { SavedCourse } from '@/core/models/saved-course'
 import { Course, ChapterContent } from '@/core/models/learning-model'
 import { useGeneration, type DiagnosticStatus } from '@/lib/contexts/generation-context'
 import { SynapsyLogo, SynapsyRing, GeoDecoration, T } from '@/app/components/synapsy'
+import { KnowledgeSpiderChart } from '@/app/components/knowledge/KnowledgeSpiderChart'
+import { aggregateModuleMastery, type ModuleMasteryPoint } from '@/lib/ukt-module-mastery'
 
 // ── SRS stats ─────────────────────────────────────────────────────────────────
 
@@ -31,6 +33,7 @@ function useSRSStats() {
 
 interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; lastReviewedAt?: string; isDue: boolean }
 type ProgressMap = Record<string, ProgressMapEntry>
+const EMPTY_MODULE_MASTERY = aggregateModuleMastery({})
 
 function buildHeatmap(map: ProgressMap, days = 30): number[] {
   const buckets = Array<number>(days).fill(0)
@@ -57,6 +60,44 @@ function useProgressMap(userId: string | null) {
       .catch(() => {})
   }, [userId])
   return map
+}
+
+function useUktMastery(userId: string | null) {
+  const [points, setPoints] = useState<ModuleMasteryPoint[]>(EMPTY_MODULE_MASTERY)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!userId) {
+      setPoints(EMPTY_MODULE_MASTERY)
+      setLoading(false)
+      return
+    }
+
+    let cancelled = false
+    setLoading(true)
+    fetch('/api/ukt/mastery')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled) return
+        if (Array.isArray(data?.module_mastery)) {
+          setPoints(data.module_mastery)
+        } else {
+          setPoints(EMPTY_MODULE_MASTERY)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPoints(EMPTY_MODULE_MASTERY)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [userId])
+
+  return { points, loading }
 }
 
 function courseStats(saved: SavedCourse, map: ProgressMap) {
@@ -264,6 +305,7 @@ export default function Home() {
 
   const { stats: srsStats, loading: srsLoading } = useSRSStats()
   const progressMap = useProgressMap(user?.uid ?? null)
+  const { points: moduleMastery, loading: uktMasteryLoading } = useUktMastery(user?.uid ?? null)
 
   const reset = useCallback(() => {
     setFile(null)
@@ -491,6 +533,13 @@ export default function Home() {
                 </div>
               ))}
             </div>
+          </section>
+        )}
+
+        {/* UKT module mastery */}
+        {user && (
+          <section style={{ marginBottom: 44, opacity: uktMasteryLoading ? 0.82 : 1, transition: 'opacity 0.15s ease' }}>
+            <KnowledgeSpiderChart points={moduleMastery} />
           </section>
         )}
 

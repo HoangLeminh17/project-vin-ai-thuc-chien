@@ -15,13 +15,18 @@ describe('aggregateModuleMastery', () => {
       'biochemistry',
       'immunology',
     ])
-    expect(points.every(point => point.score === null && point.evidenceCount === 0)).toBe(true)
+    expect(points.every(point => (
+      point.score === null
+      && point.uncertainty === null
+      && point.certaintyPercent === null
+      && point.evidenceCount === 0
+    ))).toBe(true)
   })
 
-  it('aggregates p_correct by module_id from registered KC ids', () => {
+  it('aggregates p_correct and sigma by module_id from registered KC ids', () => {
     const points = aggregateModuleMastery({
       'physiology.general': { mu: 0.2, sigma: 0.1, p_correct: 0.25, aleatory_flag: false },
-      'physiology.renal': { mu: 0.4, sigma: 0.1, p_correct: 0.75, aleatory_flag: false },
+      'physiology.renal': { mu: 0.4, sigma: 0.3, p_correct: 0.75, aleatory_flag: false },
       'pathology.general': { mu: 0.1, sigma: 0.1, p_correct: 0.1, aleatory_flag: false },
     })
 
@@ -30,6 +35,8 @@ describe('aggregateModuleMastery', () => {
 
     expect(physiology?.score).toBeCloseTo(0.5)
     expect(physiology?.percent).toBe(50)
+    expect(physiology?.uncertainty).toBeCloseTo(0.2)
+    expect(physiology?.certaintyPercent).toBe(80)
     expect(physiology?.evidenceCount).toBe(2)
     expect(pathology?.percent).toBe(10)
   })
