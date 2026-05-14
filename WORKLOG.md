@@ -10,7 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| Dashboard UKT mastery + certainty spider chart | Nguyen Binh Thanh | TBD |
+| Dashboard UKT mastery + certainty spider chart | Nguyen Binh Thanh | #109 |
 | UKT module mastery spider chart | Nguyen Binh Thanh | #108 |
 | Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | #107 |
 | Stable Knowledge Components + UKT quiz/SRS signals | Nguyen Binh Thanh | #104, #105 |
@@ -30,7 +30,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-39] Dashboard UKT mastery surface - 14/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** TBD (`feat/dashboard-ukt-mastery`)
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #109 (`feat/dashboard-ukt-mastery`)
 
 **Bối cảnh:** PR #108 mới hiển thị spider chart ngay sau diagnostic quiz. Product cần chart này là bề mặt cá nhân hóa ở main page: đọc lịch sử tín hiệu UKT đã tích lũy của user, không phụ thuộc việc vừa làm diagnostic xong.
 
