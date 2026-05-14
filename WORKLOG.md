@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| UKT module mastery spider chart | Nguyen Binh Thanh | TBD |
 | Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | #107 |
 | Stable Knowledge Components + UKT quiz/SRS signals | Nguyen Binh Thanh | #104, #105 |
 | Diagnostic lesson-scoped coverage + partial-coverage acceptance | Nguyen Binh Thanh | #103 |
@@ -23,6 +24,23 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-38] UKT module spider chart - 14/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** `feat/spider-chart-structure`
+
+**Bối cảnh:** Sau PR #104/#105, UKT đã nhận `kc_id` ổn định và trả `knowledge_state` theo KC. Product cần một lớp hiển thị theo module lớn để learner nhìn nhanh điểm mạnh/yếu theo 8 trục y khoa thay vì đọc từng KC rời rạc.
+
+**Quyết định:**
+- Spider chart dùng đúng 8 axis từ `MEDICAL_MODULES`: Anatomy, Physiology, Pharmacology, Microbiology, Pathology, Clinical Medicine, Biochemistry, Immunology.
+- Source score là UKT `knowledge_state[KC].p_correct`; nếu thiếu mới fallback sang `mu`.
+- `aggregateModuleMastery()` gom nhiều KC cùng `module_id` bằng trung bình cộng và trả đủ 8 module theo thứ tự registry.
+- Module chưa có KC evidence hiển thị dạng no-data (`score = null`), không coi là 0% mastery.
+- Diagnostic results sync `/api/ukt/interactions` và hiển thị spider chart ngay trên màn hình kết quả. Nếu UKT lỗi, diagnostic coloring local vẫn tiếp tục như trước.
+
+**Kết quả mong đợi:** Learner thấy mastery theo module ngay sau diagnostic quiz; SRS vẫn tiếp tục cập nhật cùng KC namespace để spider chart có thể mở rộng thành dashboard bền vững sau này.
 
 ---
 
