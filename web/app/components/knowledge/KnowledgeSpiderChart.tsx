@@ -87,7 +87,7 @@ export function KnowledgeSpiderChart({ points }: Props) {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, alignItems: 'center' }}>
-        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Mức độ nắm vững UKT theo module y khoa" style={{ width: '100%', maxWidth: 340, margin: '0 auto', display: 'block' }}>
+        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Năng lực theo module y khoa" style={{ width: '100%', maxWidth: 340, margin: '0 auto', display: 'block' }}>
           {GRID_LEVELS.map(level => (
             <polygon
               key={level}
