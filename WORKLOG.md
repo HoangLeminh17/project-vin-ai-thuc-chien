@@ -10,7 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| Fix Vitest Rolldown optional binding trên CI Linux | Nguyen Binh Thanh | TBD |
+| Fix Vitest Rolldown optional binding trên CI Linux | Nguyen Binh Thanh | #112 |
 | Fix Railway deploy npm prefix trên self-hosted runner | Nguyen Binh Thanh | #111 |
 | Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | #110 |
 | Dashboard cá nhân hóa UKT + spider chart độ chắc chắn | Nguyen Binh Thanh | #109 |
@@ -33,7 +33,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-42] Fix Rolldown optional binding cho Vitest CI - 15/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** TBD (`fix/ci-rolldown-optional-binding`)
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #112 (`fix/ci-rolldown-optional-binding`)
 
 **Bối cảnh:** Sau PR #111, `web-build-test` fail ở bước smoke tests với lỗi `Cannot find native binding` từ `rolldown`, thiếu package optional `@rolldown/binding-linux-x64-gnu`. `web/package-lock.json` đã có binding này, nên lỗi đến từ npm optional-dependency handling trên self-hosted Linux runner, không phải thiếu lockfile.
 
