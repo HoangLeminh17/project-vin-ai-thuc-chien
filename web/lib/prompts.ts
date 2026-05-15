@@ -149,6 +149,7 @@ Rules for quiz questions:
 - answer is the 0-based index (0–3) of the correct option
 - explanation: 1–2 sentences explaining why the answer is correct
 - Base questions on the raw_context, not generic knowledge
+- Write ALL questions, options, and explanations in Vietnamese
 
 Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
@@ -169,10 +170,10 @@ Output schema:
     "topic": "...",
     "questions": [
       {
-        "question": "Question text here?",
-        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "question": "Cơ chế hoạt động của X là gì?",
+        "options": ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
         "answer": 0,
-        "explanation": "Option A is correct because..."
+        "explanation": "Đáp án A đúng vì..."
       }
     ]
   }
@@ -196,17 +197,18 @@ Instructions:
 - For "module_name", copy the MODULE_NAME marker exactly when available.
 - For "source_chunk_id", copy the value from the [[SOURCE_CHUNK_ID: ...]] marker for that lesson exactly. It must match one of the input markers.
 - Do not use inline citation markers like [chunk-1-2] as source_chunk_id.
+- ALL question, options, and explanation text MUST be written in Vietnamese. Never use English in these fields.
 - Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
 Output schema:
 {
   "questions": [
     {
-      "question": "Question text here?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "question": "Cơ chế hoạt động của X là gì?",
+      "options": ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
       "answer": 0,
-      "explanation": "Brief explanation",
-      "topic": "Core Concept Name",
+      "explanation": "Đáp án A đúng vì...",
+      "topic": "Tên khái niệm cốt lõi",
       "kc_id": "clinical.general",
       "kc_name": "General clinical reasoning",
       "module_id": "clinical",
@@ -225,17 +227,18 @@ Each lesson starts with [[SOURCE_CHUNK_ID: ...]].
 If present, copy [[KC_ID: ...]], [[KC_NAME: ...]], [[MODULE_ID: ...]], and [[MODULE_NAME: ...]] into each question.
 Generate exactly one multiple-choice question per SOURCE_CHUNK_ID marker.
 Each question: 4 options, one correct answer (0-3 index).
+ALL question, options, and explanation text MUST be written in Vietnamese.
 Output ONLY valid JSON.
 
 Schema:
 {
   "questions": [
     {
-      "question": "Question text?",
-      "options": ["A", "B", "C", "D"],
+      "question": "Câu hỏi kiểm tra kiến thức?",
+      "options": ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
       "answer": 0,
-      "explanation": "Why correct",
-      "topic": "Concept Name",
+      "explanation": "Đáp án A đúng vì...",
+      "topic": "Tên khái niệm",
       "kc_id": "clinical.general",
       "kc_name": "General clinical reasoning",
       "module_id": "clinical",
