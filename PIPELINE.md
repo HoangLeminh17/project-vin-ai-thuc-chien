@@ -510,8 +510,8 @@ Main branches inside `startGeneration()`:
 | :--- | :--- | :--- |
 | Existing saved course | local course with same hash/title exists and API returns it with content | restore `courseContentMap`, validate cached diagnostic coverage, prefetch diagnostic if needed, mark done |
 | Full cache | Stage 1 response has `fromCache` and cached `courseContent.chapters`, non-legacy outline | save cached full course to user library, prefetch lesson-scoped diagnostic, mark done |
-| Cache fallback | Stage 1 cache exists but no full content or legacy outline | regenerate Stage 2 chapters |
-| Fresh | no Stage 1 cache | generate Stage 2 chapters, save first chapter then update incrementally, prefetch diagnostic after the loop |
+| Cache fallback | Stage 1 cache exists but no full content or legacy outline | regenerate all Stage 2 chapters in parallel (Promise.all), validate citations, save once, prefetch diagnostic |
+| Fresh | no Stage 1 cache | generate all Stage 2 chapters in parallel (Promise.all), validate citations, save full course once, prefetch diagnostic |
 
 `runDiagnosticPrefetch(courseId, chunks)`:
 

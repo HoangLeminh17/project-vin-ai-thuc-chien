@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Parallelize fresh course generation (Promise.all) | Nguyen Binh Thanh | #118 |
 | Parallel diagnostic quiz generation (3.5 min → ~10s) | Nguyen Binh Thanh | #117 |
 | Fix Vitest CJS config startup path on Linux CI | Nguyen Binh Thanh | #116 |
 | Multi-card lessons + chapter one-tap card tree | Nguyen Binh Thanh | #115 |
