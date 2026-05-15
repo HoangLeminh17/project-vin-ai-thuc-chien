@@ -75,14 +75,14 @@ export function KnowledgeSpiderChart({ points }: Props) {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, marginBottom: 8 }}>
         <div>
           <p style={{ fontSize: 11, fontWeight: 800, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>
-            Bản đồ UKT
+            Bản đồ năng lực
           </p>
           <h3 style={{ fontSize: 18, fontWeight: 800, color: T.ink, letterSpacing: '-0.03em', margin: 0 }}>
-            Mức độ nắm vững theo module y khoa
+            Năng lực theo module y khoa
           </h3>
         </div>
         <span className="sy-mono" style={{ fontSize: 11, color: T.ink60, whiteSpace: 'nowrap' }}>
-          mastery + độ chắc
+          Thành thạo · độ chắc chắn
         </span>
       </div>
 
