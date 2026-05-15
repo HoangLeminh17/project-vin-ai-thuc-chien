@@ -47,7 +47,14 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
-        run: cd web && npm ci
+        run: cd web && npm ci --include=optional
+
+      - name: Repair Linux optional native bindings
+        if: runner.os == 'Linux'
+        run: |
+          cd web
+          npm install --no-save --include=optional --no-audit --no-fund @rolldown/binding-linux-x64-gnu@1.0.0-rc.15
+          node -e "require.resolve('@rolldown/binding-linux-x64-gnu')"
 
       - name: Run Type Check
         run: cd web && npx tsc --noEmit

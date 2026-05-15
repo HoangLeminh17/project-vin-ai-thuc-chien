@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Fix Vitest Rolldown optional binding trên CI Linux | Nguyen Binh Thanh | TBD |
 | Fix Railway deploy npm prefix trên self-hosted runner | Nguyen Binh Thanh | #111 |
 | Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | #110 |
 | Dashboard cá nhân hóa UKT + spider chart độ chắc chắn | Nguyen Binh Thanh | #109 |
@@ -27,6 +28,21 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-42] Fix Rolldown optional binding cho Vitest CI - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** TBD (`fix/ci-rolldown-optional-binding`)
+
+**Bối cảnh:** Sau PR #111, `web-build-test` fail ở bước smoke tests với lỗi `Cannot find native binding` từ `rolldown`, thiếu package optional `@rolldown/binding-linux-x64-gnu`. `web/package-lock.json` đã có binding này, nên lỗi đến từ npm optional-dependency handling trên self-hosted Linux runner, không phải thiếu lockfile.
+
+**Quyết định:**
+- Đổi bước web dependency install thành `npm ci --include=optional` để ép npm cài optional dependencies.
+- Thêm bước Linux-only repair sau `npm ci`: cài local `@rolldown/binding-linux-x64-gnu@1.0.0-rc.15` bằng `npm install --no-save --include=optional --no-audit --no-fund`.
+- Verify ngay bằng `node -e "require.resolve('@rolldown/binding-linux-x64-gnu')"` trước khi chạy typecheck/lint/Vitest.
+
+**Kết quả mong đợi:** Vitest không còn fail startup vì thiếu native Rolldown binding trên Linux CI; nếu test fail tiếp thì lỗi sẽ nằm ở test/app logic thật.
 
 ---
 
