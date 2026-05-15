@@ -109,13 +109,16 @@ jobs:
         with:
           node-version: '20'
       - name: Configure npm for self-hosted runner
+        shell: bash
         run: |
-          mkdir -p ~/.npm-global
-          npm config set prefix '~/.npm-global'
+          NPM_GLOBAL_DIR="${RUNNER_TEMP:-/tmp}/npm-global"
+          mkdir -p "$NPM_GLOBAL_DIR"
+          npm config set prefix "$NPM_GLOBAL_DIR"
+          echo "NPM_CONFIG_PREFIX=$NPM_GLOBAL_DIR" >> "$GITHUB_ENV"
       - name: Install Railway CLI
-        run: npm install @railway/cli
+        run: npm install --no-save --no-audit --no-fund @railway/cli
       - name: Deploy Web App to Railway
-        run: npx railway up --service web --environment production --detach
+        run: ./node_modules/.bin/railway up --service web --environment production --detach
 
   deploy-ukt:
     needs: [changes, ukt-build-test]
@@ -136,10 +139,13 @@ jobs:
         with:
           node-version: '20'
       - name: Configure npm for self-hosted runner
+        shell: bash
         run: |
-          mkdir -p ~/.npm-global
-          npm config set prefix '~/.npm-global'
+          NPM_GLOBAL_DIR="${RUNNER_TEMP:-/tmp}/npm-global"
+          mkdir -p "$NPM_GLOBAL_DIR"
+          npm config set prefix "$NPM_GLOBAL_DIR"
+          echo "NPM_CONFIG_PREFIX=$NPM_GLOBAL_DIR" >> "$GITHUB_ENV"
       - name: Install Railway CLI
-        run: npm install @railway/cli
+        run: npm install --no-save --no-audit --no-fund @railway/cli
       - name: Deploy UKT Service to Railway
-        run: npx railway up --service ukt-service --environment production --detach
+        run: ./node_modules/.bin/railway up --service ukt-service --environment production --detach
