@@ -361,7 +361,7 @@ Source of truth:
 - `web/core/models/knowledge.ts`
 - `KNOWLEDGE_MAP_VERSION = medical-v1`
 - Fixed spider chart modules: Giải phẫu, Sinh lý, Dược lý, Vi sinh, Bệnh lý, Lâm sàng, Hóa sinh, Miễn dịch (registry id vẫn dùng English slugs).
-- Each KC has stable `kc_id`, display `kc_name`, and parent `module_id`.
+- Each KC has stable `kc_id`, display `kc_name` (tiếng Việt), and parent `module_id`.
 
 Rules:
 
