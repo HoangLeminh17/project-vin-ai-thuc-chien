@@ -197,17 +197,18 @@ Instructions:
 - For "module_name", copy the MODULE_NAME marker exactly when available.
 - For "source_chunk_id", copy the value from the [[SOURCE_CHUNK_ID: ...]] marker for that lesson exactly. It must match one of the input markers.
 - Do not use inline citation markers like [chunk-1-2] as source_chunk_id.
+- ALL question, options, and explanation text MUST be written in Vietnamese. Never use English in these fields.
 - Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
 Output schema:
 {
   "questions": [
     {
-      "question": "Question text here?",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "question": "Cơ chế hoạt động của X là gì?",
+      "options": ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
       "answer": 0,
-      "explanation": "Brief explanation",
-      "topic": "Core Concept Name",
+      "explanation": "Đáp án A đúng vì...",
+      "topic": "Tên khái niệm cốt lõi",
       "kc_id": "clinical.general",
       "kc_name": "General clinical reasoning",
       "module_id": "clinical",
