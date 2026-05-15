@@ -119,16 +119,10 @@ export class OpenAiAdapter implements IAiService {
     return { course, tokens }
   }
 
-  async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
-    if (!this.apiKey) {
-      throw new InfrastructureError('Missing OPENAI_API_KEY')
-    }
+  private async generateSingleChunkQuestion(chunk: ContentChunk): Promise<{ question: DiagnosticQuestion; tokens: TokenUsage | null }> {
+    const formattedContent = formatDiagnosticChunk(chunk)
 
-    const formattedContent = chunks
-      .map(formatDiagnosticChunk)
-      .join('\n\n---\n\n')
-
-    let res: Response;
+    let res: Response
     try {
       res = await fetch(this.baseUrl, {
         method: 'POST',
@@ -147,18 +141,16 @@ export class OpenAiAdapter implements IAiService {
         }),
       })
     } catch (e) {
-      throw new InfrastructureError('Failed to connect to OpenAI API for diagnostic quiz', e)
+      throw new InfrastructureError(`Failed to connect to AI API for chunk ${chunk.id}`, e)
     }
 
     if (!res.ok) {
       const body = await res.json().catch(() => null)
       const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
-      throw new InfrastructureError(`OpenAI-compatible API error (${this.baseUrl}) returned ${res.status}: ${msg}`)
+      throw new InfrastructureError(`OpenAI-compatible API error returned ${res.status} for chunk ${chunk.id}: ${msg}`)
     }
 
     const data = await res.json()
-
-    // Log token usage
     const usage = data.usage
     const tokens: TokenUsage | null = usage
       ? { promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens }
@@ -166,16 +158,29 @@ export class OpenAiAdapter implements IAiService {
 
     const text = data.choices?.[0]?.message?.content
     if (!text) {
-      throw new InfrastructureError(`OpenAI returned no content for diagnostic quiz: ${JSON.stringify(data)}`)
+      throw new InfrastructureError(`AI returned no content for chunk ${chunk.id}: ${JSON.stringify(data)}`)
     }
 
-    let quiz: DiagnosticQuiz
+    let parsed: DiagnosticQuiz
     try {
-      quiz = JSON.parse(text)
+      parsed = JSON.parse(text)
     } catch (e) {
-      throw new InfrastructureError(`Failed to parse OpenAI JSON response for diagnostic quiz: ${text.slice(0, 500)}`, e)
+      throw new InfrastructureError(`Failed to parse AI response for chunk ${chunk.id}: ${text.slice(0, 500)}`, e)
     }
 
-    return { quiz, tokens }
+    const question = parsed.questions?.[0]
+    if (!question) {
+      throw new InfrastructureError(`AI returned no question for chunk ${chunk.id}`)
+    }
+
+    return { question, tokens }
+  }
+
+  async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
+    if (!this.apiKey) {
+      throw new InfrastructureError('Missing OPENAI_API_KEY')
+    }
+
+    return { quiz: { questions: [] }, tokens: null }
   }
 }
