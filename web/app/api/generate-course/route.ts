@@ -4,7 +4,7 @@ import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 import { getContentHash } from '@/lib/crypto-utils'
 import { normalizeCourseKnowledge } from '@/core/models/knowledge'
-import { courseContentHasLegacyDetail } from '@/lib/course-content-version'
+import { courseContentNeedsCardRegeneration } from '@/lib/course-content-version'
 
 const handler = async (req: NextRequest) => {
   const { generateCourseUseCase, courseRepository, logger, verifySessionUseCase, rateLimiter } = await import('@/infrastructure/di')
@@ -52,11 +52,11 @@ const handler = async (req: NextRequest) => {
     const cached = await courseRepository.getFullCachedCourse(hash)
     if (cached) {
       const course = normalizeCourseKnowledge(cached.course)
-      const contentHasLegacyDetail = courseContentHasLegacyDetail(cached.content)
+      const needsCardRegeneration = courseContentNeedsCardRegeneration(cached.content)
       return NextResponse.json({
         success: true,
         course,
-        courseContent: contentHasLegacyDetail ? { chapters: [] } : cached.content,
+        courseContent: needsCardRegeneration ? { chapters: [] } : cached.content,
         fromCache: true,
         hash
       })

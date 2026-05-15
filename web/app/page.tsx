@@ -12,6 +12,7 @@ import { useGeneration, type DiagnosticStatus } from '@/lib/contexts/generation-
 import { SynapsyLogo, SynapsyRing, GeoDecoration, T } from '@/app/components/synapsy'
 import { KnowledgeSpiderChart } from '@/app/components/knowledge/KnowledgeSpiderChart'
 import { aggregateModuleMastery, type ModuleMasteryPoint } from '@/lib/ukt-module-mastery'
+import { getLessonCards } from '@/lib/course-cards'
 
 // ── SRS stats ─────────────────────────────────────────────────────────────────
 
@@ -104,12 +105,18 @@ function courseStats(saved: SavedCourse, map: ProgressMap) {
   const chapters = saved.courseContent?.chapters ?? []
   let total = 0, due = 0, mature = 0
   chapters.forEach((ch, ci) => {
-    ch.lessons.forEach((_, li) => {
-      total++
-      const e = map[`${ci}-${li}`]
-      if (!e) return
-      if (e.isDue) due++
-      else if (e.status === 'REVIEW') mature++
+    ch.lessons.forEach((lesson, li) => {
+      const cards = getLessonCards(lesson)
+      const hasGeneratedCards = Array.isArray(lesson.cards) && lesson.cards.length > 0
+      cards.forEach((_, cardIndex) => {
+        total++
+        const cardId = hasGeneratedCards ? `${ci}-${li}-${cardIndex}` : `${ci}-${li}`
+        const legacyCardId = `${ci}-${li}`
+        const e = map[cardId] ?? (cardIndex === 0 ? map[legacyCardId] : undefined)
+        if (!e) return
+        if (e.isDue) due++
+        else if (e.status === 'REVIEW') mature++
+      })
     })
   })
   return { total, due, masteryPct: total === 0 ? 0 : Math.round((mature / total) * 100) }

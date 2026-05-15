@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Multi-card lessons + chapter one-tap card tree | Nguyen Binh Thanh | #115 |
 | Việt hóa kc_name registry + spider chart labels | Nguyen Binh Thanh | #114 |
 | Enforce Vietnamese output trong diagnostic/quiz/Stage 2 prompts | Nguyen Binh Thanh | #113 |
 | Fix Vitest Rolldown optional binding trên CI Linux | Nguyen Binh Thanh | #112 |
@@ -30,6 +31,27 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-45] Multi-card lessons và CourseTree mở chapter một chạm - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #115 (`feat/multi-card-lessons`)
+
+**Bối cảnh:** Thiết kế `CourseTree` đang ép 1 lesson = 1 concept card. Với các lesson dày nội dung, card bị nén quá nhiều fact và người học phải bấm 2 lần: mở chapter rồi mở lesson mới thấy card. Diagnostic vẫn nên bản đồ hóa theo lesson/KC, còn SRS cần đơn vị nhỏ hơn.
+
+**Quyết định:**
+- Stage 2 sinh `cards[]` cho mỗi lesson, thường 2-3 card atomic, tối đa 4 khi lesson có nhiều learning point riêng biệt.
+- Giữ `concept` là compatibility surface trỏ về card đầu tiên để course cũ và các surface phụ không gãy.
+- Cache Stage 2 concept-only không có `cards[]` được coi là stale và sẽ regenerate.
+- CourseTree bỏ accordion lesson: bấm chapter một lần sẽ hiện lesson label và toàn bộ concept cards bên dưới.
+- Diagnostic tiếp tục map theo lesson id `ci-li`; SRS card id mới dùng `ci-li-cardIndex`, có fallback progress cho card đầu tiên từ legacy `ci-li`.
+
+**Hệ quả:**
+- (+) Dense lesson không còn bị nén vào một card duy nhất.
+- (+) UI giống course outline hơn: chapter mở ra các lesson label và card item trực tiếp.
+- (+) Diagnostic, SRS và UKT vẫn tách đúng vai trò: diagnostic/practice theo lesson/KC, SRS theo card/KC.
+- (+) Course cũ concept-only vẫn render được, nhưng course/cache mới sẽ chuyển sang `cards[]`.
 
 ---
 

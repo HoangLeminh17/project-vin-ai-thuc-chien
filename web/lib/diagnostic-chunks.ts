@@ -2,6 +2,7 @@ import type { ContentChunk } from '@/core/ports/ai.port'
 import type { ChapterContent, Course, CourseContent, DiagnosticQuestion } from '@/core/models/learning-model'
 import type { SavedCourse } from '@/core/models/saved-course'
 import { normalizeKnowledgeRef } from '@/core/models/knowledge'
+import { getLessonCards, getPrimaryLessonCard } from '@/lib/course-cards'
 
 const CITATION_MARKER_RE = /\[chunk-[^\]\s]+\]/g
 const WHITESPACE_RE = /[ \t]{2,}/g
@@ -39,7 +40,14 @@ export function buildDiagnosticChunks(
 
     chapter.lessons.forEach((lesson, li) => {
       const lessonContent = chapterContent?.lessons?.[li]
-      const concept = lessonContent?.concept
+      const concept = getPrimaryLessonCard(lessonContent)
+      const conceptSummaries = getLessonCards(lessonContent)
+        .slice(0, 2)
+        .flatMap((card, index) => [
+          card.question ? `Concept card ${index + 1} question: ${stripCitationMarkers(card.question)}` : '',
+          card.answer ? `Concept card ${index + 1} answer: ${stripCitationMarkers(card.answer)}` : '',
+        ])
+        .filter(Boolean)
       const normalizedKnowledge = normalizeKnowledgeRef(lesson.knowledge)
       const kc_id = concept?.kc_id ?? normalizedKnowledge.kc_id
       const kc_name = concept?.kc_name ?? normalizedKnowledge.kc_name
@@ -59,8 +67,7 @@ export function buildDiagnosticChunks(
         `Knowledge component: ${kc_name}`,
         `Medical module: ${module_name}`,
         outlinePoints ? `Outline:\n${outlinePoints}` : '',
-        concept?.question ? `Concept question: ${stripCitationMarkers(concept.question)}` : '',
-        concept?.answer ? `Concept answer: ${stripCitationMarkers(concept.answer)}` : '',
+        ...conceptSummaries,
       ].filter(Boolean)
 
       chunks.push({

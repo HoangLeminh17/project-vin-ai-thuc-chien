@@ -128,10 +128,14 @@ Each lesson in the input has:
 Use \`raw_context\` as the primary source for accuracy. Use \`outline\` as a guide for what to focus on.
 
 Generate:
-1. A concept card for each lesson
+1. Concept cards for each lesson
 2. A chapter quiz with 3–5 multiple-choice questions
 
 Rules for concept cards:
+- Generate 2–3 cards for most lessons.
+- Generate only 1 card when the source is very short and has one learning point.
+- Generate up to 4 cards only when the lesson has several distinct, source-backed learning points.
+- Each card must test exactly one atomic idea from the lesson; do not pack multiple definitions, contrasts, or mechanisms into one card.
 - question: active recall question about the lesson's core idea
   - Use forms like "X hoạt động như thế nào?", "Tại sao ...?", "X là gì và khi nào dùng?"
   - Do NOT use "Giải thích X" form
@@ -159,11 +163,13 @@ Output schema:
   "lessons": [
     {
       "lesson_title": "...",
-      "concept": {
-        "question": "X hoạt động như thế nào?",
-        "answer": "Câu trả lời 1.[chunk-1-5] Câu trả lời 2.[chunk-1-8]",
-        "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"]
-      }
+      "cards": [
+        {
+          "question": "X hoạt động như thế nào?",
+          "answer": "Câu trả lời 1.[chunk-1-5] Câu trả lời 2.[chunk-1-8]",
+          "followUps": ["Câu hỏi đào sâu 1?", "Câu hỏi đào sâu 2?"]
+        }
+      ]
     }
   ],
   "quiz": {

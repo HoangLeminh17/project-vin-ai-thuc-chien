@@ -8,7 +8,7 @@ import { useCourses } from '../hooks/use-courses';
 import { storage } from '@/lib/firebase-client';
 import { buildValidChunkIds, validateCitationMarkers } from '@/lib/citation-utils';
 import { buildDiagnosticChunks, diagnosticQuestionsCoverChunks } from '@/lib/diagnostic-chunks';
-import { courseContentHasLegacyDetail } from '@/lib/course-content-version';
+import { courseContentNeedsCardRegeneration } from '@/lib/course-content-version';
 import type { ContentChunk } from '@/core/ports/ai.port';
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
@@ -296,7 +296,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         if (
           check.ok &&
           existing.courseContent?.chapters?.length &&
-          !courseContentHasLegacyDetail(existing.courseContent)
+          !courseContentNeedsCardRegeneration(existing.courseContent)
         ) {
           const map: Record<number, ChapterContent> = {}
           existing.courseContent.chapters.forEach((ch, i) => { map[i] = ch })
@@ -329,7 +329,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         fromCache &&
         data.courseContent?.chapters?.length &&
         !hasLegacyOutline &&
-        !courseContentHasLegacyDetail(data.courseContent)
+        !courseContentNeedsCardRegeneration(data.courseContent)
       ) {
         const cachedChapters = data.courseContent.chapters as ChapterContent[] || [];
         const map: Record<number, ChapterContent> = {};

@@ -68,7 +68,9 @@ export type QuizQuestion = {
 
 export type LessonContent = {
   lesson_title: string
-  concept: ConceptCard
+  // `concept` is kept as the first-card compatibility surface for older saved courses.
+  concept?: ConceptCard
+  cards?: ConceptCard[]
 }
 
 export type ChapterContent = {

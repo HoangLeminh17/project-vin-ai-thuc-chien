@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { SynapsyLogo, SynapsyRing, T } from '@/app/components/synapsy'
 import { SavedCourse } from '@/core/models/saved-course'
 import type { ProgressEntry } from '@/lib/types'
+import { getLessonCards } from '@/lib/course-cards'
 import { FlatCard } from './types'
 import { StudyMode } from './StudyMode'
 import { EditMode } from './EditMode'
@@ -26,12 +27,20 @@ function nodeColor(pct: number | null | undefined): NodeColors {
 
 type SrsState = 'due' | 'learning' | 'mature' | 'new'
 
-function cardSrsState(cardId: string, progressMap: Record<string, ProgressEntry>): SrsState {
-  const e = progressMap[cardId]
+function cardSrsState(card: FlatCard, progressMap: Record<string, ProgressEntry>): SrsState {
+  const e = cardProgress(card, progressMap)
   if (!e) return 'new'
   if (e.isDue) return 'due'
   if (e.status === 'REVIEW') return 'mature'
   return 'learning'
+}
+
+function cardProgress(card: FlatCard, progressMap: Record<string, ProgressEntry>): ProgressEntry | undefined {
+  return progressMap[card.id] ?? (card.legacyProgressId ? progressMap[card.legacyProgressId] : undefined)
+}
+
+function flatCardId(ci: number, li: number, cardIndex: number, hasGeneratedCards: boolean): string {
+  return hasGeneratedCards ? `${ci}-${li}-${cardIndex}` : `${ci}-${li}`
 }
 
 const SRS_CHIP: Record<SrsState, { label: string; bg: string; color: string; border: string }> = {
@@ -64,17 +73,24 @@ function flattenCards(course: SavedCourse): FlatCard[] {
     if (!chContent) return
     chContent.lessons.forEach((lesson, li) => {
       const knowledge = ch.lessons[li]?.knowledge
-      cards.push({
-        id: `${ci}-${li}`,
-        ci, chapterTitle: ch.title,
-        li, lessonTitle: lesson.lesson_title,
-        concept: {
-          ...lesson.concept,
-          kc_id: lesson.concept.kc_id ?? knowledge?.kc_id,
-          kc_name: lesson.concept.kc_name ?? knowledge?.kc_name,
-          module_id: lesson.concept.module_id ?? knowledge?.module_id,
-          module_name: lesson.concept.module_name ?? knowledge?.module_name,
-        },
+      const lessonCards = getLessonCards(lesson)
+      const hasGeneratedCards = Array.isArray(lesson.cards) && lesson.cards.length > 0
+
+      lessonCards.forEach((concept, cardIndex) => {
+        cards.push({
+          id: flatCardId(ci, li, cardIndex, hasGeneratedCards),
+          legacyProgressId: cardIndex === 0 ? `${ci}-${li}` : undefined,
+          ci, chapterTitle: ch.title,
+          li, lessonTitle: lesson.lesson_title,
+          cardIndex,
+          concept: {
+            ...concept,
+            kc_id: concept.kc_id ?? knowledge?.kc_id,
+            kc_name: concept.kc_name ?? knowledge?.kc_name,
+            module_id: concept.module_id ?? knowledge?.module_id,
+            module_name: concept.module_name ?? knowledge?.module_name,
+          },
+        })
       })
     })
   })
@@ -115,7 +131,6 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
   const allCards = useMemo(() => flattenCards(course), [course])
 
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({})
-  const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>({})
   const [activeCard, setActiveCard] = useState<FlatCard | null>(null)
   const [detailTab, setDetailTab] = useState<'edit' | 'study'>('edit')
   const [studyOverlay, setStudyOverlay] = useState(false)
@@ -123,20 +138,27 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
   const toggleChapter = (i: number) =>
     setExpandedChapters(p => ({ ...p, [i]: !p[i] }))
 
-  const toggleLesson = (key: string) =>
-    setExpandedLessons(p => ({ ...p, [key]: !p[key] }))
-
-  const dueCards    = allCards.filter(c => progressMap[c.id]?.isDue)
+  const dueCards    = allCards.filter(c => cardProgress(c, progressMap)?.isDue)
   const totalDue    = dueCards.length
   const totalCards  = allCards.length
-  const matureCards = allCards.filter(c => progressMap[c.id]?.status === 'REVIEW' && !progressMap[c.id]?.isDue).length
+  const matureCards = allCards.filter(c => {
+    const entry = cardProgress(c, progressMap)
+    return entry?.status === 'REVIEW' && !entry.isDue
+  }).length
   const overallPct  = totalCards === 0 ? 0 : Math.round((matureCards / totalCards) * 100)
 
   function lessonMastery(ci: number, li: number): number | null {
     const key = `${ci}-${li}`
-    const entry = progressMap[key]
-    if (entry?.lastReviewedAt && new Date(entry.lastReviewedAt) >= new Date(course.createdAt)) {
-      return entry.status === 'REVIEW' && !entry.isDue ? 100 : entry.isDue ? 10 : 30
+    const lessonCards = allCards.filter(c => c.ci === ci && c.li === li)
+    const cardEntries = lessonCards
+      .map(card => cardProgress(card, progressMap))
+      .filter((entry): entry is ProgressEntry => Boolean(entry))
+      .filter(entry => Boolean(entry.lastReviewedAt) && new Date(entry.lastReviewedAt!) >= new Date(course.createdAt))
+
+    if (cardEntries.length > 0) {
+      if (cardEntries.some(entry => entry.isDue)) return 10
+      if (lessonCards.length > 0 && cardEntries.length === lessonCards.length && cardEntries.every(entry => entry.status === 'REVIEW')) return 100
+      return 30
     }
     if (diagnosticState[key] !== undefined) return diagnosticState[key]
     return null
@@ -165,13 +187,11 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
           const last = allCards[allCards.length - 1]
           setActiveCard(last)
           setExpandedChapters(p => ({ ...p, [last.ci]: true }))
-          setExpandedLessons(p => ({ ...p, [`${last.ci}-${last.li}`]: true }))
         } else if (idx > 0) {
           e.preventDefault()
           const prev = allCards[idx - 1]
           setActiveCard(prev)
           setExpandedChapters(p => ({ ...p, [prev.ci]: true }))
-          setExpandedLessons(p => ({ ...p, [`${prev.ci}-${prev.li}`]: true }))
         }
       } else if (e.key === 'ArrowRight') {
         if (idx === -1 && allCards.length > 0) {
@@ -179,13 +199,11 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
           const first = allCards[0]
           setActiveCard(first)
           setExpandedChapters(p => ({ ...p, [first.ci]: true }))
-          setExpandedLessons(p => ({ ...p, [`${first.ci}-${first.li}`]: true }))
         } else if (idx >= 0 && idx < allCards.length - 1) {
           e.preventDefault()
           const next = allCards[idx + 1]
           setActiveCard(next)
           setExpandedChapters(p => ({ ...p, [next.ci]: true }))
-          setExpandedLessons(p => ({ ...p, [`${next.ci}-${next.li}`]: true }))
         }
       }
     }
@@ -323,7 +341,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
               const testedPcts   = lessonIds.map((_, li) => lessonMastery(ci, li)).filter((p): p is number => p !== null)
               const chAvg        = testedPcts.length > 0 ? Math.round(testedPcts.reduce((a, b) => a + b, 0) / testedPcts.length) : null
               const chCol        = nodeColor(chAvg)
-              const chDue        = lessonIds.filter(id => progressMap[id]?.isDue).length
+              const chDue        = allCards.filter(card => card.ci === ci && cardProgress(card, progressMap)?.isDue).length
               const chExpanded   = expandedChapters[ci]
 
               return (
@@ -360,22 +378,17 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
 
                   {/* Lessons */}
                   {chExpanded && ch.lessons.map((lesson, li) => {
-                    const lessonKey  = `${ci}-${li}`
                     const m          = lessonMastery(ci, li)
                     const lCol       = nodeColor(m)
                     const lCards     = allCards.filter(c => c.ci === ci && c.li === li)
-                    const lDue       = lCards.filter(c => progressMap[c.id]?.isDue).length
-                    const lExpanded  = !!expandedLessons[lessonKey]
+                    const lDue       = lCards.filter(c => cardProgress(c, progressMap)?.isDue).length
 
                     return (
                       <div key={li}>
 
-                        {/* Lesson row */}
-                        <button
-                          onClick={() => toggleLesson(lessonKey)}
-                          style={{ width: '100%', textAlign: 'left', padding: '7px 20px 7px 32px', display: 'flex', alignItems: 'center', gap: 9, cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: `1px solid ${T.ink10}`, transition: 'background 0.1s' }}
-                          onMouseEnter={e => (e.currentTarget.style.background = T.bgSunken)}
-                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                        {/* Lesson label */}
+                        <div
+                          style={{ width: '100%', textAlign: 'left', padding: '8px 20px 5px 32px', display: 'flex', alignItems: 'center', gap: 9, background: T.bgSolid, borderBottom: `1px solid ${T.ink10}` }}
                         >
                           <span style={{ width: 7, height: 7, borderRadius: '50%', background: lCol.dot, flexShrink: 0, boxShadow: `0 0 0 2px ${lCol.border}` }} />
                           <div style={{ flex: 1, minWidth: 0 }}>
@@ -388,12 +401,11 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
                               {lDue > 0 && <span className="sy-mono" style={{ fontSize: 9, color: '#dc3545', fontWeight: 700 }}>{lDue} ôn</span>}
                             </div>
                           </div>
-                          <span style={{ fontSize: 10, color: T.ink40, transform: lExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.18s', display: 'inline-block', flexShrink: 0 }}>›</span>
-                        </button>
+                        </div>
 
                         {/* Cards inline */}
-                        {lExpanded && lCards.map((card, cardIdx) => {
-                          const srsState = cardSrsState(card.id, progressMap)
+                        {lCards.map((card, cardIdx) => {
+                          const srsState = cardSrsState(card, progressMap)
                           const isActive = card.id === activeCard?.id
                           return (
                             <button
@@ -452,7 +464,6 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
                 if (card && card.id !== activeCard.id) {
                   setActiveCard(card)
                   setExpandedChapters(p => ({ ...p, [card.ci]: true }))
-                  setExpandedLessons(p => ({ ...p, [`${card.ci}-${card.li}`]: true }))
                 }
               }}
               onExit={() => setDetailTab('edit')}

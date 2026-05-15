@@ -17,9 +17,9 @@ describe('medical knowledge map', () => {
       confidence: 1.4,
     })).toMatchObject({
       kc_id: 'physiology.homeostasis',
-      kc_name: 'Homeostasis and feedback',
+      kc_name: 'Cân bằng nội môi và phản hồi',
       module_id: 'physiology',
-      module_name: 'Physiology',
+      module_name: 'Sinh lý',
       map_version: 'medical-v1',
       confidence: 1,
     })
@@ -31,7 +31,7 @@ describe('medical knowledge map', () => {
       module_id: 'pharmacology',
     })).toMatchObject({
       kc_id: 'pharmacology.general',
-      kc_name: 'General pharmacology',
+      kc_name: 'Dược lý đại cương',
       module_id: 'pharmacology',
     })
   })

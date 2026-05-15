@@ -293,6 +293,12 @@ type ConceptCard = {
   sourceExcerpt?: string        // legacy
 }
 
+type LessonContent = {
+  lesson_title: string
+  concept?: ConceptCard       // legacy / first-card compatibility surface
+  cards?: ConceptCard[]       // new Stage 2 output: usually 2-3 atomic cards per lesson
+}
+
 type QuizQuestion = {
   question: string
   options: string[]
@@ -421,7 +427,7 @@ POST /api/generate-content
     | Stage 2 Generator per chapter
     | input = chapter outline + raw_context extracted from contentList
     | input also carries Lesson.knowledge; concept cards get kc_id/module_id attached post-generation
-    | emits one canonical source-backed answer + followUps; detail is legacy only
+    | emits 2-3 atomic concept cards per lesson; each card has one canonical source-backed answer + followUps
     | large chapter input is split/merged by stage2-chunking.ts
     | cache: course_cache/{hash}/chapters/{i}
     |
@@ -440,15 +446,14 @@ status = done
 ### Canonical answer token impact
 
 Stage 2 now keeps `answer` as the only source-backed card response and stops asking the model for `detail`.
+Each lesson can contain multiple atomic cards (`cards[]`); `concept` is retained as a first-card compatibility surface for older code/saved courses.
 `followUps` stay because they are short tutor prompts and do not muddy citations or active-recall scoring.
 
-Estimated reduction for new generated courses:
+Token impact:
 
-- Prompt: about 94 fewer prompt tokens per Stage 2 chapter call from the smaller schema/rules.
-- Completion: about 100-220 fewer completion tokens per lesson because the 3-5 sentence `detail` field is no longer emitted.
-- Stage 2 completion: roughly 15-30% lower, depending on answer length and quiz size.
-- Total Stage 2 tokens: roughly 8-18% lower when raw_context is large.
-- Full pipeline tokens: roughly 5-12% lower because Stage 1 planning, raw_context input, and quizzes still remain.
+- Removing `detail` still avoids a second long answer surface per card.
+- Multi-card lessons intentionally spend more completion tokens than the old one-card-per-lesson design because dense lessons now produce 2-3 atomic recall cards.
+- Prompt/cache savings still come from keeping `raw_context` chapter-scoped and invalidating stale concept-only cached chapters instead of rerunning Stage 1.
 
 ### Parse details
 
@@ -465,7 +470,7 @@ Estimated reduction for new generated courses:
 | Collection/path | Key | Content | Bypass |
 | :--- | :--- | :--- | :--- |
 | `course_cache/{hash}` | markdown content hash | Stage 1 `Course` JSON | `force:true`, used when legacy `string[]` outline is detected |
-| `course_cache/{hash}/chapters/{i}` | chapter index | Stage 2 `ChapterContent` | skipped when chapter outline is legacy or cached card content still has legacy `detail` |
+| `course_cache/{hash}/chapters/{i}` | chapter index | Stage 2 `ChapterContent` | skipped when chapter outline is legacy, cached card content still has legacy `detail`, or cached content is concept-only without `cards[]` |
 | `courses/{id}` | Firestore doc ID | SavedCourse, content hash, PDF/layout storage refs | n/a |
 
 ### Storage paths
@@ -581,7 +586,7 @@ LocalStorage keys:
 
 `CourseTree` is the course viewer:
 
-- Left pane: fixed 300px chapter/lesson/card tree.
+- Left pane: fixed 300px chapter/card tree. Clicking a chapter opens all lesson labels and their concept cards; lesson rows are grouping labels, not a second accordion.
 - Right pane: card editor/detail area.
 - Detail tabs: `EditMode` and `StudyMode`.
 - Header CTA: review due cards starts a study overlay for all due cards.
