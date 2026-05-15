@@ -10,6 +10,8 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Việt hóa kc_name registry + spider chart labels | Nguyen Binh Thanh | #114 |
+| Enforce Vietnamese output trong diagnostic/quiz/Stage 2 prompts | Nguyen Binh Thanh | #113 |
 | Fix Vitest Rolldown optional binding trên CI Linux | Nguyen Binh Thanh | #112 |
 | Fix Railway deploy npm prefix trên self-hosted runner | Nguyen Binh Thanh | #111 |
 | Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | #110 |
@@ -28,6 +30,44 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-44] Việt hóa kc_name registry và spider chart labels - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #114 (`fix/knowledge-registry-vietnamese-labels`)
+
+**Bối cảnh:** Sau khi xây spider chart và diagnostic results, section "Theo chủ đề" hiển thị tên KC trực tiếp từ `kc_name` trong registry — nhưng các giá trị này đang là tiếng Anh ("General clinical reasoning", "General anatomy"). Spider chart có 3 label jargon nội bộ ("Bản đồ UKT", "Mức độ nắm vững theo module y khoa", "mastery + độ chắc") không thân thiện với người học. ADR-40 đã Việt hóa một phần UI nhưng bỏ qua tầng registry.
+
+**Quyết định:**
+- Dịch `MEDICAL_MODULES[].name` sang tiếng Việt: Anatomy → Giải phẫu, Physiology → Sinh lý, Pharmacology → Dược lý, Microbiology → Vi sinh, Pathology → Bệnh lý, Clinical Medicine → Lâm sàng, Biochemistry → Hóa sinh, Immunology → Miễn dịch.
+- Dịch toàn bộ 48 `MEDICAL_KCS[].kc_name` sang tiếng Việt (ví dụ: "General clinical reasoning" → "Lý luận lâm sàng đại cương").
+- Đổi 3 label spider chart: "Bản đồ UKT" → "Bản đồ năng lực", "Mức độ nắm vững theo module y khoa" → "Năng lực theo module y khoa", "mastery + độ chắc" → "Thành thạo · độ chắc chắn".
+- `kc_id` và `module_id` (English slugs) giữ nguyên — đây là stable identifier cho UKT, Firestore, và prompts.
+
+**Hệ quả:**
+- (+) "Theo chủ đề" trong DiagnosticResults hiển thị tên tiếng Việt thay vì English.
+- (+) Spider chart label thân thiện, không lộ jargon UKT với người học.
+- (+) `module_name` trong `KnowledgeComponentRef` (ghi vào Firestore) sẽ là tiếng Việt với các course mới. Course cũ giữ nguyên English `module_name` đã lưu — UKT aggregate theo `module_id` (slug) nên không ảnh hưởng tính toán.
+
+---
+
+### [ADR-43] Enforce Vietnamese output trong diagnostic/quiz/Stage 2 prompts - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #113 (`fix/prompts-vietnamese-quiz-output`)
+
+**Bối cảnh:** Diagnostic quiz và quiz trong Stage 2 đôi khi ra tiếng Anh, đôi khi tiếng Việt — không nhất quán. Concept cards Stage 2 luôn ra tiếng Việt vì phần đó có ví dụ schema tiếng Việt rõ ràng ("X hoạt động như thế nào?"). Nhưng phần quiz trong `STAGE2_CHAPTER_PROMPT` và toàn bộ `DIAGNOSTIC_QUIZ_PROMPT` / `DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT` chỉ có ví dụ schema tiếng Anh ("Question text here?", "Option A is correct because…") → LLM follow example language.
+
+**Quyết định:**
+- Thêm rule tường minh "Write ALL questions, options, and explanations in Vietnamese" vào phần quiz của `STAGE2_CHAPTER_PROMPT`.
+- Thêm "ALL question, options, and explanation text MUST be written in Vietnamese" vào `DIAGNOSTIC_QUIZ_PROMPT` và `DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT`.
+- Cập nhật ví dụ schema trong cả 3 prompt từ tiếng Anh sang tiếng Việt ("Cơ chế hoạt động của X là gì?", "Đáp án A đúng vì…").
+- Không thay đổi `PLANNER_PROMPT` — planner dùng rule "Output MUST match source document language" đã đúng.
+
+**Hệ quả:**
+- (+) Diagnostic quiz và chapter quiz nhất quán tiếng Việt.
+- (+) Concept cards Stage 2 không bị ảnh hưởng — đã có ví dụ tiếng Việt từ trước.
+- Đây là bổ sung cho ADR-40 (không phải đảo ngược) — ADR-40 chỉ Việt hóa UI copy, còn prompts chưa được enforce language.
 
 ---
 

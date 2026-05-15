@@ -179,7 +179,7 @@ export function DiagnosticResults({ courseId, questions, answers, onComplete }: 
           ) : uktStatus === 'loading' ? (
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 18px', marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 800, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>Bản đồ UKT</p>
+                <p style={{ fontSize: 11, fontWeight: 800, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>Bản đồ năng lực</p>
                 <p style={{ fontSize: 14, color: T.ink60, margin: 0 }}>Đang đồng bộ dấu vết học tập...</p>
               </div>
               <div style={{ width: 24, height: 24, border: `3px solid ${T.ink10}`, borderTopColor: T.accent, borderRadius: '50%', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
@@ -187,7 +187,7 @@ export function DiagnosticResults({ courseId, questions, answers, onComplete }: 
             </div>
           ) : uktStatus === 'unavailable' ? (
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '14px 18px', marginBottom: 28 }}>
-              <p style={{ fontSize: 11, fontWeight: 800, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>Bản đồ UKT</p>
+              <p style={{ fontSize: 11, fontWeight: 800, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>Bản đồ năng lực</p>
               <p style={{ fontSize: 13, color: T.ink60, margin: 0 }}>UKT chưa phản hồi lúc này. Kết quả local vẫn được lưu để vào khóa học.</p>
             </div>
           ) : null}

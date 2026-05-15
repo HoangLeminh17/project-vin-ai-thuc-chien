@@ -75,19 +75,19 @@ export function KnowledgeSpiderChart({ points }: Props) {
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, marginBottom: 8 }}>
         <div>
           <p style={{ fontSize: 11, fontWeight: 800, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 4px' }}>
-            Bản đồ UKT
+            Bản đồ năng lực
           </p>
           <h3 style={{ fontSize: 18, fontWeight: 800, color: T.ink, letterSpacing: '-0.03em', margin: 0 }}>
-            Mức độ nắm vững theo module y khoa
+            Năng lực theo module y khoa
           </h3>
         </div>
         <span className="sy-mono" style={{ fontSize: 11, color: T.ink60, whiteSpace: 'nowrap' }}>
-          mastery + độ chắc
+          Thành thạo · độ chắc chắn
         </span>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18, alignItems: 'center' }}>
-        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Mức độ nắm vững UKT theo module y khoa" style={{ width: '100%', maxWidth: 340, margin: '0 auto', display: 'block' }}>
+        <svg viewBox={`0 0 ${SIZE} ${SIZE}`} role="img" aria-label="Năng lực theo module y khoa" style={{ width: '100%', maxWidth: 340, margin: '0 auto', display: 'block' }}>
           {GRID_LEVELS.map(level => (
             <polygon
               key={level}
