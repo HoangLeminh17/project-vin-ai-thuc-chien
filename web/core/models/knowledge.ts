@@ -23,14 +23,14 @@ export type KnowledgeComponentRef = {
 export const KNOWLEDGE_MAP_VERSION = 'medical-v1'
 
 export const MEDICAL_MODULES: KnowledgeModule[] = [
-  { id: 'anatomy', name: 'Anatomy', description: 'Gross anatomy, histology, embryology, and organ structure.' },
-  { id: 'physiology', name: 'Physiology', description: 'Normal function, regulation, feedback loops, and organ system physiology.' },
-  { id: 'pharmacology', name: 'Pharmacology', description: 'Drug mechanisms, pharmacokinetics, pharmacodynamics, indications, and adverse effects.' },
-  { id: 'microbiology', name: 'Microbiology', description: 'Bacteria, viruses, fungi, parasites, antimicrobial resistance, and infectious agents.' },
-  { id: 'pathology', name: 'Pathology', description: 'Cell injury, inflammation, neoplasia, hemodynamics, and disease mechanisms.' },
-  { id: 'clinical', name: 'Clinical Medicine', description: 'Diagnosis, management, prevention, emergency care, and patient-facing reasoning.' },
-  { id: 'biochemistry', name: 'Biochemistry', description: 'Metabolism, molecular biology, genetics, nutrition, and biochemical pathways.' },
-  { id: 'immunology', name: 'Immunology', description: 'Innate and adaptive immunity, hypersensitivity, autoimmunity, and vaccines.' },
+  { id: 'anatomy', name: 'Giải phẫu', description: 'Gross anatomy, histology, embryology, and organ structure.' },
+  { id: 'physiology', name: 'Sinh lý', description: 'Normal function, regulation, feedback loops, and organ system physiology.' },
+  { id: 'pharmacology', name: 'Dược lý', description: 'Drug mechanisms, pharmacokinetics, pharmacodynamics, indications, and adverse effects.' },
+  { id: 'microbiology', name: 'Vi sinh', description: 'Bacteria, viruses, fungi, parasites, antimicrobial resistance, and infectious agents.' },
+  { id: 'pathology', name: 'Bệnh lý', description: 'Cell injury, inflammation, neoplasia, hemodynamics, and disease mechanisms.' },
+  { id: 'clinical', name: 'Lâm sàng', description: 'Diagnosis, management, prevention, emergency care, and patient-facing reasoning.' },
+  { id: 'biochemistry', name: 'Hóa sinh', description: 'Metabolism, molecular biology, genetics, nutrition, and biochemical pathways.' },
+  { id: 'immunology', name: 'Miễn dịch', description: 'Innate and adaptive immunity, hypersensitivity, autoimmunity, and vaccines.' },
 ]
 
 export const MEDICAL_KCS: KnowledgeComponent[] = [
