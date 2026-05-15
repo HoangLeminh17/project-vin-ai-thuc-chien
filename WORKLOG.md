@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Parallel diagnostic quiz generation (3.5 min → ~10s) | Nguyen Binh Thanh | #117 |
 | Fix Vitest CJS config startup path on Linux CI | Nguyen Binh Thanh | #116 |
 | Multi-card lessons + chapter one-tap card tree | Nguyen Binh Thanh | #115 |
 | Việt hóa kc_name registry + spider chart labels | Nguyen Binh Thanh | #114 |
@@ -32,6 +33,31 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-47] Parallel per-chunk generation để giảm latency diagnostic quiz - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #117 (`perf/parallel-diagnostic-quiz`)
+
+**Bối cảnh:** Endpoint `/api/diagnostic-quiz` mất ~3.5 phút để hoàn thành. Jaeger trace cho thấy bottleneck nằm ở một lời gọi LLM duy nhất trong `GenerateDiagnosticQuizUseCase.execute()`: toàn bộ chunk của course (thường 20-30 lesson) được nối thành một prompt khổng lồ rồi gửi đi một lần. DeepSeek phải sinh 5,000–8,000 output token trong một response trước khi trả về bất cứ dữ liệu nào — Node.js bị block trong suốt thời gian đó.
+
+**Phân tích các phương án:**
+- **Parallel (Promise.all)**: Tách thành N lời gọi song song (1 chunk = 1 câu hỏi), concurrency limit 4. Latency giảm từ ~210s xuống ~10s. Tăng token do lặp lại system prompt N lần, nhưng DeepSeek không có fixed RPM/TPM — giới hạn là dynamic, retry bằng exponential backoff.
+- **Streaming (Vercel AI SDK)**: Giữ 1 lời gọi, stream kết quả về UI. Không giảm backend time, chỉ cải thiện perceived UX. Phức tạp hơn nhiều (SSE, partial JSON parsing, UI thay đổi).
+- **Batching**: Chia thành nhóm N chunk, xử lý tuần tự. Ít rủi ro rate limit nhưng không tối ưu latency.
+
+**Quyết định:**
+- Chọn **Parallel per-chunk** với semaphore concurrency=4 và `withRetry` (exponential backoff, max 3 retries) để xử lý 429 dynamic từ DeepSeek.
+- Mỗi lời gọi sinh đúng 1 câu hỏi cho 1 chunk; kết quả được merge lại thành `DiagnosticQuiz` đầy đủ.
+- Token usage được cộng dồn từ tất cả lời gọi song song và báo cáo về `IUsageRepository` như cũ.
+- Không thay đổi interface `IAiService` hay contract của use case — chỉ thay đổi implementation trong `OpenAiAdapter`.
+
+**Hệ quả:**
+- (+) Latency giảm từ ~3.5 phút xuống ~8–15 giây (phụ thuộc DeepSeek server load).
+- (+) DeepSeek không có fixed rate limit — dynamic 429 được handle tự động bằng backoff.
+- (-) Tổng token tăng do system prompt lặp lại N lần (khoảng +500 tokens/chunk). Với 25 chunk: +12,500 prompt tokens so với call đơn.
+- (-) Nếu DeepSeek chịu tải cao, 4 concurrent requests vẫn có thể bị 429 — retry giải quyết được nhưng có thể tăng latency trong peak hours.
 
 ---
 
