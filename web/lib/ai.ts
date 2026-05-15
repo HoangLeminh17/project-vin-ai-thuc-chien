@@ -1,5 +1,5 @@
 import { PLANNER_PROMPT, STAGE2_CHAPTER_PROMPT } from './prompts'
-import type { Chapter, ChapterContent, Course } from './types'
+import type { Chapter, ChapterContent, ConceptCard, Course, LessonContent } from './types'
 import { resolveAiProvider, type AiProvider } from './ai-provider'
 import { buildStage2ChapterInput, DEFAULT_STAGE2_MAX_INPUT_CHARS, mergeStage2ChapterOutputs, splitStage2ChapterInput } from './stage2-chunking'
 
@@ -179,37 +179,48 @@ export async function generateCourse_UNUSED(
 
 // ── Shared post-processing ────────────────────────────────────────────────────
 
+function buildFallbackCard(src: Chapter['lessons'][number] | undefined, lessonTitle: string): ConceptCard {
+  return {
+    question: `${src?.title ?? lessonTitle} là gì?`,
+    answer: src?.outline.slice(0, 2).map(point => point.point).join('. ') ?? '',
+    followUps: [],
+  }
+}
+
+function normalizeCard(card: ConceptCard, src: Chapter['lessons'][number] | undefined): ConceptCard {
+  const knowledge = src?.knowledge
+  return {
+    ...card,
+    followUps: Array.isArray(card.followUps) ? card.followUps : [],
+    kc_id: knowledge?.kc_id,
+    kc_name: knowledge?.kc_name,
+    module_id: knowledge?.module_id,
+    module_name: knowledge?.module_name,
+    source_chunk_start: src?.source_chunk_start,
+    source_chunk_end: src?.source_chunk_end,
+  }
+}
+
+function normalizeLessonCards(lesson: LessonContent, src: Chapter['lessons'][number] | undefined): ConceptCard[] {
+  const generatedCards = Array.isArray(lesson.cards) && lesson.cards.length > 0
+    ? lesson.cards
+    : lesson.concept
+      ? [lesson.concept]
+      : [buildFallbackCard(src, lesson.lesson_title)]
+
+  const usableCards = generatedCards.filter(card => Boolean(card?.question?.trim() || card?.answer?.trim()))
+  return (usableCards.length > 0 ? usableCards : [buildFallbackCard(src, lesson.lesson_title)])
+    .map(card => normalizeCard(card, src))
+}
+
 function attachChunkRange(raw: ChapterContent, chapter: Chapter): ChapterContent {
   const lessons = raw.lessons.map((l, i) => {
     const src = chapter.lessons[i]
-    const knowledge = src?.knowledge
-    if (!l.concept) {
-      return {
-        ...l,
-        concept: {
-          question: `${src?.title ?? l.lesson_title} là gì?`,
-          answer: src?.outline.slice(0, 2).map(point => point.point).join('. ') ?? '',
-          followUps: [],
-          kc_id: knowledge?.kc_id,
-          kc_name: knowledge?.kc_name,
-          module_id: knowledge?.module_id,
-          module_name: knowledge?.module_name,
-          source_chunk_start: src?.source_chunk_start,
-          source_chunk_end: src?.source_chunk_end,
-        },
-      }
-    }
+    const cards = normalizeLessonCards(l, src)
     return {
       ...l,
-      concept: {
-        ...l.concept,
-        kc_id: knowledge?.kc_id,
-        kc_name: knowledge?.kc_name,
-        module_id: knowledge?.module_id,
-        module_name: knowledge?.module_name,
-        source_chunk_start: src?.source_chunk_start,
-        source_chunk_end: src?.source_chunk_end,
-      },
+      concept: cards[0],
+      cards,
     }
   })
   return { ...raw, lessons }

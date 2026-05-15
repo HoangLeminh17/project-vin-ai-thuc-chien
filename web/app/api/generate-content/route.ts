@@ -6,7 +6,7 @@ import { isLegacyOutline } from '@/lib/types'
 import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
-import { chapterHasLegacyDetail } from '@/lib/course-content-version'
+import { chapterNeedsCardRegeneration } from '@/lib/course-content-version'
 
 const handler = async (req: NextRequest) => {
   const { logger, courseRepository } = await import('@/infrastructure/di')
@@ -31,7 +31,7 @@ const handler = async (req: NextRequest) => {
     const hasLegacyOutline = course.chapters[chapterIndex].lessons.some(l => isLegacyOutline(l.outline))
     if (hash && !hasLegacyOutline) {
       const cachedChapter = await courseRepository.getChapter(hash, chapterIndex)
-      if (cachedChapter && !chapterHasLegacyDetail(cachedChapter)) {
+      if (cachedChapter && !chapterNeedsCardRegeneration(cachedChapter)) {
         return NextResponse.json({ success: true, chapter: cachedChapter, fromCache: true })
       }
     }
@@ -58,20 +58,25 @@ const handler = async (req: NextRequest) => {
     // Graceful fallback: return a minimal structure so the UI doesn't break
     return {
       chapter_title: course.chapters[i].title,
-      lessons: course.chapters[i].lessons.map(l => ({
-        lesson_title: l.title,
-        concept: {
+      lessons: course.chapters[i].lessons.map(l => {
+        const answer = isLegacyOutline(l.outline)
+          ? l.outline.slice(0, 2).join('. ')
+          : l.outline.slice(0, 2).map(o => o.point).join('. ')
+        const concept = {
           question: `${l.title} là gì?`,
-          answer: isLegacyOutline(l.outline) 
-            ? l.outline.slice(0, 2).join('. ') 
-            : l.outline.slice(0, 2).map(o => o.point).join('. '),
+          answer,
           followUps: [] as string[],
           kc_id: l.knowledge?.kc_id,
           kc_name: l.knowledge?.kc_name,
           module_id: l.knowledge?.module_id,
           module_name: l.knowledge?.module_name,
-        },
-      })),
+        }
+        return {
+          lesson_title: l.title,
+          concept,
+          cards: [concept],
+        }
+      }),
       quiz: {
         topic: course.chapters[i].quiz.topic,
         questions: [],
