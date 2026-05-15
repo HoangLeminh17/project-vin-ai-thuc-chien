@@ -1,8 +1,28 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
 import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
 import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
-import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
+import type { Course, DiagnosticQuiz, DiagnosticQuestion } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
+import { withRetry } from '@/lib/retry'
+
+const QUIZ_CONCURRENCY = 4
+
+function createSemaphore(limit: number) {
+  let active = 0
+  const queue: (() => void)[] = []
+  return async function<T>(fn: () => Promise<T>): Promise<T> {
+    if (active >= limit) {
+      await new Promise<void>(resolve => queue.push(resolve))
+    }
+    active++
+    try {
+      return await fn()
+    } finally {
+      active--
+      queue.shift()?.()
+    }
+  }
+}
 
 export interface OpenAiConfig {
   apiKey: string
