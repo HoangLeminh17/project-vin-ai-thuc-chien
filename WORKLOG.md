@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Fix Railway deploy npm prefix trên self-hosted runner | Nguyen Binh Thanh | TBD |
 | Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | #110 |
 | Dashboard cá nhân hóa UKT + spider chart độ chắc chắn | Nguyen Binh Thanh | #109 |
 | Spider chart UKT theo module y khoa | Nguyen Binh Thanh | #108 |
@@ -26,6 +27,23 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-41] Fix Railway deploy npm prefix - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** TBD (`fix/railway-deploy-npm-prefix`)
+
+**Bối cảnh:** `web-build-test` đã pass nhưng job `deploy-web` fail ở bước `npx railway up` với lỗi npm `ENOENT ... _work/_temp/npm-global`. Lỗi xảy ra trước khi Railway deploy thật sự chạy, do self-hosted runner có npm global prefix trỏ tới thư mục temp chưa tồn tại hoặc không ổn định.
+
+**Quyết định:**
+- Deploy job tạo rõ thư mục npm prefix bằng `${RUNNER_TEMP:-/tmp}/npm-global`.
+- Export `NPM_CONFIG_PREFIX` qua `$GITHUB_ENV` để các bước sau dùng cùng prefix hợp lệ.
+- Cài Railway CLI local bằng `npm install --no-save --no-audit --no-fund @railway/cli`.
+- Gọi trực tiếp `./node_modules/.bin/railway up ...` thay vì `npx railway ...` để tránh `npx` chạm vào global prefix lỗi.
+- Áp dụng cùng pattern cho cả `deploy-web` và `deploy-ukt`.
+
+**Kết quả mong đợi:** CI deploy không còn fail vì thiếu thư mục npm global temp; nếu deploy fail tiếp thì lỗi sẽ đến từ Railway/project config thật, không phải npm bootstrap.
 
 ---
 
