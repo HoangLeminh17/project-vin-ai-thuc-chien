@@ -181,6 +181,26 @@ export class OpenAiAdapter implements IAiService {
       throw new InfrastructureError('Missing OPENAI_API_KEY')
     }
 
-    return { quiz: { questions: [] }, tokens: null }
+    const limit = createSemaphore(QUIZ_CONCURRENCY)
+    const results = await Promise.all(
+      chunks.map(chunk =>
+        limit(() => withRetry(() => this.generateSingleChunkQuestion(chunk)))
+      )
+    )
+
+    const questions = results.map(r => r.question)
+    const hasTokens = results.some(r => r.tokens !== null)
+    const tokens: TokenUsage | null = hasTokens
+      ? results.reduce<TokenUsage>(
+          (acc, r) => ({
+            promptTokens: acc.promptTokens + (r.tokens?.promptTokens ?? 0),
+            completionTokens: acc.completionTokens + (r.tokens?.completionTokens ?? 0),
+            totalTokens: acc.totalTokens + (r.tokens?.totalTokens ?? 0),
+          }),
+          { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+        )
+      : null
+
+    return { quiz: { questions }, tokens }
   }
 }
