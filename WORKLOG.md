@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Fix Vitest CJS config startup path on Linux CI | Nguyen Binh Thanh | #116 |
 | Multi-card lessons + chapter one-tap card tree | Nguyen Binh Thanh | #115 |
 | Việt hóa kc_name registry + spider chart labels | Nguyen Binh Thanh | #114 |
 | Enforce Vietnamese output trong diagnostic/quiz/Stage 2 prompts | Nguyen Binh Thanh | #113 |
@@ -31,6 +32,24 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-46] Tránh Vitest CJS config startup path trên Linux CI - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #116 (`fix/vitest-config-esm`)
+
+**Bối cảnh:** Job "Run Build Safety Smoke Tests" gọi trực tiếp `NEXT_PHASE=phase-production-build npx vitest run tests/smoke tests/lib` trên Linux Node 20 và fail trước khi chạy test. Stack trace nằm ở `vitest/dist/config.cjs` khi `require()` ESM-only `std-env/dist/index.mjs`.
+
+**Quyết định:**
+- Bỏ runtime import `defineConfig` từ `vitest/config` trong `web/vitest.config.ts`.
+- Export plain config object tương đương để Vitest load config mà không đi qua helper CJS gây lỗi ESM.
+- Giữ nguyên alias `@` và test environment `node`.
+
+**Hệ quả:**
+- (+) Lệnh smoke/lib CI load được config mà không chạm lỗi `ERR_REQUIRE_ESM`.
+- (+) Không đổi test behavior.
+- (-) Mất wrapper `defineConfig`, nhưng config nhỏ và vẫn được `next build`/lint/test xác nhận.
 
 ---
 
