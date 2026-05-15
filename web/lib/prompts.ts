@@ -149,6 +149,7 @@ Rules for quiz questions:
 - answer is the 0-based index (0–3) of the correct option
 - explanation: 1–2 sentences explaining why the answer is correct
 - Base questions on the raw_context, not generic knowledge
+- Write ALL questions, options, and explanations in Vietnamese
 
 Output ONLY valid JSON — no markdown backticks, no preamble, no explanation.
 
@@ -169,10 +170,10 @@ Output schema:
     "topic": "...",
     "questions": [
       {
-        "question": "Question text here?",
-        "options": ["Option A", "Option B", "Option C", "Option D"],
+        "question": "Cơ chế hoạt động của X là gì?",
+        "options": ["Đáp án A", "Đáp án B", "Đáp án C", "Đáp án D"],
         "answer": 0,
-        "explanation": "Option A is correct because..."
+        "explanation": "Đáp án A đúng vì..."
       }
     ]
   }
