@@ -1,8 +1,28 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
 import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
 import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
-import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
+import type { Course, DiagnosticQuiz, DiagnosticQuestion } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
+import { withRetry } from '@/lib/retry'
+
+const QUIZ_CONCURRENCY = 4
+
+function createSemaphore(limit: number) {
+  let active = 0
+  const queue: (() => void)[] = []
+  return async function<T>(fn: () => Promise<T>): Promise<T> {
+    if (active >= limit) {
+      await new Promise<void>(resolve => queue.push(resolve))
+    }
+    active++
+    try {
+      return await fn()
+    } finally {
+      active--
+      queue.shift()?.()
+    }
+  }
+}
 
 export interface OpenAiConfig {
   apiKey: string
@@ -99,16 +119,10 @@ export class OpenAiAdapter implements IAiService {
     return { course, tokens }
   }
 
-  async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
-    if (!this.apiKey) {
-      throw new InfrastructureError('Missing OPENAI_API_KEY')
-    }
+  private async generateSingleChunkQuestion(chunk: ContentChunk): Promise<{ question: DiagnosticQuestion; tokens: TokenUsage | null }> {
+    const formattedContent = formatDiagnosticChunk(chunk)
 
-    const formattedContent = chunks
-      .map(formatDiagnosticChunk)
-      .join('\n\n---\n\n')
-
-    let res: Response;
+    let res: Response
     try {
       res = await fetch(this.baseUrl, {
         method: 'POST',
@@ -127,18 +141,16 @@ export class OpenAiAdapter implements IAiService {
         }),
       })
     } catch (e) {
-      throw new InfrastructureError('Failed to connect to OpenAI API for diagnostic quiz', e)
+      throw new InfrastructureError(`Failed to connect to AI API for chunk ${chunk.id}`, e)
     }
 
     if (!res.ok) {
       const body = await res.json().catch(() => null)
       const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
-      throw new InfrastructureError(`OpenAI-compatible API error (${this.baseUrl}) returned ${res.status}: ${msg}`)
+      throw new InfrastructureError(`OpenAI-compatible API error returned ${res.status} for chunk ${chunk.id}: ${msg}`)
     }
 
     const data = await res.json()
-
-    // Log token usage
     const usage = data.usage
     const tokens: TokenUsage | null = usage
       ? { promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens }
@@ -146,16 +158,49 @@ export class OpenAiAdapter implements IAiService {
 
     const text = data.choices?.[0]?.message?.content
     if (!text) {
-      throw new InfrastructureError(`OpenAI returned no content for diagnostic quiz: ${JSON.stringify(data)}`)
+      throw new InfrastructureError(`AI returned no content for chunk ${chunk.id}: ${JSON.stringify(data)}`)
     }
 
-    let quiz: DiagnosticQuiz
+    let parsed: DiagnosticQuiz
     try {
-      quiz = JSON.parse(text)
+      parsed = JSON.parse(text)
     } catch (e) {
-      throw new InfrastructureError(`Failed to parse OpenAI JSON response for diagnostic quiz: ${text.slice(0, 500)}`, e)
+      throw new InfrastructureError(`Failed to parse AI response for chunk ${chunk.id}: ${text.slice(0, 500)}`, e)
     }
 
-    return { quiz, tokens }
+    const question = parsed.questions?.[0]
+    if (!question) {
+      throw new InfrastructureError(`AI returned no question for chunk ${chunk.id}`)
+    }
+
+    return { question, tokens }
+  }
+
+  async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
+    if (!this.apiKey) {
+      throw new InfrastructureError('Missing OPENAI_API_KEY')
+    }
+
+    const limit = createSemaphore(QUIZ_CONCURRENCY)
+    const results = await Promise.all(
+      chunks.map(chunk =>
+        limit(() => withRetry(() => this.generateSingleChunkQuestion(chunk)))
+      )
+    )
+
+    const questions = results.map(r => r.question)
+    const hasTokens = results.some(r => r.tokens !== null)
+    const tokens: TokenUsage | null = hasTokens
+      ? results.reduce<TokenUsage>(
+          (acc, r) => ({
+            promptTokens: acc.promptTokens + (r.tokens?.promptTokens ?? 0),
+            completionTokens: acc.completionTokens + (r.tokens?.completionTokens ?? 0),
+            totalTokens: acc.totalTokens + (r.tokens?.totalTokens ?? 0),
+          }),
+          { promptTokens: 0, completionTokens: 0, totalTokens: 0 }
+        )
+      : null
+
+    return { quiz: { questions }, tokens }
   }
 }
