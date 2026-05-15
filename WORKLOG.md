@@ -10,7 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| Fix Railway deploy npm prefix trên self-hosted runner | Nguyen Binh Thanh | TBD |
+| Fix Railway deploy npm prefix trên self-hosted runner | Nguyen Binh Thanh | #111 |
 | Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | #110 |
 | Dashboard cá nhân hóa UKT + spider chart độ chắc chắn | Nguyen Binh Thanh | #109 |
 | Spider chart UKT theo module y khoa | Nguyen Binh Thanh | #108 |
@@ -32,7 +32,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-41] Fix Railway deploy npm prefix - 15/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** TBD (`fix/railway-deploy-npm-prefix`)
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #111 (`fix/railway-deploy-npm-prefix`)
 
 **Bối cảnh:** `web-build-test` đã pass nhưng job `deploy-web` fail ở bước `npx railway up` với lỗi npm `ENOENT ... _work/_temp/npm-global`. Lỗi xảy ra trước khi Railway deploy thật sự chạy, do self-hosted runner có npm global prefix trỏ tới thư mục temp chưa tồn tại hoặc không ổn định.
 
