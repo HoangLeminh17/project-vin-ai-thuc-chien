@@ -34,6 +34,22 @@ import { ListCoursesUseCase } from '@/core/use-cases/courses/list-courses.usecas
 import { getDb, getBucket, getFirebaseAdminAuth } from '@/lib/firebase-admin';
 import { withUseCaseLogging } from '@/core/utils/use-case-logger';
 
+// Helpers
+const normalizeBaseUrl = (url: string | undefined): string => {
+  if (!url) return '';
+  const trimmed = url.trim().replace(/\/$/, '');
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return `http://${trimmed}`;
+  }
+  return trimmed;
+};
+
+const normalizeChatCompletionUrl = (url: string): string => {
+  const normalized = url.trim().replace(/\/$/, '')
+  if (normalized.endsWith('/chat/completions')) return normalized
+  return `${normalized}/chat/completions`
+}
+
 // Instantiate adapters
 export const logger = new PinoLoggerAdapter();
 export const alertAdapter = new WebhookAlertAdapter(process.env.DISCORD_WEBHOOK_URL || process.env.SLACK_WEBHOOK_URL || '');
@@ -67,16 +83,9 @@ export const rateLimiter = rateLimiterInstance;
 
 const storageAdapter = new FirebaseStorageAdapter(getBucket());
 const parserAdapter = new MineruParserAdapter({
-  baseUrl: process.env.PDF_MINERU_BASE_URL!,
+  baseUrl: normalizeBaseUrl(process.env.PDF_MINERU_BASE_URL),
   apiKey: process.env.PDF_MINERU_API_KEY!,
 });
-
-const normalizeChatCompletionUrl = (url: string): string => {
-  const normalized = url.trim().replace(/\/$/, '')
-  if (normalized.endsWith('/chat/completions')) return normalized
-  return `${normalized}/chat/completions`
-}
-
 // Setup AI Adapters with fallback chain
 const provider = process.env.AI_PROVIDER?.toLowerCase();
 const aiAdapters: IAiService[] = [];
@@ -98,7 +107,7 @@ const huggingface = process.env.HUGGINGFACE_API_KEY ? new HuggingFaceAdapter({
 
 const deepseek = process.env.DEEPSEEK_API_KEY ? new OpenAiAdapter({
   apiKey: process.env.DEEPSEEK_API_KEY,
-  baseUrl: normalizeChatCompletionUrl(process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1'),
+  baseUrl: normalizeChatCompletionUrl(normalizeBaseUrl(process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1')),
   model: process.env.DEEPSEEK_PLANNER_MODEL || 'deepseek-v4-pro',
 }) : null;
 
@@ -157,7 +166,7 @@ const authAdapter = new FirebaseAuthAdapter(getFirebaseAdminAuth());
 const progressRepository = new FirebaseProgressRepository();
 export const courseRepository = new FirestoreCourseAdapter(getDb());
 export const usageRepository = new FirestoreUsageAdapter(getDb());
-export const uktService = new UKTServiceAdapter(process.env.UKT_SERVICE_URL || 'http://localhost:8000');
+export const uktService = new UKTServiceAdapter(normalizeBaseUrl(process.env.UKT_SERVICE_URL || 'http://localhost:8000'));
 
 // Instantiate Use Cases
 const rawParseDocumentUseCase = new ParseDocumentUseCase(storageAdapter, parserAdapter);
