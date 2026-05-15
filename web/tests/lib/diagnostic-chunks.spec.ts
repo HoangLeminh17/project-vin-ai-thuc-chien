@@ -62,6 +62,18 @@ const chapterContent: ChapterContent = {
         detail: 'More detail about A.[chunk-0-2]',
         followUps: [],
       },
+      cards: [
+        {
+          question: 'What is A?',
+          answer: 'A is first.[chunk-0-1][chunk-0-2]',
+          followUps: [],
+        },
+        {
+          question: 'How does A work?',
+          answer: 'A works through a source-backed mechanism.[chunk-0-2]',
+          followUps: [],
+        },
+      ],
     },
     {
       lesson_title: 'Lesson B',
@@ -86,15 +98,16 @@ describe('diagnostic chunks', () => {
     expect(chunks).toHaveLength(2)
     expect(chunks.map(chunk => chunk.id)).toEqual(['0-0', '0-1'])
     expect(chunks[0].text).toContain('Lesson: Lesson A')
-    expect(chunks[0].text).toContain('Knowledge component: Homeostasis and feedback')
-    expect(chunks[0].text).toContain('Concept answer: A is first.')
+    expect(chunks[0].text).toContain('Knowledge component: Cân bằng nội môi và phản hồi')
+    expect(chunks[0].text).toContain('Concept card 1 answer: A is first.')
+    expect(chunks[0].text).toContain('Concept card 2 question: How does A work?')
     expect(chunks[0].text).not.toContain('Detail:')
     expect(chunks[0].text).not.toContain('[chunk-0-1]')
     expect(chunks[0]).toMatchObject({
       kc_id: 'physiology.homeostasis',
-      kc_name: 'Homeostasis and feedback',
+      kc_name: 'Cân bằng nội môi và phản hồi',
       module_id: 'physiology',
-      module_name: 'Physiology',
+      module_name: 'Sinh lý',
     })
   })
 
