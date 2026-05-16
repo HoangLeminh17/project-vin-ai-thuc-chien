@@ -661,6 +661,40 @@ Lý do DELETE nhanh hơn: bỏ được overhead chờ serial response chain (tr
 
 ---
 
+### [ADR-26] Backend Diagnostic Quiz Use Case — 02/05/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** PR #42
+
+**Bối cảnh:** Trước đây diagnostic quiz được generate hoàn toàn ở frontend hoặc gộp chung trong luồng Stage 2. Điều này làm tăng độ trễ và khó kiểm soát chất lượng câu hỏi. Cần một Use Case riêng biệt ở backend để đảm bảo mỗi lesson có đúng 1 câu hỏi chẩn đoán với độ phủ 100%.
+
+**Quyết định:**
+- Xây dựng `GenerateDiagnosticQuizUseCase` tại tầng Core.
+- Logic: Nhận danh sách chunks (lessons), gọi LLM để sinh chính xác 1 câu hỏi cho mỗi chunk ID.
+- Kết quả được trả về dưới dạng JSON schema chuẩn `DiagnosticQuiz`.
+
+**Hệ quả:**
+- (+) Đảm bảo độ phủ kiến thức 100% (lesson-scoped coverage).
+- (+) Tách biệt logic chẩn đoán giúp dễ dàng bảo trì và tối ưu prompt độc lập với Stage 2.
+
+---
+
+### [ADR-25] SRS Prioritization và Monitoring Base — 01/05/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** PR #43, #44
+
+**Bối cảnh:** Khi số lượng thẻ bài lớn, user cần biết thẻ nào cần ưu tiên ôn tập trước. Đồng thời, hệ thống bắt đầu cần cơ chế giám sát (Monitoring) để theo dõi các lỗi AI và latency.
+
+**Quyết định:**
+- Implement logic sắp xếp thẻ dựa trên `next_due_date` của thuật toán SM2 trong `ProgressRepository`.
+- Thiết lập các endpoint `/api/metrics` cơ bản để Prometheus có thể bắt đầu scrape dữ liệu.
+- Thêm `trace_id` vào các log AI để phục vụ việc truy vết (traceability) sau này.
+
+**Hệ quả:**
+- (+) Dashboard ôn tập hiển thị thẻ theo thứ tự ưu tiên chính xác.
+- (+) Đặt nền móng cho hệ thống giám sát tập trung.
+
+---
+
 ### [ADR-24] Tách CourseFlow + luồng chẩn đoán + sửa lỗi generation — 03/05/2026
 
 **Người làm:** Nguyễn Bình Thành | **Ref:** PR #46, #47, #48, #49, #50
@@ -717,6 +751,22 @@ Lý do DELETE nhanh hơn: bỏ được overhead chờ serial response chain (tr
 | Fix log hook UTF-8 encoding and course style border conflict | Nguyễn Bình Thành | #35, #39 |
 | Gamification follow-up: library mastery ring + 30-day heatmap | Nguyễn Bình Thành | #36, #37 |
 | UKT service, duplicate course flow, planning/content transformation groundwork | Lê Kim Dũng | #40, #41 |
+
+---
+
+### [ADR-23b] UKT Service Groundwork và Duplicate Course Flow — 25/04/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** PR #40, #41
+
+**Bối cảnh:** Hệ thống cần theo dõi kiến thức người dùng (Knowledge Tracing) một cách hệ thống thay vì chỉ dựa trên SRS. Đồng thời, cần xử lý trường hợp user upload cùng một file PDF nhiều lần để tránh lãng phí token.
+
+**Quyết định:**
+- Khởi tạo `UKT service` (Python/FastAPI) tách biệt để xử lý các mô hình học máy về kiến thức (BKT/DKT).
+- Xây dựng luồng check `contentHash` trước khi bắt đầu generation. Nếu course đã tồn tại và thuộc về user khác, thực hiện "clone" thay vì regenerate.
+
+**Hệ quả:**
+- (+) Tiết kiệm token cho các nội dung phổ biến.
+- (+) Chuẩn bị sẵn sàng cho việc phân tích năng lực người dùng sâu hơn.
 
 ---
 
