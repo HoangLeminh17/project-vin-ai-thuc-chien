@@ -35,6 +35,24 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
 
+### [ADR-48] Parallelize Stage 2 generation cho Fresh Course - 16/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #118 (`perf/parallel-stage2-generation`)
+
+**Bối cảnh:** Sau khi Stage 1 (Planner) hoàn thành, hệ thống tạo Stage 2 (Generator) cho từng chương. Trước đây, `GenerationContext` gọi `fetchChapter` tuần tự cho từng chương để tiết kiệm rate limit và dễ theo dõi tiến độ từng phần. Tuy nhiên, với các khóa học lớn (8-12 chương), tổng thời gian chờ có thể lên tới 3-5 phút dù mỗi chương chỉ mất ~20-30 giây.
+
+**Quyết định:**
+- Trong `GenerationContext`, sử dụng `Promise.all` để kích hoạt toàn bộ các lời gọi Stage 2 cùng lúc thay vì đợi từng chương.
+- Các chương vẫn được lưu vào cache và Firestore khi hoàn thành lời gọi song song.
+- UI `PipelineTracker` vẫn hiển thị tiến độ tổng hợp dựa trên số lượng chương đã hoàn thành trong `courseContentMap`.
+- Vẫn giữ cơ chế retry/error handling riêng lẻ cho từng chương để đảm bảo một chương lỗi không làm hỏng cả khóa học.
+
+**Hệ quả:**
+- (+) Latency tạo toàn bộ nội dung khóa học giảm từ vài phút xuống còn ~30-40 giây (bằng thời gian của chương dài nhất).
+- (+) Tận dụng tối đa concurrency của AI providers (DeepSeek/OpenAI).
+- (-) Tăng rủi ro chạm Rate Limit (429) khi gửi 10+ request cùng lúc. Được xử lý bằng cơ chế retry có backoff đã cài đặt ở tầng adapter.
+- (-) Khó theo dõi "luồng" sinh từng chương theo thứ tự, nhưng UX tổng thể tốt hơn nhiều vì quá trình "Done" nhanh hơn.
+
 ---
 
 ### [ADR-47] Parallel per-chunk generation để giảm latency diagnostic quiz - 15/05/2026

@@ -302,6 +302,70 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ---
 
+## Tuần 7 — 16/05/2026
+
+---
+
+### Nguyễn Bình Thành
+
+#### Đã làm
+- **Parallel Generation**: Song song hóa Stage 2 và Diagnostic Quiz (giảm latency từ ~210s xuống còn ~10-15s bằng `Promise.all` + semaphore).
+- **Multi-card Stage 2**: Cập nhật Generator để sinh 2-3 thẻ atomic mỗi lesson thay vì 1 thẻ nén thông tin; giữ `concept` làm compatibility layer.
+- **CourseTree Redesign**: Bỏ accordion lesson, chapter mở ra hiện ngay toàn bộ nhãn bài học và card; tối ưu hóa luồng điều hướng (Master-Detail).
+- **UKT Mastery Dashboard**: Cá nhân hóa trang chủ với Spider Chart 8 trục y khoa, hiển thị cả mức nắm vững (mastery) và dải độ chắc chắn (uncertainty).
+- **Việt hóa Registry**: Dịch toàn bộ 48 Knowledge Components và 8 module y khoa sang tiếng Việt để đồng bộ UI "Theo chủ đề".
+- **Fix CI/CD**: Xử lý lỗi Railway deploy (`npm-global` path) và lỗi Vitest native binding (`rolldown`) trên self-hosted Linux runner.
+
+#### Khó nhất tuần này
+- Xử lý lỗi 429 (Too Many Requests) từ DeepSeek khi song song hóa 10+ request cùng lúc. Phải implement cơ chế semaphore để giới hạn concurrency và retry với exponential backoff.
+- Debug lỗi native binding của Vitest trên CI Linux: do npm không tự cài optional dependencies cho đúng platform khi dùng self-hosted runner.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Refactor parallel generation, xây dựng Spider Chart component, debug CI/CD pipeline, Việt hóa registry | Hoàn thành 15 PR lớn nhỏ, hệ thống ổn định và nhanh hơn rõ rệt |
+
+#### Học được
+- **Concurrency control** quan trọng không kém gì logic: gọi song song mà không giới hạn sẽ bị API provider ban ngay lập tức.
+- **Distributed Tracing** là "ánh sáng" khi debug latency: nhìn vào Jaeger trace thấy ngay diagnostic quiz bị block ở đâu thay vì đoán mò.
+
+#### Nếu làm lại, sẽ làm khác
+- Sẽ implement parallel generation sớm hơn (từ tuần 5) thay vì để user đợi 3 phút mỗi khi tạo khóa học.
+
+#### Kế hoạch tuần tới
+- Hoàn thiện AI Tutor chuyên sâu: gợi ý tài liệu đọc thêm dựa trên lỗ hổng kiến thức UKT.
+- Tinh chỉnh UI cho mobile.
+
+---
+
+### Lê Kim Dũng
+
+#### Đã làm
+- **Observability Stack**: Tách cấu trúc monorepo (`web/`, `UKT/`, `monitoring/`) và triển khai bộ công cụ giám sát: OTel Collector, Jaeger, Loki, Prometheus, Grafana, Alertmanager.
+- **Distributed Tracing**: Cấu hình OpenTelemetry instrumentation xuyên suốt từ Next.js đến FastAPI để truy vết request end-to-end.
+- **Alerting**: Tích hợp Discord Bridge cho Alertmanager, tự động gửi cảnh báo lỗi hệ thống về kênh Discord nhóm.
+- **Infrastructure Cleanup**: Refactor luồng `/api/auth/me` và dọn dẹp các adapter cũ không còn sử dụng sau khi chuyển sang OTel.
+
+#### Khó nhất tuần này
+- Cấu hình OTel Collector để tiếp nhận và chuyển hướng (export) dữ liệu từ nhiều ngôn ngữ khác nhau (Node.js và Python) về đúng các backend (Jaeger, Loki, Prometheus) trong mạng nội bộ của Railway.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| AI Agent | Tư vấn kiến trúc monitoring, hỗ trợ viết Docker Compose cho 6 dịch vụ giám sát, debug cấu hình gRPC cho OTel | Setup thành công stack giám sát chuẩn production trong 2 ngày |
+
+#### Học được
+- "Observability is not just logs": Log chỉ cho biết "chuyện gì đã xảy ra", còn Tracing cho thấy "nó đã xảy ra như thế nào và tại sao lại chậm".
+- Tầm quan trọng của việc tách biệt service giám sát để không ảnh hưởng đến hiệu năng của service chính.
+
+#### Nếu làm lại, sẽ làm khác
+- Sẽ setup Prometheus và Grafana ngay từ tuần 2 để theo dõi chi phí token AI chặt chẽ hơn từ đầu.
+
+#### Kế hoạch tuần tới
+- Xây dựng dashboard Admin chuyên sâu hiển thị tỷ lệ lỗi của từng AI Provider.
+
+---
+
 ## Template
 
 ```markdown
