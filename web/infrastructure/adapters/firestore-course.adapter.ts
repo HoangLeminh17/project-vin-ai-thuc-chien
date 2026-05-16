@@ -9,6 +9,15 @@ const COLLECTION = 'courses';
 export class FirestoreCourseAdapter implements ICourseRepository {
   constructor(private readonly db: Firestore) {}
 
+  private async getOwnedCourseDoc(id: string, userId: string) {
+    const docRef = this.db.collection(COLLECTION).doc(id);
+    const doc = await docRef.get();
+    if (!doc.exists) throw new NotFoundError(`Course ${id} not found`);
+    const data = doc.data() as SavedCourse;
+    if (data.userId !== userId) throw new BusinessRuleError('Access denied');
+    return { docRef, data };
+  }
+
   async save(input: CreateCourseInput): Promise<SavedCourse> {
     try {
       const docRef = this.db.collection(COLLECTION).doc();
@@ -30,11 +39,7 @@ export class FirestoreCourseAdapter implements ICourseRepository {
 
   async update(id: string, userId: string, content: CourseContent): Promise<void> {
     try {
-      const docRef = this.db.collection(COLLECTION).doc(id);
-      const doc = await docRef.get();
-      if (!doc.exists) throw new NotFoundError(`Course ${id} not found`);
-      if (doc.data()?.userId !== userId) throw new BusinessRuleError('Access denied');
-      
+      const { docRef } = await this.getOwnedCourseDoc(id, userId);
       await docRef.update({ courseContent: content });
     } catch (e) {
       if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
@@ -73,10 +78,7 @@ export class FirestoreCourseAdapter implements ICourseRepository {
 
   async getById(id: string, userId: string): Promise<SavedCourse> {
     try {
-      const doc = await this.db.collection(COLLECTION).doc(id).get();
-      if (!doc.exists) throw new NotFoundError(`Course ${id} not found`);
-      const data = doc.data() as SavedCourse;
-      if (data.userId !== userId) throw new BusinessRuleError('Access denied');
+      const { data } = await this.getOwnedCourseDoc(id, userId);
       return data;
     } catch (e) {
       if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
@@ -86,11 +88,10 @@ export class FirestoreCourseAdapter implements ICourseRepository {
 
   async delete(id: string, userId: string): Promise<void> {
     try {
-      const doc = await this.db.collection(COLLECTION).doc(id).get();
-      if (!doc.exists) throw new NotFoundError(`Course ${id} not found`);
-      const data = doc.data() as SavedCourse;
-      if (data.userId !== userId) throw new BusinessRuleError('Access denied');
-      await this.db.collection(COLLECTION).doc(id).delete();
+      // Verify existence and ownership without routing through getById,
+      // so callers don't inadvertently introduce a fetch-then-refetch pattern.
+      const { docRef } = await this.getOwnedCourseDoc(id, userId);
+      await docRef.delete();
     } catch (e) {
       if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
       throw new InfrastructureError('Failed to delete course from Firestore', e);
