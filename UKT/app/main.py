@@ -32,7 +32,10 @@ from app.ukt_engine import UKTEngine
 from app.state_store import StateStore
 from app.notifications import notify_model_loaded, notify_error
 
-logging.basicConfig(level=logging.INFO)
+from app.logging_config import configure_logging
+
+# Configure structured logging early.
+configure_logging()
 logger = logging.getLogger(__name__)
 
 def get_engine(req: Request) -> UKTEngine:

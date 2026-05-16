@@ -9,6 +9,10 @@ export class PinoLoggerAdapter implements ILoggerPort {
 
   constructor() {
     const level = process.env.LOG_LEVEL || 'info'
+    const base = {
+      service: 'web',
+      env: process.env.NODE_ENV || 'production',
+    }
 
     // Optional: ship logs directly to Loki using pino-loki transport.
     // Set LOKI_URL (recommended) or LOKI_HOST in Railway variables.
@@ -30,13 +34,14 @@ export class PinoLoggerAdapter implements ILoggerPort {
       }
 
       if (!hasPinoLoki) {
-        this.logger = pino({ level })
+        this.logger = pino({ level, base })
         return
       }
 
       this.logger = pino(
         {
           level,
+          base,
         },
         pino.transport({
           target: 'pino-loki',
@@ -52,7 +57,7 @@ export class PinoLoggerAdapter implements ILoggerPort {
         })
       )
     } else {
-      this.logger = pino({ level })
+      this.logger = pino({ level, base })
     }
   }
 
