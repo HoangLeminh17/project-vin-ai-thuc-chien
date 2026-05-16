@@ -3,6 +3,9 @@ export type ContentItem = {
   text?: string
   text_level?: number
   img_path?: string
+  img_storage_path?: string
+  img_url?: string
+  image_mime_type?: string
   table_body?: string
   page_idx?: number
   sourceChunkIndex?: number
