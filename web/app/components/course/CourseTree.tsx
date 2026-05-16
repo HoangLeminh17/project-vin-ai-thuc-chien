@@ -128,8 +128,7 @@ export interface Props {
 
 // ── CourseTree ─────────────────────────────────────────────────────────────────
 
-export function CourseTree({ course, progressMap, diagnosticState, onExit, layoutStorageUrl, preferredDetailTab }: Props) {
-export function CourseTree({ course, progressMap, diagnosticState, onProgressChange, onExit, layoutStorageUrl }: Props) {
+export function CourseTree({ course, progressMap, diagnosticState, onProgressChange, onExit, layoutStorageUrl, preferredDetailTab }: Props) {
   const chapters = course.course.chapters
   const allCards = useMemo(() => flattenCards(course), [course])
   const shouldOpenStudyInitially = preferredDetailTab === 'study' && allCards.length > 0
