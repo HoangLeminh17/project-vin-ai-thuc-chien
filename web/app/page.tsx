@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect, useMemo, type DragEvent } from 'react'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { FlashFactGallery, Spinner } from '@/app/components'
