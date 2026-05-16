@@ -7,8 +7,6 @@ export type NavTab = 'dashboard' | 'courses' | 'srs'
 interface Props {
   activeTab: NavTab
   onTabChange: (tab: NavTab) => void
-  userInitials?: string
-  onLogout?: () => void
 }
 
 const TABS: { id: NavTab; label: string; Icon: (props: { c: string }) => React.ReactElement }[] = [
@@ -48,10 +46,10 @@ const TABS: { id: NavTab; label: string; Icon: (props: { c: string }) => React.R
   },
 ]
 
-export function NavRail({ activeTab, onTabChange, userInitials, onLogout }: Props) {
+export function NavRail({ activeTab, onTabChange }: Props) {
   return (
     <div style={{
-      width: 60, flexShrink: 0, height: '100vh',
+      width: 60, flexShrink: 0, height: '100%',
       background: T.bgSolid, borderRight: `1px solid ${T.ink10}`,
       display: 'flex', flexDirection: 'column', alignItems: 'center',
       paddingTop: 14, paddingBottom: 14,
@@ -95,23 +93,6 @@ export function NavRail({ activeTab, onTabChange, userInitials, onLogout }: Prop
         })}
       </div>
 
-      {/* User avatar */}
-      {userInitials && (
-        <button
-          onClick={onLogout}
-          title="Đăng xuất"
-          style={{
-            width: 32, height: 32, borderRadius: '50%',
-            background: T.ink, color: T.bgSolid,
-            border: 'none', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 11, fontWeight: 700, fontFamily: T.fontSans,
-            flexShrink: 0,
-          }}
-        >
-          {userInitials}
-        </button>
-      )}
     </div>
   )
 }
