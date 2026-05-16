@@ -13,6 +13,7 @@ import { SynapsyLogo, SynapsyRing, GeoDecoration, T } from '@/app/components/syn
 import { KnowledgeSpiderChart } from '@/app/components/knowledge/KnowledgeSpiderChart'
 import { aggregateModuleMastery, type ModuleMasteryPoint } from '@/lib/ukt-module-mastery'
 import { getLessonCards } from '@/lib/course-cards'
+import { NavRail, type NavTab } from '@/app/components/shell'
 
 // ── SRS stats ─────────────────────────────────────────────────────────────────
 
@@ -288,23 +289,23 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
           <PipelineTracker parsed={Boolean(rawMarkdown)} outlined={true} chaptersDone={doneCount} chaptersTotal={course.chapters.length} allDone={allDone} diagnosticStatus={diagnosticStatus} />
           {allDone && savedCourseId && (diagnosticStatus === 'done' || diagnosticStatus === 'error') && (
             <div style={{ padding: '18px 18px 20px', background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12 }}>
-              <p style={{ fontSize: 16, fontWeight: 700, color: T.ink, margin: '0 0 4px' }}>{'Kh\u00f3a h\u1ecdc \u0111\u00e3 s\u1eb5n s\u00e0ng!'}</p>
+              <p style={{ fontSize: 16, fontWeight: 700, color: T.ink, margin: '0 0 4px' }}>{'Khóa học đã sẵn sàng!'}</p>
               <p style={{ fontSize: 12, color: T.ink60, margin: '0 0 16px', lineHeight: 1.55 }}>
                 {diagnosticStatus === 'done'
-                  ? 'B\u00e0i test ch\u1ea9n \u0111o\u00e1n \u0111\u00e3 \u0111\u01b0\u1ee3c chu\u1ea9n b\u1ecb s\u1eb5n. B\u1ea1n c\u00f3 th\u1ec3 v\u00e0o test ngay ho\u1eb7c v\u00e0o h\u1ecdc lu\u00f4n.'
-                  : 'Kh\u00f4ng t\u1ea1o \u0111\u01b0\u1ee3c b\u00e0i test, nh\u01b0ng b\u1ea1n v\u1eabn c\u00f3 th\u1ec3 v\u00e0o h\u1ecdc ngay b\u00e2y gi\u1edd.'}
+                  ? 'Bài test chẩn đoán đã được chuẩn bị sẵn. Bạn có thể vào test ngay hoặc vào học luôn.'
+                  : 'Không tạo được bài test, nhưng bạn vẫn có thể vào học ngay bây giờ.'}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {diagnosticStatus === 'done' && (
                   <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 16px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: '1px solid transparent', textAlign: 'left' }}>
-                    {'V\u00e0o b\u00e0i test tr\u00ecnh \u0111\u1ed9'}
+                    {'Vào bài test trình độ'}
                   </button>
                 )}
                 <button onClick={handleSkipDiagnosticAndStudy} style={{ background: T.bgSolid, color: T.ink, padding: '11px 16px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: `1px solid ${T.ink}`, textAlign: 'left' }}>
-                  {'V\u00e0o h\u1ecdc lu\u00f4n'}
+                  {'Vào học luôn'}
                 </button>
                 <button onClick={handleGoBack} style={{ background: T.bgSolid, color: T.ink60, padding: '11px 16px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: `1px solid ${T.ink10}`, textAlign: 'left' }}>
-                  {'V\u1ec1 th\u01b0 vi\u1ec7n'}
+                  {'Về thư viện'}
                 </button>
               </div>
             </div>
@@ -312,6 +313,371 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
         </div>
       </div>
     </main>
+  )
+}
+
+// ── Dashboard panel (Tab 1: KHO) ──────────────────────────────────────────────
+
+interface DashboardPanelProps {
+  user: { displayName?: string | null; email?: string | null; photoURL?: string | null } | null
+  srsStats: SRSStats | null
+  srsLoading: boolean
+  moduleMastery: ModuleMasteryPoint[]
+  uktMasteryLoading: boolean
+  progressMap: ProgressMap
+  streak: number
+  totalCards: number
+  onLogin: () => void
+  onLogout: () => void
+}
+
+function DashboardPanel({ user, srsStats, srsLoading, moduleMastery, uktMasteryLoading, progressMap, streak, totalCards, onLogin }: DashboardPanelProps) {
+  const router = useRouter()
+  const heatmap = buildHeatmap(progressMap)
+  const dueCount = srsStats?.due ?? 0
+  const newCount = srsStats?.new ?? 0
+
+  if (!user) {
+    return (
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: T.bg, gap: 20, padding: 40 }}>
+        <div style={{ position: 'relative' }}>
+          <GeoDecoration size={320} color={T.accent} opacity={0.07} />
+        </div>
+        <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.03em', color: T.ink, margin: 0, textAlign: 'center', lineHeight: 1.1 }}>
+          Ôn thi thông minh<br />
+          <span style={{ color: T.ink40, fontWeight: 400, fontSize: 26 }}>cùng Synapsy</span>
+        </h1>
+        <p style={{ fontSize: 14, color: T.ink60, margin: 0, textAlign: 'center', maxWidth: 320, lineHeight: 1.6 }}>
+          Upload PDF — AI tạo flashcard — ôn theo SRS mỗi ngày.
+        </p>
+        <button onClick={onLogin} style={{ background: T.ink, color: T.bgSolid, padding: '13px 28px', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', border: 'none' }}>
+          Đăng nhập để bắt đầu →
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: T.bg, overflowY: 'auto', padding: '24px 28px', gap: 18 }}>
+
+      {/* Dark hero banner */}
+      <div style={{
+        background: '#0d1420', borderRadius: 16,
+        padding: '18px 24px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+      }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 600, color: '#6b7280', letterSpacing: '0.08em', marginBottom: 7, fontFamily: T.fontSans }}>
+            {streak > 0 ? `🔥 ${streak} NGÀY LIÊN TIẾP` : 'HÔM NAY'}
+          </div>
+          {srsLoading ? (
+            <div style={{ height: 44, display: 'flex', alignItems: 'center' }}><Spinner /></div>
+          ) : (
+            <>
+              <div style={{ fontSize: 17, fontWeight: 700, color: '#f9fafb', marginBottom: 5, fontFamily: T.fontSans, lineHeight: 1.35 }}>
+                {dueCount} thẻ cần ôn hôm nay
+                {newCount > 0 && <span style={{ fontSize: 13, color: '#6b7280', fontWeight: 400 }}> · + {newCount} thẻ mới</span>}
+              </div>
+              <div style={{ fontSize: 12.5, color: '#6b7280', fontFamily: T.fontSans }}>
+                {dueCount > 0
+                  ? `Ước tính ~${Math.max(1, Math.round(dueCount * 0.4 + newCount * 0.6))} phút`
+                  : 'Hôm nay đã xong 🌱'}
+              </div>
+            </>
+          )}
+        </div>
+        <button
+          onClick={() => router.push('/review')}
+          style={{
+            background: T.accent, color: '#fff', border: 'none', borderRadius: 11,
+            padding: '11px 20px', fontSize: 13.5, fontWeight: 700, cursor: 'pointer',
+            whiteSpace: 'nowrap', fontFamily: T.fontSans, flexShrink: 0,
+          }}
+        >Bắt đầu →</button>
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display: 'flex', gap: 14 }}>
+        {[
+          { label: 'CHUỖI NGÀY', value: String(streak), sub: 'ngày liên tiếp', accent: T.accent },
+          { label: '30 NGÀY QUA', value: String(totalCards), sub: 'thẻ đã ôn', accent: undefined },
+          { label: 'ĐÃ ÔN HÔM NAY', value: String(dueCount > 0 ? 0 : (srsStats?.learning ?? 0)), sub: dueCount > 0 ? `còn ${dueCount} thẻ` : 'hoàn thành!', accent: undefined },
+        ].map(stat => (
+          <div key={stat.label} style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 14, padding: '18px 22px', flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.ink40, letterSpacing: '0.1em', marginBottom: 8 }}>{stat.label}</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: stat.accent ?? T.ink, lineHeight: 1, fontFamily: T.fontMono }}>{stat.value}</div>
+            <div style={{ fontSize: 12, color: T.ink40, marginTop: 5 }}>{stat.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Competency radar */}
+      <div style={{ opacity: uktMasteryLoading ? 0.82 : 1, transition: 'opacity 0.15s ease' }}>
+        <KnowledgeSpiderChart points={moduleMastery} />
+      </div>
+
+      {/* Activity heatmap */}
+      <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 16, padding: '18px 22px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: T.ink40, letterSpacing: '0.1em' }}>HOẠT ĐỘNG 30 NGÀY</span>
+          <span className="sy-mono" style={{ fontSize: 12, color: T.ink40 }}>{totalCards} thẻ đã ôn</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(30, 1fr)', gap: 4 }}>
+          {heatmap.map((count, i) => {
+            const opacity = count === 0 ? 1 : Math.min(1, 0.18 + count / 26)
+            return (
+              <div key={i} style={{ aspectRatio: '1', borderRadius: 4, background: count === 0 ? T.ink10 : T.accent, opacity: count === 0 ? 1 : opacity }} title={`${count} thẻ`} />
+            )
+          })}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8 }}>
+          <span className="sy-mono" style={{ fontSize: 10.5, color: T.ink40 }}>30 ngày trước</span>
+          <span className="sy-mono" style={{ fontSize: 10.5, color: T.ink40 }}>Hôm nay</span>
+        </div>
+      </div>
+
+      <div style={{ height: 8 }} />
+    </div>
+  )
+}
+
+// ── Courses panel (Tab 2: KHÓA) ───────────────────────────────────────────────
+
+interface CoursesPanelProps {
+  courses: SavedCourse[]
+  coursesLoading: boolean
+  progressMap: ProgressMap
+  deleteError: string | null
+  file: File | null
+  dragOver: boolean
+  onUploadClick: () => void
+  onDrop: (e: DragEvent<HTMLDivElement>) => void
+  onDragOver: (e: DragEvent<HTMLDivElement>) => void
+  onDragLeave: () => void
+  onFileStart: () => void
+  onFileClear: () => void
+  onDeleteCourse: (id: string) => void
+  onCourseClick: (id: string) => void
+  error: string | null
+}
+
+function CoursesPanel({
+  courses, coursesLoading, progressMap, deleteError,
+  file, dragOver, onUploadClick, onDrop, onDragOver, onDragLeave,
+  onFileStart, onFileClear, onDeleteCourse, onCourseClick, error,
+}: CoursesPanelProps) {
+  return (
+    <div style={{ flex: 1, overflowY: 'auto', background: T.bg, padding: '24px 28px' }}>
+      {/* Section header */}
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 20 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, letterSpacing: '-0.03em', color: T.ink }}>Thư viện</h2>
+        <button
+          onClick={onUploadClick}
+          style={{ background: T.ink, color: T.bgSolid, padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none' }}
+        >+ Thêm PDF</button>
+      </div>
+
+      {deleteError && (
+        <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fff5f5', border: '1px solid #fecdcd', borderRadius: 8, fontSize: 13, color: '#7a0000' }}>
+          {deleteError}
+        </div>
+      )}
+
+      {error && (
+        <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fff5f5', border: '1px solid #fecdcd', borderRadius: 10, fontSize: 13, color: '#7a0000' }}>
+          {error}
+        </div>
+      )}
+
+      {/* File selected — upload prompt */}
+      {file && (
+        <div style={{ marginBottom: 16, padding: '14px 18px', background: T.accentSoft, border: `1.5px solid ${T.accent}`, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: T.ink, margin: 0 }}>{file.name}</p>
+            <p className="sy-mono" style={{ fontSize: 11, color: T.ink60, margin: '2px 0 0' }}>{(file.size / 1024 / 1024).toFixed(1)} MB</p>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={onFileStart} style={{ background: T.ink, color: T.bgSolid, padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none' }}>
+              Tạo khóa học →
+            </button>
+            <button onClick={onFileClear} style={{ background: T.bgSolid, color: T.ink60, padding: '9px 14px', borderRadius: 9, fontSize: 13, border: `1px solid ${T.ink10}`, cursor: 'pointer' }}>
+              Bỏ
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Course grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
+        {coursesLoading ? (
+          Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="sy-animate-pulse" style={{ height: 148, borderRadius: 12, background: T.ink10 }} />
+          ))
+        ) : (
+          courses.map(c => {
+            const s = courseStats(c, progressMap)
+            const chapterCount = c.course.chapters.length
+            return (
+              <div key={c.id}
+                onClick={() => onCourseClick(c.id)}
+                style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 14, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10, cursor: 'pointer', transition: 'box-shadow 0.15s, border-color 0.15s' }}
+                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)'; e.currentTarget.style.borderColor = T.accent }}
+                onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; e.currentTarget.style.borderColor = T.ink10 }}
+              >
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                  <SynapsyRing pct={s.masteryPct} size={34} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {s.due > 0 && (
+                      <span style={{ fontSize: 10, fontWeight: 700, background: T.ink, color: T.bgSolid, padding: '2px 8px', borderRadius: 20 }}>{s.due}</span>
+                    )}
+                    <button
+                      onClick={e => { e.stopPropagation(); onDeleteCourse(c.id) }}
+                      style={{ fontSize: 12, color: T.ink40, padding: 4, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
+                      title="Xóa"
+                    >✕</button>
+                  </div>
+                </div>
+                <h3 className="sy-serif" style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: '-0.005em', lineHeight: 1.3, color: T.ink }}>{c.title}</h3>
+                <div className="sy-mono" style={{ fontSize: 11, color: T.ink40, display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <span>{chapterCount} chương</span><span>·</span><span>{s.total} thẻ</span>
+                </div>
+                <div style={{ fontSize: 11, color: T.ink60, marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${T.ink10}` }}>
+                  {new Date(c.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                </div>
+              </div>
+            )
+          })
+        )}
+
+        {/* Upload tile */}
+        <div
+          onClick={onUploadClick}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          style={{
+            border: `1.5px dashed ${dragOver ? T.accent : T.ink20}`,
+            background: dragOver ? T.accentSoft : 'transparent',
+            borderRadius: 14, padding: '16px 18px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            minHeight: 148, gap: 8, color: T.ink60, cursor: 'pointer',
+            transition: 'border-color 0.15s, background 0.15s',
+          }}
+        >
+          <div style={{ width: 34, height: 34, borderRadius: '50%', background: T.bgSolid, border: `1px solid ${T.ink10}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: T.ink40 }}>+</div>
+          <p style={{ fontSize: 12, margin: 0, fontWeight: 500 }}>Thả PDF vào đây</p>
+          <p className="sy-mono" style={{ fontSize: 10, margin: 0, color: T.ink40 }}>hoặc click để chọn</p>
+        </div>
+      </div>
+
+      {/* CTA footer */}
+      <div style={{ marginTop: 32 }}>
+        <div style={{ background: T.ink, borderRadius: 12, padding: '20px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: T.bgSolid, letterSpacing: '-0.01em' }}>Thêm tài liệu mới</p>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: '3px 0 0' }}>PDF · slide · ghi chú — Synapsy trích xuất concept và tạo flashcard tự động</p>
+          </div>
+          <button onClick={onUploadClick} style={{ background: T.bgSolid, color: T.ink, padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0, border: 'none' }}>
+            Chọn file PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── SRS launcher panel (Tab 3: SRS) ──────────────────────────────────────────
+
+interface SRSPanelProps {
+  srsStats: SRSStats | null
+  srsLoading: boolean
+  courses: SavedCourse[]
+  progressMap: ProgressMap
+}
+
+function SRSPanel({ srsStats, srsLoading, courses, progressMap }: SRSPanelProps) {
+  const router = useRouter()
+  const total = srsStats?.due ?? 0
+  const newCount = srsStats?.new ?? 0
+
+  const courseDueList = useMemo(() =>
+    courses
+      .map(c => ({ name: c.title, due: courseStats(c, progressMap).due }))
+      .filter(c => c.due > 0)
+      .sort((a, b) => b.due - a.due),
+    [courses, progressMap]
+  )
+  const maxDue = Math.max(...courseDueList.map(c => c.due), 1)
+
+  return (
+    <div style={{ flex: 1, background: T.bg, overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
+      <div style={{ width: '100%', maxWidth: 540, padding: '52px 24px' }}>
+
+        {/* Hero number */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{ fontSize: 96, fontWeight: 800, color: T.ink, lineHeight: 1, fontFamily: T.fontMono }}>
+            {srsLoading ? '…' : total}
+          </div>
+          <div style={{ fontSize: 17, color: T.ink60, marginTop: 10, fontFamily: T.fontSans }}>thẻ cần ôn hôm nay</div>
+          {newCount > 0 && <div style={{ fontSize: 13, color: T.ink40, marginTop: 6 }}>+ {newCount} thẻ mới</div>}
+        </div>
+
+        {/* CTA */}
+        <button
+          onClick={() => router.push('/review')}
+          style={{
+            width: '100%', background: T.ink, color: T.bgSolid, border: 'none',
+            borderRadius: 15, padding: '17px 0', fontSize: 15.5, fontWeight: 700,
+            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            gap: 10, fontFamily: T.fontSans, marginBottom: 36,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="white"><polygon points="2,1 13,7 2,13"/></svg>
+          Bắt đầu ôn tập
+        </button>
+
+        {/* Stats breakdown */}
+        <div style={{ height: 1, background: T.ink10, marginBottom: 24 }} />
+        <div style={{ display: 'flex', gap: 12, marginBottom: 30 }}>
+          {[
+            { n: srsStats?.learning ?? 0, label: 'Đang học (Learning)', color: T.srsHard },
+            { n: total,                   label: 'Cần ôn (Due)',         color: T.srsAgain },
+            { n: newCount,                label: 'Thẻ mới (New)',        color: T.accent },
+          ].map(({ n, label, color }) => (
+            <div key={label} style={{ flex: 1, background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 13, padding: '16px 18px' }}>
+              <div style={{ fontSize: 30, fontWeight: 700, color, lineHeight: 1, fontFamily: T.fontMono }}>{srsLoading ? '…' : n}</div>
+              <div style={{ fontSize: 12, color: T.ink40, marginTop: 5, fontFamily: T.fontSans }}>{label}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Per-course breakdown */}
+        {courseDueList.length > 0 && (
+          <div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: T.ink40, letterSpacing: '0.09em', marginBottom: 14 }}>THEO KHÓA HỌC</div>
+            {courseDueList.map(c => (
+              <div key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: `1px solid ${T.ink10}` }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: T.accent, flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13.5, color: T.ink, fontFamily: T.fontSans, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.name}</span>
+                <div style={{ width: 110, height: 3, background: T.ink10, borderRadius: 99, overflow: 'hidden' }}>
+                  <div style={{ width: `${(c.due / maxDue) * 100}%`, height: '100%', background: T.accent, borderRadius: 99, transition: 'width 0.6s ease' }} />
+                </div>
+                <span className="sy-mono" style={{ width: 48, textAlign: 'right', fontSize: 12.5, fontWeight: 500, color: T.ink }}>{c.due} thẻ</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {total === 0 && !srsLoading && (
+          <div style={{ textAlign: 'center', paddingTop: 12 }}>
+            <p style={{ fontSize: 14, color: T.ink60, margin: 0, lineHeight: 1.6 }}>
+              Hôm nay đã hoàn thành! 🌱<br />
+              <span style={{ fontSize: 13, color: T.ink40 }}>Quay lại vào ngày mai để ôn tiếp.</span>
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -326,6 +692,7 @@ export default function Home() {
   const { user, loading: authLoading, login, logout } = useAuth()
   const stableUserId = authLoading ? null : user?.uid ?? null
   const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses, error: deleteError } = useCourses(stableUserId)
+  const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
 
   const prevStatus = useRef(status)
   useEffect(() => {
@@ -365,7 +732,14 @@ export default function Home() {
   function handleDrop(e: DragEvent<HTMLDivElement>) { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null) }
   function handleStart() { if (file) startGeneration(file) }
 
-  // Loading screen
+  const heatmap = buildHeatmap(progressMap)
+  const totalCards = heatmap.reduce((a, b) => a + b, 0)
+  const streak = srsStats?.streak ?? 0
+
+  const userInitials = user ? (user.displayName || user.email || 'U')[0].toUpperCase() : undefined
+
+  // ── Full-page states (no NavRail) ──────────────────────────────────────────
+
   if (status === 'parsing' || (status === 'generating' && !course)) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: T.bg, fontFamily: T.fontSans }}>
@@ -385,25 +759,8 @@ export default function Home() {
               )}
               {parseProgress && status === 'parsing' && (
                 <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div
-                    aria-hidden="true"
-                    style={{
-                      width: '100%',
-                      height: 8,
-                      borderRadius: 999,
-                      background: T.ink10,
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${parseProgress.percentComplete}%`,
-                        height: '100%',
-                        borderRadius: 999,
-                        background: `linear-gradient(90deg, ${T.accent}, ${T.srsGood})`,
-                        transition: 'width 0.35s ease',
-                      }}
-                    />
+                  <div style={{ width: '100%', height: 8, borderRadius: 999, background: T.ink10, overflow: 'hidden' }}>
+                    <div style={{ width: `${parseProgress.percentComplete}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg, ${T.accent}, ${T.srsGood})`, transition: 'width 0.35s ease' }} />
                   </div>
                   <p style={{ fontSize: 13, color: T.ink60, margin: 0 }}>
                     Chunk {parseProgress.currentChunk}/{parseProgress.totalChunks} ({parseProgress.percentComplete}%)
@@ -419,7 +776,6 @@ export default function Home() {
     )
   }
 
-  // Generation screen
   if (course && (status === 'generating' || status === 'done')) {
     return (
       <GenerationScreen
@@ -445,40 +801,16 @@ export default function Home() {
             </div>
             <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6, color: '#7a0000' }}>{error}</p>
           </div>
-
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <button
-              onClick={() => file && startGeneration(file)}
-              disabled={!file}
-              style={{
-                background: T.ink,
-                color: T.bgSolid,
-                padding: '11px 20px',
-                borderRadius: 10,
-                fontSize: 14,
-                fontWeight: 700,
-                cursor: file ? 'pointer' : 'not-allowed',
-                opacity: file ? 1 : 0.5,
-              }}
-            >
+            <button onClick={() => file && startGeneration(file)} disabled={!file}
+              style={{ background: T.ink, color: T.bgSolid, padding: '11px 20px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: file ? 'pointer' : 'not-allowed', opacity: file ? 1 : 0.5, border: 'none' }}>
               Thử lại
             </button>
-            <button
-              onClick={reset}
-              style={{
-                background: T.bgSolid,
-                color: T.ink60,
-                padding: '11px 20px',
-                borderRadius: 10,
-                fontSize: 14,
-                border: `1px solid ${T.ink10}`,
-                cursor: 'pointer',
-              }}
-            >
+            <button onClick={reset}
+              style={{ background: T.bgSolid, color: T.ink60, padding: '11px 20px', borderRadius: 10, fontSize: 14, border: `1px solid ${T.ink10}`, cursor: 'pointer' }}>
               Quay về thư viện
             </button>
           </div>
-
           <div style={{ width: '100%', maxWidth: 640 }}>
             <FlashFactGallery markdown={rawMarkdown} />
           </div>
@@ -487,251 +819,66 @@ export default function Home() {
     )
   }
 
-  if (authLoading) return <div className="min-h-screen flex items-center justify-center" style={{ background: T.bg }}><Spinner /></div>
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center" style={{ background: T.bg }}><Spinner /></div>
+  }
 
-  const heatmap = buildHeatmap(progressMap)
-  const totalCards = heatmap.reduce((a, b) => a + b, 0)
-  const totalLibraryCards = uniqueCourses.reduce((sum, c) => sum + courseStats(c, progressMap).total, 0)
-  const streak = srsStats?.streak ?? 0
+  // ── NavRail shell ──────────────────────────────────────────────────────────
 
   return (
-    <main style={{ minHeight: '100vh', background: T.bg, fontFamily: T.fontSans, color: T.ink }}>
+    <div style={{ height: '100vh', display: 'flex', overflow: 'hidden', background: T.bg, fontFamily: T.fontSans, color: T.ink }}>
       <input ref={inputRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={e => handleFile(e.target.files?.[0] ?? null)} />
 
-      {/* ── Top nav ── */}
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 32px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          <SynapsyLogo size={20} />
-          <span style={{ fontSize: 16, fontWeight: 700, letterSpacing: '-0.03em', color: T.ink }}>Synapsy</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 24, fontSize: 13 }}>
-          {user ? (
-            <>
-              {streak > 0 && <span style={{ fontSize: 13, color: T.ink60 }}>🔥 <span style={{ fontWeight: 600, color: T.ink }}>{streak}</span></span>}
-              <a href="/review" style={{ color: T.ink60, fontWeight: 500, textDecoration: 'none' }}>Ôn tập</a>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {user.photoURL
-                  ? <Image src={user.photoURL} alt="" width={30} height={30} unoptimized style={{ borderRadius: '50%', border: `1px solid ${T.ink10}` }} />
-                  : <div style={{ width: 30, height: 30, borderRadius: '50%', background: T.ink, color: T.bgSolid, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 11 }}>
-                      {(user.displayName || user.email || 'U')[0].toUpperCase()}
-                    </div>
-                }
-                <button onClick={logout} style={{ fontSize: 12, color: T.ink40 }}>Đăng xuất</button>
-              </div>
-            </>
-          ) : (
-            <button onClick={login} style={{ background: T.ink, color: T.bgSolid, padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              Đăng nhập
-            </button>
-          )}
-        </div>
-      </nav>
+      <NavRail
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        userInitials={userInitials}
+        onLogout={logout}
+      />
 
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '48px 32px 80px' }}>
-
-        {/* ── Hero ── */}
-        {user && (
-          <section style={{ marginBottom: 52, position: 'relative', textAlign: 'center', padding: '48px 0 40px' }}>
-            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -52%)', pointerEvents: 'none', zIndex: 0 }}>
-              <GeoDecoration size={380} color={T.accent} opacity={0.07} />
-            </div>
-            <div style={{ position: 'relative', zIndex: 1 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: T.ink60, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 12px' }}>Ôn thi thông minh</p>
-              {srsLoading ? (
-                <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Spinner /></div>
-              ) : (
-                <>
-                  <h1 style={{ fontSize: 52, fontWeight: 800, letterSpacing: '-0.035em', lineHeight: 1.05, margin: '0 0 16px', color: T.ink }}>
-                    {srsStats?.due ?? 0} thẻ cần ôn<br />
-                    <span style={{ color: T.ink40, fontWeight: 400, fontSize: 38 }}>hôm nay</span>
-                  </h1>
-                  <p style={{ fontSize: 15, color: T.ink60, margin: '0 0 28px' }}>
-                    {srsStats?.new ? `+ ${srsStats.new} thẻ mới · ` : ''}{srsStats && srsStats.due > 0 ? `ước tính ${Math.max(1, Math.round(srsStats.due * 0.4 + (srsStats.new ?? 0) * 0.6))} phút` : 'Hôm nay đã xong 🌱'}
-                  </p>
-                </>
-              )}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}>
-                <a href="/review" style={{ background: T.ink, color: T.bgSolid, padding: '13px 28px', borderRadius: 10, fontSize: 15, fontWeight: 700, letterSpacing: '-0.01em', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
-                  Bắt đầu ôn tập →
-                </a>
-                <button onClick={() => inputRef.current?.click()} style={{ background: T.bgSolid, color: T.ink60, padding: '13px 20px', borderRadius: 10, fontSize: 14, border: `1px solid ${T.ink10}`, cursor: 'pointer', fontWeight: 500 }}>
-                  Thêm tài liệu
-                </button>
-              </div>
-            </div>
-          </section>
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {activeTab === 'dashboard' && (
+          <DashboardPanel
+            user={user}
+            srsStats={srsStats}
+            srsLoading={srsLoading}
+            moduleMastery={moduleMastery}
+            uktMasteryLoading={uktMasteryLoading}
+            progressMap={progressMap}
+            streak={streak}
+            totalCards={totalCards}
+            onLogin={login}
+            onLogout={logout}
+          />
         )}
-
-        {/* ── Stats row ── */}
-        {user && (
-          <section style={{ marginBottom: 44 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
-              {[
-                { label: 'Chuỗi ngày', value: String(streak), unit: 'ngày', note: 'liên tiếp' },
-                { label: '30 ngày qua', value: String(totalCards), unit: 'thẻ', note: 'đã ôn' },
-                { label: 'Tổng thẻ', value: String(totalLibraryCards), unit: 'thẻ', note: 'trong thư viện' },
-              ].map(stat => (
-                <div key={stat.label} style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '20px 24px' }}>
-                  <p style={{ fontSize: 10, fontWeight: 600, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 8px' }}>{stat.label}</p>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                    <span style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.04em', color: T.ink }}>{stat.value}</span>
-                    <span style={{ fontSize: 13, color: T.ink60, fontWeight: 500 }}>{stat.unit}</span>
-                  </div>
-                  <p style={{ fontSize: 12, color: T.ink40, margin: '4px 0 0' }}>{stat.note}</p>
-                </div>
-              ))}
-            </div>
-          </section>
+        {activeTab === 'courses' && (
+          <CoursesPanel
+            courses={uniqueCourses}
+            coursesLoading={coursesLoading}
+            progressMap={progressMap}
+            deleteError={deleteError}
+            file={file}
+            dragOver={dragOver}
+            onUploadClick={() => inputRef.current?.click()}
+            onDrop={handleDrop}
+            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+            onDragLeave={() => setDragOver(false)}
+            onFileStart={handleStart}
+            onFileClear={() => setFile(null)}
+            onDeleteCourse={deleteCourse}
+            onCourseClick={id => router.push(`/course/${id}`)}
+            error={error}
+          />
         )}
-
-        {/* UKT module mastery */}
-        {user && (
-          <section style={{ marginBottom: 44, opacity: uktMasteryLoading ? 0.82 : 1, transition: 'opacity 0.15s ease' }}>
-            <KnowledgeSpiderChart points={moduleMastery} />
-          </section>
+        {activeTab === 'srs' && (
+          <SRSPanel
+            srsStats={srsStats}
+            srsLoading={srsLoading}
+            courses={uniqueCourses}
+            progressMap={progressMap}
+          />
         )}
-
-        {/* ── Heatmap ── */}
-        {user && (
-          <section style={{ marginBottom: 48 }}>
-            <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '20px 24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>Hoạt động 30 ngày</p>
-                <span className="sy-mono" style={{ fontSize: 11, color: T.ink40 }}>{totalCards} thẻ đã ôn</span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(30, 1fr)', gap: 4 }}>
-                {heatmap.map((count, i) => {
-                  const opacity = count === 0 ? 1 : Math.min(1, 0.18 + count / 26)
-                  return (
-                    <div key={i} style={{ aspectRatio: '1', borderRadius: 3, background: count === 0 ? T.ink10 : T.accent, opacity: count === 0 ? 1 : opacity }} title={`${count} thẻ`} />
-                  )
-                })}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, fontSize: 10, color: T.ink40 }} className="sy-mono">
-                <span>30 ngày trước</span><span>Hôm nay</span>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── Library ── */}
-        <section>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 18 }}>
-            <h2 style={{ fontSize: 22, fontWeight: 800, margin: 0, letterSpacing: '-0.03em' }}>Thư viện</h2>
-            {!user && (
-              <button onClick={login} style={{ background: T.ink, color: T.bgSolid, padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                Đăng nhập để xem
-              </button>
-            )}
-          </div>
-
-          {deleteError && (
-            <div style={{ marginBottom: 14, padding: '10px 14px', background: '#fff5f5', border: '1px solid #fecdcd', borderRadius: 8, fontSize: 13, color: '#7a0000' }}>
-              {deleteError}
-            </div>
-          )}
-
-          {/* File selected: show start button */}
-          {file && (
-            <div style={{ marginBottom: 16, padding: '14px 18px', background: T.accentSoft, border: `1.5px solid ${T.accent}`, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-              <div>
-                <p style={{ fontSize: 13, fontWeight: 600, color: T.ink, margin: 0 }}>{file.name}</p>
-                <p className="sy-mono" style={{ fontSize: 11, color: T.ink60, margin: '2px 0 0' }}>{(file.size / 1024 / 1024).toFixed(1)} MB</p>
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={handleStart} style={{ background: T.ink, color: T.bgSolid, padding: '9px 20px', borderRadius: 9, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-                  Tạo khóa học →
-                </button>
-                <button onClick={() => setFile(null)} style={{ background: T.bgSolid, color: T.ink60, padding: '9px 14px', borderRadius: 9, fontSize: 13, border: `1px solid ${T.ink10}`, cursor: 'pointer' }}>
-                  Bỏ
-                </button>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div style={{ marginBottom: 16, padding: '12px 16px', background: '#fff5f5', border: '1px solid #fecdcd', borderRadius: 10, fontSize: 13, color: '#7a0000' }}>
-              {error}
-            </div>
-          )}
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: 12 }}>
-            {coursesLoading ? (
-              Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="sy-animate-pulse" style={{ height: 148, borderRadius: 12, background: T.ink10 }} />
-              ))
-            ) : (
-              uniqueCourses.map(c => {
-                const s = courseStats(c, progressMap)
-                const chapterCount = c.course.chapters.length
-                return (
-                  <div key={c.id}
-                    onClick={() => router.push(`/course/${c.id}`)}
-                    style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10, cursor: 'pointer', transition: 'box-shadow 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.07)')}
-                    onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                      <SynapsyRing pct={s.masteryPct} size={28} />
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        {s.due > 0 && (
-                          <span style={{ fontSize: 10, fontWeight: 700, background: T.ink, color: T.bgSolid, padding: '2px 8px', borderRadius: 20 }}>{s.due}</span>
-                        )}
-                        <button
-                          onClick={e => { e.stopPropagation(); deleteCourse(c.id) }}
-                          style={{ fontSize: 12, color: T.ink40, padding: 4, background: 'none', border: 'none', cursor: 'pointer', lineHeight: 1 }}
-                          title="Xóa"
-                        >✕</button>
-                      </div>
-                    </div>
-                    <h3 className="sy-serif" style={{ fontSize: 14, fontWeight: 600, margin: 0, letterSpacing: '-0.005em', lineHeight: 1.3, color: T.ink }}>{c.title}</h3>
-                    <div className="sy-mono" style={{ fontSize: 11, color: T.ink40, display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <span>{chapterCount} chương</span><span>·</span><span>{s.total} thẻ</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: T.ink60, marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${T.ink10}` }}>
-                      {new Date(c.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                    </div>
-                  </div>
-                )
-              })
-            )}
-
-            {/* Upload tile */}
-            <div
-              onClick={() => inputRef.current?.click()}
-              onDrop={handleDrop}
-              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-              onDragLeave={() => setDragOver(false)}
-              style={{
-                border: `1.5px dashed ${dragOver ? T.accent : T.ink20}`,
-                background: dragOver ? T.accentSoft : 'transparent',
-                borderRadius: 12, padding: '16px 18px',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                minHeight: 148, gap: 8, color: T.ink60, cursor: 'pointer',
-                transition: 'border-color 0.15s, background 0.15s',
-              }}
-            >
-              <div style={{ width: 34, height: 34, borderRadius: '50%', background: T.bgSolid, border: `1px solid ${T.ink10}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: T.ink40 }}>+</div>
-              <p style={{ fontSize: 12, margin: 0, fontWeight: 500 }}>Thả PDF vào đây</p>
-              <p className="sy-mono" style={{ fontSize: 10, margin: 0, color: T.ink40 }}>hoặc click để chọn</p>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Upload CTA footer ── */}
-        <section style={{ marginTop: 48 }}>
-          <div style={{ background: T.ink, borderRadius: 12, padding: '20px 28px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: T.bgSolid, letterSpacing: '-0.01em' }}>Thêm tài liệu mới</p>
-              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', margin: '3px 0 0' }}>PDF · slide · ghi chú — Synapsy trích xuất concept và tạo flashcard tự động</p>
-            </div>
-            <button onClick={() => inputRef.current?.click()} style={{ background: T.bgSolid, color: T.ink, padding: '10px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
-              Chọn file PDF
-            </button>
-          </div>
-        </section>
-
       </div>
-    </main>
+    </div>
   )
 }
