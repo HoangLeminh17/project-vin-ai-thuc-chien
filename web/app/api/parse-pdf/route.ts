@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
+import { InfrastructureError } from '@/core/errors/domain-error'
 
 const MAX_SIZE = 20 * 1024 * 1024 // 20 MB
+const MINERU_OUTPUT_ERROR =
+  'MinerU đã xử lý PDF nhưng không trả về nội dung đọc được. Hãy thử export PDF lại dạng text/searchable hoặc dùng file PDF khác.'
 
 const handler = async (req: NextRequest) => {
   const { parseDocumentUseCase } = await import('@/infrastructure/registry')
@@ -23,9 +26,25 @@ const handler = async (req: NextRequest) => {
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  const { markdown, contentList, pdfLocalPath, taskId } = await parseDocumentUseCase.execute(buffer, file.name)
+  let result: Awaited<ReturnType<typeof parseDocumentUseCase.execute>>
+  try {
+    result = await parseDocumentUseCase.execute(buffer, file.name)
+  } catch (error) {
+    if (
+      error instanceof InfrastructureError &&
+      error.message.includes('MinerU output zip did not contain readable markdown or content_list JSON')
+    ) {
+      return NextResponse.json({
+        success: false,
+        error: MINERU_OUTPUT_ERROR,
+        code: 'MINERU_EMPTY_OUTPUT',
+      }, { status: 422 })
+    }
 
-  return NextResponse.json({ success: true, markdown, contentList, pdfLocalPath, taskId })
+    throw error
+  }
+
+  return NextResponse.json({ success: true, ...result })
 }
 
 export const POST = withApiLogging('/api/parse-pdf', withApiMetrics('/api/parse-pdf', withAuth(handler)))

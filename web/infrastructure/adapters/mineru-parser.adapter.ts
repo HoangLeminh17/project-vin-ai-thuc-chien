@@ -9,10 +9,41 @@ import { getBucket } from '@/lib/firebase-admin'
 import { PDFDocument } from 'pdf-lib'
 import { buildPdfPageRanges, mergeMineruChunkResults, splitPdfBufferByRanges, type MineruChunkResult } from './mineru-chunking'
 
+type MarkdownCandidate = {
+  path: string
+  text: string
+  priority: number
+}
+
 export interface MineruConfig {
   baseUrl: string
   apiKey: string
   outputDir?: string
+}
+
+function isContentListJsonPath(zipPath: string): boolean {
+  const lowerPath = zipPath.toLowerCase()
+  return lowerPath.endsWith('content_list.json') ||
+    lowerPath.endsWith('content_list_v2.json') ||
+    lowerPath.endsWith('_content_list_v2.json')
+}
+
+function normalizeContentList(parsed: unknown): any[] | null {
+  if (Array.isArray(parsed)) return parsed
+  if (!parsed || typeof parsed !== 'object') return null
+
+  const maybeRecord = parsed as Record<string, unknown>
+  if (Array.isArray(maybeRecord.content_list)) return maybeRecord.content_list
+  if (Array.isArray(maybeRecord.contentList)) return maybeRecord.contentList
+  if (Array.isArray(maybeRecord.data)) return maybeRecord.data
+  return null
+}
+
+function markdownPriority(zipPath: string): number {
+  const fileName = zipPath.split('/').pop()?.toLowerCase() ?? zipPath.toLowerCase()
+  if (fileName === 'content_list_parsed.md') return 0
+  if (fileName === 'full.md') return 1
+  return 2
 }
 
 export class MineruParserAdapter implements IDocumentParser {
@@ -98,6 +129,7 @@ export class MineruParserAdapter implements IDocumentParser {
         enable_formula: true,
         enable_table: true,
         language: 'vi',
+        make_mode: 'content_list_v2',
       }),
     });
     const data = await res.json();
@@ -185,9 +217,13 @@ export class MineruParserAdapter implements IDocumentParser {
     let contentList: any[] = [];
     let markdown = '';
     let pdfLocalPath: string | undefined;
+    const markdownCandidates: MarkdownCandidate[] = [];
+    const zipFileNames: string[] = [];
 
     for (const [zipPath, entry] of Object.entries(zip.files)) {
       if (entry.dir) continue;
+      const normalizedZipPath = zipPath.replace(/\\/g, '/');
+      zipFileNames.push(normalizedZipPath);
       const dest = path.join(outDir, zipPath);
       await fs.mkdir(path.dirname(dest), { recursive: true });
 
@@ -201,18 +237,43 @@ export class MineruParserAdapter implements IDocumentParser {
         pdfLocalPath = dest;
       }
 
-      if (zipPath.endsWith('content_list.json') || zipPath.endsWith('_content_list_v2.json')) {
+      if (typeof data === 'string' && normalizedZipPath.toLowerCase().endsWith('.md') && data.trim()) {
+        markdownCandidates.push({
+          path: normalizedZipPath,
+          text: data.trim(),
+          priority: markdownPriority(normalizedZipPath),
+        });
+      }
+
+      if (isContentListJsonPath(normalizedZipPath)) {
         try {
-          contentList = JSON.parse(data as string);
-          markdown = contentListToMarkdown(contentList);
-          await fs.writeFile(path.join(outDir, 'content_list_parsed.md'), markdown, 'utf-8');
+          const parsedContentList = normalizeContentList(JSON.parse(data as string));
+          if (parsedContentList?.length) {
+            contentList = parsedContentList;
+            markdown = contentListToMarkdown(contentList);
+            if (markdown.trim()) {
+              await fs.writeFile(path.join(outDir, 'content_list_parsed.md'), markdown, 'utf-8');
+            }
+          }
         } catch {
           console.warn(`[parse-pdf] Failed to parse content_list JSON from ${zipPath}`);
         }
       }
     }
 
-    if (!markdown) throw new InfrastructureError('content_list.json not found or empty in zip archive');
+    if (!markdown) {
+      const fallback = markdownCandidates.sort((a, b) => a.priority - b.priority)[0];
+      if (fallback) {
+        markdown = fallback.text;
+        console.warn(`[parse-pdf] Falling back to markdown output from ${fallback.path}; content_list JSON was missing or empty.`);
+      }
+    }
+
+    if (!markdown) {
+      const entryList = zipFileNames.slice(0, 20).join(', ') || 'no files';
+      throw new InfrastructureError(`MinerU output zip did not contain readable markdown or content_list JSON. Entries: ${entryList}`);
+    }
+
     console.log(`[parse-pdf] Saved to ${outDir}${pdfLocalPath ? `, pdf: ${pdfLocalPath}` : ''}`);
     return { markdown, contentList, pdfLocalPath };
   }

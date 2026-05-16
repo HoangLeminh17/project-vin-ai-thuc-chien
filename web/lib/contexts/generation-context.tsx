@@ -292,7 +292,10 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         c && (c.contentHash === hash || (!c.contentHash && c.title === resolvedCourse!.title))
       );
       if (existing) {
-        const check = await fetch(`/api/courses/${existing.id}`)
+        const check = await fetch(`/api/courses/${existing.id}`, {
+          cache: 'no-store',
+          credentials: 'same-origin',
+        })
         if (
           check.ok &&
           existing.courseContent?.chapters?.length &&

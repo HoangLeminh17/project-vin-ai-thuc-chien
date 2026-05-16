@@ -8,37 +8,57 @@ import { LocalCourseAdapter } from '@/infrastructure/adapters/local-course.adapt
 const isLocal = process.env.NEXT_PUBLIC_COURSE_STORE === 'local';
 const localAdapter = isLocal ? new LocalCourseAdapter() : null;
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
 export function useCourses(userId: string | null) {
   const [courses, setCourses] = useState<SavedCourse[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const refresh = useCallback(async () => {
-    if (!userId) return;
+  const refresh = useCallback(async (signal?: AbortSignal) => {
+    if (!userId) {
+      setCourses([]);
+      setLoading(false);
+      setError('');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       if (localAdapter) {
         setCourses(await localAdapter.listByUser(userId));
       } else {
-        const res = await fetch('/api/courses');
+        const res = await fetch('/api/courses', {
+          cache: 'no-store',
+          credentials: 'same-origin',
+          signal,
+        });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
         setCourses(data.courses || []);
       }
     } catch (e) {
+      if (isAbortError(e)) return;
       setError(e instanceof Error ? e.message : 'Failed to load courses');
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [userId]);
 
   useEffect(() => {
-    const init = async () => {
-      await refresh();
-    };
-    init();
-  }, [refresh]);
+    if (!userId) {
+      setCourses([]);
+      setError('');
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    void refresh(controller.signal);
+    return () => controller.abort();
+  }, [refresh, userId]);
 
   const saveCourse = useCallback(async (
     title: string,
@@ -59,6 +79,8 @@ export function useCourses(userId: string | null) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ title, course, courseContent, contentHash, pdfStorageUrl, layoutStorageUrl }),
+          cache: 'no-store',
+          credentials: 'same-origin',
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
@@ -80,6 +102,8 @@ export function useCourses(userId: string | null) {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content }),
+          cache: 'no-store',
+          credentials: 'same-origin',
         });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
@@ -99,7 +123,11 @@ export function useCourses(userId: string | null) {
       if (localAdapter) {
         await localAdapter.delete(id, userId);
       } else {
-        const res = await fetch(`/api/courses/${id}`, { method: 'DELETE' });
+        const res = await fetch(`/api/courses/${id}`, {
+          method: 'DELETE',
+          cache: 'no-store',
+          credentials: 'same-origin',
+        });
         const data = await res.json();
         if (!data.success) throw new Error(data.error);
       }

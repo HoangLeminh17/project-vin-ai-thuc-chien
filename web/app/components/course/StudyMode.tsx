@@ -10,9 +10,10 @@ interface Props {
   initialCardId?: string
   onExit: () => void
   onCardChange?: (cardId: string) => void
+  onRated?: () => void
 }
 
-export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props) {
+export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated }: Props) {
   const [idx, setIdx] = useState(() => {
     if (!initialCardId) return 0
     const i = cards.findIndex(c => c.id === initialCardId)
@@ -28,6 +29,8 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props)
   const advance = useCallback((ratingIndex: number) => {
     if (!card) return
     submitRating(card, ratingIndex)
+      .then(() => onRated?.())
+      .catch(() => setToast('Không lưu được đánh giá'))
     const { label, interval } = RATING_META[ratingIndex]
     setToast(`${label} · ${interval}`)
     setSlideDir('out')
@@ -43,7 +46,7 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props)
       setIdx(nextIdx)
       setTimeout(() => setSlideDir(null), 200)
     }, 280)
-  }, [card, idx, total, onExit])
+  }, [card, idx, total, onExit, onRated])
 
   const lastInitialCardId = useRef(initialCardId)
   useEffect(() => {

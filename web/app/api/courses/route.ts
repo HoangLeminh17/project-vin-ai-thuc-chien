@@ -3,6 +3,8 @@ import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { handleApiError } from '@/lib/api-utils';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
+export const dynamic = 'force-dynamic';
+
 async function getHandler(req: NextRequest) {
   const { verifySessionUseCase, listCoursesUseCase } = await import('@/infrastructure/registry');
   const session = req.cookies.get('session')?.value;
