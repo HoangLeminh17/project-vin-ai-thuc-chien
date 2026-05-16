@@ -156,22 +156,20 @@ Tất cả đều có `cache: 'no-store'` — không tận dụng bất kỳ cac
 
 ### 4.1 UKT CORS `allow_origins=["*"]` (High) 🔴
 
-[main.py:L55-L60](file:///d:/AI%20In%20Action/A20-App-046/UKT/app/main.py#L55-L60):
-```python
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   # production: chỉ định domain frontend
-)
-```
-Comment thừa nhận vấn đề nhưng chưa fix. Trong production, bất kỳ domain nào cũng có thể gọi API UKT.
+[main.py:L55-L60](file:///d:/AI%20In%20Action/A20-App-046/UKT/app/main.py#L55-L60): Mặc định API UKT cho phép mọi origin truy cập, gây rủi ro bảo mật cho mô hình và dữ liệu state của học sinh.
+
+**✅ Đã giải quyết:**
+- Thay thế giá trị hardcoded bằng biến môi trường `ALLOWED_ORIGINS`.
+- Hỗ trợ danh sách nhiều domain (ngăn cách bằng dấu phẩy).
+- Đảm bảo tính bảo mật trong môi trường production (ví dụ: chỉ cho phép domain frontend chính thức) trong khi vẫn linh hoạt cho development.
 
 ### 4.2 Grafana admin password hardcoded (High) 🔴
 
-[docker-compose.yml:L90](file:///d:/AI%20In%20Action/A20-App-046/docker-compose.yml#L90):
-```yaml
-- GF_SECURITY_ADMIN_PASSWORD=admin
-```
-Password `admin` trong plaintext. Cần chuyển sang env var.
+[docker-compose.yml:L90](file:///d:/AI%20In%20Action/A20-App-046/docker-compose.yml#L90): Mật khẩu quản trị của Grafana được để mặc định là `admin` trong file cấu hình.
+
+**✅ Đã giải quyết:**
+- Chuyển cấu hình mật khẩu sang biến môi trường `${GRAFANA_ADMIN_PASSWORD}`.
+- Cho phép người dùng cấu hình mật khẩu mạnh thông qua file `.env` hoặc biến môi trường của hệ thống, loại bỏ rủi ro bị truy cập trái phép vào dashboard giám sát.
 
 ### 4.3 `getById()` double-fetch pattern (Medium)
 

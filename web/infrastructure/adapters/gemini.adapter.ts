@@ -86,9 +86,10 @@ export class GeminiAdapter implements IAiService {
 
     let course: Course
     try {
-      course = JSON.parse(text)
+      course = JSON.parse(text);
     } catch (e) {
-      throw new InfrastructureError(`Failed to parse Gemini JSON response: ${text.slice(0, 500)}`, e)
+      console.error('[GeminiAdapter] JSON parse error:', text);
+      throw new InfrastructureError('Failed to process AI service response', e);
     }
 
     if (!course.chapters || !Array.isArray(course.chapters)) {
