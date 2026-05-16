@@ -122,22 +122,16 @@ Tất cả đều có `cache: 'no-store'` — không tận dụng bất kỳ cac
 
 ## 🗄️ 3. Database & Queries
 
-### 3.1 `getStats()` load toàn bộ user_progress (High) 🔴
+### 3.1 getStats() load toàn bộ user_progress (High) 🔴
 
-[firebase-progress-repository.adapter.ts:L71-L97](file:///d:/AI%20In%20Action/A20-App-046/web/infrastructure/adapters/firebase-progress-repository.adapter.ts#L71-L97):
+[firebase-progress-repository.adapter.ts:L71](file:///d:/AI%20In%20Action/A20-App-046/web/infrastructure/adapters/firebase-progress-repository.adapter.ts#L71): Hàm `getStats()` đang load **toàn bộ collection** `user_progress` của user để đếm số lượng thẻ (new, learning, due) và tính streak.
 
-```ts
-const snapshot = await getDb()
-  .collection(this.collectionName)
-  .where('userId', '==', userId)
-  .get(); // ← LOAD TẤT CẢ documents
-```
-
-Nếu user có 500+ thẻ, mỗi lần vào trang chủ sẽ đọc **toàn bộ** rồi filter trong JS. Chi phí Firestore reads tăng tuyến tính.
-
-**Khuyến nghị:**
-- Duy trì counter doc `user_stats/{userId}` được update atomic mỗi khi review
-- Hoặc dùng Firestore aggregation queries (countDocuments)
+**✅ Đã giải quyết — commit `optimize-db-stats`:**
+- **Sử dụng Aggregation Queries:** Thay thế việc load documents bằng `count().get()` của Firestore cho các thông số `new`, `learning`, và `due`. Hiệu năng đạt O(1) về mặt data transfer.
+- **Pre-calculated Summary:** Triển khai collection `user_stats` để lưu trữ `streak` và `lastReviewDate`. 
+    - Hàm `save()` tự động cập nhật summary này (sử dụng Firestore transaction) mỗi khi có thẻ được review.
+    - Hàm `getStats()` ưu tiên lấy streak từ summary (O(1)). Nếu chưa có summary, nó sẽ tính toán lại một lần (optimized với `select()`) và khởi tạo summary cho lần sau.
+- **Lợi ích:** Giảm chi phí đọc Firebase đáng kể (từ hàng ngàn documents xuống còn 4-5 requests aggregation/document duy nhất) và cải thiện tốc độ phản hồi dashboard.
 
 ### 3.2 `getAllForUser()` dùng cho progress map cũng load hết (Medium)
 
