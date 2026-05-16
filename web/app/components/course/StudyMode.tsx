@@ -421,7 +421,7 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props)
       </div>
 
       <div style={{ padding: '10px 24px', borderTop: `1px solid ${T.ink10}`, background: T.bgSoft, fontSize: 11, color: T.ink40, display: 'flex', gap: 18, justifyContent: 'center' }}>
-        {[['← →', 'chuyển thẻ'], ['Enter', 'nút chính'], ['Space', 'xem nhanh đáp án'], ['1-4', 'đánh giá']].map(([keyLabel, valueLabel]) => (
+        {[['← →', 'chuyển thẻ'], ['Enter', 'nút chính'], ['Esc', 'thoát ô nhập'], ['Space', 'xem nhanh đáp án'], ['1-4', 'đánh giá']].map(([keyLabel, valueLabel]) => (
           <span key={keyLabel}><kbd style={{ fontSize: 10, padding: '2px 5px', background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 3, fontFamily: T.fontMono }}>{keyLabel}</kbd> {valueLabel}</span>
         ))}
       </div>
