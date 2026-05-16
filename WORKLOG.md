@@ -37,6 +37,27 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
 
+### [ADR-50] Serve ảnh thật trong panel tài liệu nguồn - 16/05/2026
+
+**Người làm:** Codex | **Ref:** branch `fix/real-source-images`
+
+**Bối cảnh:** `PdfPanel` đã đọc được các item `type: "image"` từ MinerU `contentList`, nhưng chỉ render placeholder `[Hình ảnh]`. Sau PR #122, parser có thêm luồng MinerU VLM và fallback markdown-only; cần giữ hai trường hợp này tách bạch để chỉ render ảnh thật khi structured `contentList` có asset ảnh đã được lưu.
+
+**Quyết định:**
+- Khi parser giải nén zip MinerU, upload các file ảnh trong zip vào Firebase Storage theo namespace `course-layout-images/{userId}/{taskId}/...`.
+- Giữ `img_path` gốc của MinerU, nhưng gắn thêm `img_storage_path`, `img_url`, và `image_mime_type` vào item ảnh trong `contentList` trước khi frontend lưu layout JSON.
+- Thêm `/api/layout-image` để proxy ảnh có xác thực, chỉ cho phép đọc path dưới prefix của chính user.
+- `PdfPanel` render ảnh thật nếu layout có `img_url`; course cũ, markdown-only fallback, hoặc upload ảnh fail vẫn fallback về placeholder.
+
+**Hệ quả:**
+- (+) Panel tài liệu nguồn hiển thị được hình thật từ PDF thay vì chỉ có placeholder.
+- (+) Tương thích với cả output MinerU VLM đã normalize về flat `contentList` và output pipeline/normal có `img_path`.
+- (+) API ảnh không expose public bucket URL; quyền đọc gắn với session user.
+- (-) Course đã tạo trước thay đổi này không tự có ảnh thật vì layout JSON cũ chưa có `img_url`.
+- (-) Fallback markdown-only từ MinerU không có structured image item nên không thể render ảnh thật.
+
+---
+
 ### [ADR-49] MinerU VLM output contract compatibility - 16/05/2026
 
 **Người làm:** Nguyen Binh Thanh | **Ref:** PR #122 (`fix/mineru-vlm-output`)

@@ -12,13 +12,13 @@ export class ParseDocumentUseCase {
     private readonly documentParser: IDocumentParser
   ) { }
 
-  async execute(file: Buffer, filename: string): Promise<ParseDocumentResult> {
+  async execute(file: Buffer, filename: string, userId?: string): Promise<ParseDocumentResult> {
     const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
     const taskId = randomUUID();
     const { publicUrl, filePath } = await this.storageService.upload(file, safeName);
 
     try {
-      const result = await this.documentParser.extractMarkdown(publicUrl, safeName, taskId);
+      const result = await this.documentParser.extractMarkdown(publicUrl, safeName, taskId, userId);
       return { ...result, taskId };
     } finally {
       if (filePath) {
