@@ -1,133 +1,222 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { Spinner } from '@/app/components'
+import { RATING_META, type SRSRatingIndex } from '@/app/components/course/types'
+import { T } from '@/app/components/synapsy'
+import { useAuth } from '@/lib/contexts/auth-context'
+
+interface DueCard {
+  cardId: string
+  question?: string
+  answer?: string
+}
+
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function CenterState({ children }: { children: ReactNode }) {
+  return (
+    <main style={{ minHeight: '100vh', background: T.bg, color: T.ink, fontFamily: T.fontSans, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <div style={{ width: '100%', maxWidth: 420, textAlign: 'center' }}>
+        {children}
+      </div>
+    </main>
+  )
+}
+
 export default function ReviewPage() {
-  const [cards, setCards] = useState<any[]>([])
+  const { user, loading: authLoading, login } = useAuth()
+  const [cards, setCards] = useState<DueCard[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [revealed, setRevealed] = useState(false)
   const [finished, setFinished] = useState(false)
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const userId = authLoading ? null : user?.uid ?? null
 
   useEffect(() => {
-    fetch('/api/progress/due')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setCards(data)
-      })
-      .finally(() => setLoading(false))
-  }, [])
+    if (authLoading) return
+    if (!userId) {
+      setCards([])
+      setCurrentIndex(0)
+      setLoading(false)
+      return
+    }
 
-  const handleReview = async (rating: number) => {
-    const card = cards[currentIndex]
-    
-    // Optimistic UI or just wait? Let's just wait for now
-    await fetch('/api/progress/review', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cardId: card.cardId, rating })
+    const controller = new AbortController()
+    setLoading(true)
+    setError('')
+    setFinished(false)
+    setRevealed(false)
+
+    fetch('/api/progress/due', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: controller.signal,
     })
+      .then(async res => {
+        if (!res.ok) throw new Error('Không thể tải thẻ ôn tập')
+        return res.json()
+      })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setCards(data)
+          setCurrentIndex(0)
+        }
+      })
+      .catch(fetchError => {
+        if (!isAbortError(fetchError)) setError(fetchError instanceof Error ? fetchError.message : 'Không thể tải thẻ ôn tập')
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false)
+      })
 
-    if (currentIndex < cards.length - 1) {
-      setCurrentIndex(prev => prev + 1)
-      setRevealed(false)
-    } else {
-      setFinished(true)
+    return () => controller.abort()
+  }, [authLoading, userId])
+
+  const handleReview = async (rating: SRSRatingIndex) => {
+    const card = cards[currentIndex]
+    if (!card || submitting) return
+
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch('/api/progress/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        credentials: 'same-origin',
+        body: JSON.stringify({ cardId: card.cardId, rating }),
+      })
+      if (!res.ok) throw new Error('Không lưu được đánh giá')
+
+      if (currentIndex < cards.length - 1) {
+        setCurrentIndex(prev => prev + 1)
+        setRevealed(false)
+      } else {
+        setFinished(true)
+      }
+    } catch (reviewError) {
+      setError(reviewError instanceof Error ? reviewError.message : 'Không lưu được đánh giá')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="flex flex-col items-center gap-2">
-        <Spinner />
-        <p className="text-sm text-gray-500">Đang tải thẻ ôn tập...</p>
-      </div>
-    </div>
-  )
+  if (authLoading || loading) {
+    return (
+      <CenterState>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+          <Spinner />
+          <p style={{ margin: 0, fontSize: 13, color: T.ink60 }}>{authLoading ? 'Đang xác thực...' : 'Đang tải thẻ ôn tập...'}</p>
+        </div>
+      </CenterState>
+    )
+  }
 
-  if (finished) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      <div className="bg-white rounded-2xl p-8 border border-gray-200 text-center space-y-4 max-w-sm w-full shadow-xl">
-        <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-2xl">✓</div>
-        <h2 className="text-xl font-bold text-gray-900">Hoàn thành!</h2>
-        <p className="text-gray-500 text-sm">Bạn đã ôn tập xong các thẻ của ngày hôm nay. Hãy quay lại vào ngày mai nhé!</p>
-        <Link href="/" className="block w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors">
-          Quay lại Dashboard
-        </Link>
-      </div>
-    </div>
-  )
+  if (!user) {
+    return (
+      <CenterState>
+        <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: 28 }}>
+          <h1 className="sy-serif" style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 700, letterSpacing: '-0.02em' }}>Cần đăng nhập</h1>
+          <p style={{ margin: '0 0 20px', fontSize: 13, color: T.ink60, lineHeight: 1.6 }}>Đăng nhập để Synapsy tải đúng hàng đợi ôn tập của bạn.</p>
+          <button onClick={() => void login()} style={{ background: T.ink, color: T.bgSolid, border: 'none', borderRadius: 10, padding: '11px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            Đăng nhập
+          </button>
+        </div>
+      </CenterState>
+    )
+  }
 
-  if (cards.length === 0) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-      <div className="text-center space-y-4">
-        <p className="text-gray-400">Không có thẻ nào cần ôn hôm nay.</p>
-        <Link href="/" className="text-blue-600 hover:underline">Về trang chủ</Link>
-      </div>
-    </div>
-  )
+  if (finished) {
+    return (
+      <CenterState>
+        <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: 30 }}>
+          <div style={{ width: 48, height: 48, borderRadius: '50%', background: T.accentSoft, color: T.accent, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', fontWeight: 800 }}>✓</div>
+          <h1 className="sy-serif" style={{ margin: '0 0 8px', fontSize: 24, fontWeight: 700 }}>Hoàn thành</h1>
+          <p style={{ margin: '0 0 20px', fontSize: 13, color: T.ink60, lineHeight: 1.6 }}>Bạn đã ôn xong các thẻ đến hạn hôm nay.</p>
+          <Link href="/" style={{ display: 'block', background: T.ink, color: T.bgSolid, borderRadius: 10, padding: '12px 18px', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
+            Quay lại thư viện
+          </Link>
+        </div>
+      </CenterState>
+    )
+  }
+
+  if (cards.length === 0) {
+    return (
+      <CenterState>
+        <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: 28 }}>
+          <p className="sy-serif" style={{ margin: '0 0 8px', fontSize: 22, fontWeight: 700 }}>Hôm nay đã xong</p>
+          <p style={{ margin: '0 0 18px', fontSize: 13, color: T.ink60 }}>Không có thẻ nào cần ôn.</p>
+          <Link href="/" style={{ color: T.accent, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}>Về trang chủ</Link>
+        </div>
+      </CenterState>
+    )
+  }
 
   const currentCard = cards[currentIndex]
+  const pct = ((currentIndex + 1) / cards.length) * 100
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6 flex flex-col items-center">
-      <div className="w-full max-w-lg space-y-6">
-        <div className="flex items-center justify-between px-2">
-          <Link href="/" className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1">
-            ← Thoát
-          </Link>
-          <span className="text-xs font-mono text-gray-400">
-            Thẻ {currentIndex + 1} / {cards.length}
-          </span>
+    <main style={{ minHeight: '100vh', background: T.bg, color: T.ink, fontFamily: T.fontSans, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ padding: '14px 24px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <Link href="/" style={{ color: T.ink60, fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>← Thoát</Link>
+        <div style={{ flex: 1, height: 4, background: T.ink10, borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', background: T.ink, transition: 'width 0.25s ease' }} />
         </div>
-
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 shadow-sm min-h-[300px] flex flex-col justify-between">
-          <div className="space-y-6">
-            <p className="text-xl font-medium text-gray-900 leading-snug">
-              {/* Note: I might need to fetch the actual card content here if only IDs are returned by due route */}
-              {/* For now assuming the due route returns card metadata or I should modify GetDueCards to include content */}
-              {currentCard.question || "Đang tải câu hỏi..."}
-            </p>
-
-            {revealed && (
-              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                <hr className="my-6 border-gray-100" />
-                <p className="text-gray-800 leading-relaxed">
-                  {currentCard.answer}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {!revealed ? (
-            <button
-              onClick={() => setRevealed(true)}
-              className="w-full py-4 bg-blue-600 text-white rounded-xl font-semibold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all mt-8"
-            >
-              Reveal Answer
-            </button>
-          ) : (
-            <div className="grid grid-cols-4 gap-2 pt-8">
-              {[
-                { label: 'Again', sub: 'Quên', rating: 0, color: 'text-red-600 border-red-100 hover:bg-red-50' },
-                { label: 'Hard', sub: 'Khó', rating: 1, color: 'text-orange-600 border-orange-100 hover:bg-orange-50' },
-                { label: 'Good', sub: 'Được', rating: 2, color: 'text-green-700 border-green-100 hover:bg-green-50' },
-                { label: 'Easy', sub: 'Dễ', rating: 3, color: 'text-blue-600 border-blue-100 hover:bg-blue-50' },
-              ].map((b) => (
-                <button
-                  key={b.label}
-                  onClick={() => handleReview(b.rating as 0|1|2|3)}
-                  className={`flex flex-col items-center py-3 rounded-xl border text-sm font-bold transition-all hover:scale-105 ${b.color}`}
-                >
-                  {b.label}
-                  <span className="text-[10px] font-normal opacity-70 mt-1">{b.sub}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <span className="sy-mono" style={{ color: T.ink60, fontSize: 11 }}>{currentIndex + 1} / {cards.length}</span>
       </div>
-    </div>
+
+      <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <section style={{ width: '100%', maxWidth: 620, background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 16, padding: '34px 38px' }}>
+          <p className="sy-mono" style={{ margin: '0 0 18px', color: T.ink40, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ôn tập đến hạn</p>
+          <h1 className="sy-serif" style={{ margin: '0 0 26px', fontSize: 25, lineHeight: 1.35, fontWeight: 600, letterSpacing: '-0.015em' }}>
+            {currentCard.question || 'Thẻ này chưa có nội dung câu hỏi.'}
+          </h1>
+
+          {revealed ? (
+            <>
+              <div style={{ padding: '16px 18px', background: T.accentSoft, borderLeft: `3px solid ${T.accent}`, borderRadius: 10, marginBottom: 16 }}>
+                <p style={{ margin: '0 0 6px', color: T.accent, fontSize: 10, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Câu trả lời</p>
+                <p className="sy-serif" style={{ margin: 0, fontSize: 17, lineHeight: 1.5, color: T.ink }}>{currentCard.answer || 'Chưa có đáp án được lưu.'}</p>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 8 }}>
+                {RATING_META.map((rating, index) => (
+                  <button
+                    key={rating.label}
+                    onClick={() => void handleReview(index as SRSRatingIndex)}
+                    disabled={submitting}
+                    style={{ padding: '12px 8px', borderRadius: 10, border: `1.5px solid ${rating.color}25`, background: `${rating.color}09`, color: rating.color, opacity: submitting ? 0.55 : 1, cursor: submitting ? 'not-allowed' : 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 800 }}>{rating.label}</span>
+                    <span className="sy-mono" style={{ fontSize: 10, opacity: 0.75 }}>{rating.interval}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ height: 96, borderRadius: 10, marginBottom: 18, background: T.bgSunken, color: T.ink40, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontFamily: T.fontMono }}>
+                [ tự trả lời trước khi xem đáp án ]
+              </div>
+              <button onClick={() => setRevealed(true)} style={{ width: '100%', background: T.ink, color: T.bgSolid, border: 'none', borderRadius: 10, padding: 13, fontSize: 14, fontWeight: 800, cursor: 'pointer' }}>
+                Xem đáp án
+              </button>
+            </>
+          )}
+
+          {error && (
+            <p style={{ margin: '16px 0 0', color: T.srsAgain, fontSize: 13 }}>{error}</p>
+          )}
+        </section>
+      </div>
+    </main>
   )
 }

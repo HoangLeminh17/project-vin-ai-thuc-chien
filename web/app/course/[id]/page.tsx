@@ -2,6 +2,8 @@
 
 import { useState, useEffect, use, useMemo } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, use, useMemo, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useGeneration } from '@/lib/contexts/generation-context'
 import { SavedCourse } from '@/core/models/saved-course'
@@ -16,6 +18,10 @@ const localAdapter = isLocal ? new LocalCourseAdapter() : null
 
 type ProgressMap = Record<string, ProgressEntry & { nextReviewDate: string; lastReviewedAt?: string }>
 
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
@@ -28,35 +34,73 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [progressMap, setProgressMap] = useState<ProgressMap>({})
 
   const isGenerating = generatingId === id && genStatus === 'generating'
+  const stableUserId = authLoading ? null : user?.uid ?? null
+
+  const refreshProgressMap = useCallback(async (signal?: AbortSignal) => {
+    if (!stableUserId) {
+      setProgressMap({})
+      return
+    }
+
+    try {
+      const res = await fetch('/api/progress/map', {
+        cache: 'no-store',
+        credentials: 'same-origin',
+        signal,
+      })
+      const m: ProgressMap | { error?: string } = res.ok ? await res.json() : {}
+      if (!('error' in m)) setProgressMap(m as ProgressMap)
+    } catch (error) {
+      if (!isAbortError(error)) setProgressMap({})
+    }
+  }, [stableUserId])
 
   useEffect(() => {
-    if (authLoading || !user) return
-    fetch('/api/progress/map')
-      .then(r => r.ok ? r.json() : {})
-      .then((m: ProgressMap | { error?: string }) => { if (!('error' in m)) setProgressMap(m as ProgressMap) })
-      .catch(() => {})
-  }, [user, authLoading])
+    if (!stableUserId) {
+      setProgressMap({})
+      return
+    }
+
+    const controller = new AbortController()
+    void refreshProgressMap(controller.signal)
+    return () => controller.abort()
+  }, [stableUserId, refreshProgressMap])
 
   useEffect(() => {
-    if (authLoading || !user) return
+    if (!stableUserId) {
+      setSaved(null)
+      setFetchError('')
+      return
+    }
+
+    const controller = new AbortController()
+    setSaved(null)
+    setFetchError('')
     async function load() {
       try {
         if (localAdapter) {
-          const data = await localAdapter.getById(id, user!.uid)
+          const data = await localAdapter.getById(id, stableUserId!)
           setSaved(data)
         } else {
-          const res = await fetch(`/api/courses/${id}`)
+          const res = await fetch(`/api/courses/${id}`, {
+            cache: 'no-store',
+            credentials: 'same-origin',
+            signal: controller.signal,
+          })
           if (res.status === 404) { router.replace('/'); return }
           const data = await res.json()
           if (!data.success) throw new Error(data.error)
           setSaved(data.course)
         }
       } catch (e) {
-        setFetchError(e instanceof Error ? e.message : 'Không thể tải khóa học')
+        if (!isAbortError(e)) {
+          setFetchError(e instanceof Error ? e.message : 'Không thể tải khóa học')
+        }
       }
     }
-    load()
-  }, [id, user, authLoading, router])
+    void load()
+    return () => controller.abort()
+  }, [id, stableUserId, router])
 
 
   // Layout JSON URL — proxied through API to keep Firebase auth server-side
@@ -98,6 +142,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
         <CourseFlow
           course={effectiveCourse}
           progressMap={progressMap}
+          onProgressChange={() => refreshProgressMap()}
           onExit={() => router.push('/')}
           layoutStorageUrl={layoutStorageUrl}
           preferredDetailTab={searchParams.get('tab') === 'study' ? 'study' : undefined}

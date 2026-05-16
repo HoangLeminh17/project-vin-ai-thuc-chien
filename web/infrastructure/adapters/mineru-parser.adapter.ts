@@ -8,24 +8,192 @@ import { contentListToMarkdown } from './content-list-converter'
 import { getBucket } from '@/lib/firebase-admin'
 import { PDFDocument } from 'pdf-lib'
 import { buildPdfPageRanges, mergeMineruChunkResults, splitPdfBufferByRanges, type MineruChunkResult } from './mineru-chunking'
+import {
+  attachImageSourcesToContentList,
+  buildLayoutImageStoragePath,
+  layoutImageUrl,
+  mimeTypeForImagePath,
+  normalizeMineruAssetPath,
+  type UploadedMineruImage,
+} from './mineru-images'
+
+type MarkdownCandidate = {
+  path: string
+  text: string
+  priority: number
+}
+
+type MineruModelVersion = 'pipeline' | 'vlm' | 'MinerU-HTML'
 
 export interface MineruConfig {
   baseUrl: string
   apiKey: string
   outputDir?: string
+  modelVersion?: MineruModelVersion
+}
+
+function isContentListJsonPath(zipPath: string): boolean {
+  const lowerPath = zipPath.toLowerCase()
+  return lowerPath.endsWith('content_list.json') ||
+    lowerPath.endsWith('content_list_v2.json') ||
+    lowerPath.endsWith('_content_list_v2.json')
+}
+
+function isContentListV2Path(zipPath: string): boolean {
+  return zipPath.toLowerCase().endsWith('content_list_v2.json')
+}
+
+function flattenInlineContent(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value.map(flattenInlineContent).filter(Boolean).join('')
+  if (!value || typeof value !== 'object') return ''
+
+  const record = value as Record<string, unknown>
+  if (typeof record.content === 'string') return record.content
+  if (Array.isArray(record.children)) return flattenInlineContent(record.children)
+  return ''
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(item => flattenInlineContent(item).trim())
+    .filter(Boolean)
+}
+
+function convertContentListV2PageItem(item: Record<string, unknown>, pageIdx: number) {
+  const type = typeof item.type === 'string' ? item.type : ''
+  const content = item.content && typeof item.content === 'object'
+    ? item.content as Record<string, unknown>
+    : {}
+  const base = {
+    bbox: item.bbox,
+    page_idx: pageIdx,
+  }
+
+  if (type === 'title') {
+    return {
+      ...base,
+      type: 'text',
+      text: flattenInlineContent(content.title_content).trim(),
+      text_level: Number(content.level) || 1,
+    }
+  }
+
+  if (type === 'paragraph') {
+    return {
+      ...base,
+      type: 'text',
+      text: flattenInlineContent(content.paragraph_content).trim(),
+    }
+  }
+
+  if (type === 'equation_interline') {
+    return {
+      ...base,
+      type: 'text',
+      text: flattenInlineContent(content.math_content).trim(),
+    }
+  }
+
+  if (type === 'table') {
+    return {
+      ...base,
+      type: 'table',
+      img_path: content.img_path,
+      table_caption: normalizeStringList(content.table_caption),
+      table_footnote: normalizeStringList(content.table_footnote),
+      table_body: flattenInlineContent(content.table_body || content.html || content.content).trim(),
+    }
+  }
+
+  if (type === 'image' || type === 'chart') {
+    return {
+      ...base,
+      type,
+      img_path: content.img_path,
+      sub_type: item.sub_type,
+      image_caption: normalizeStringList(content.image_caption || content.chart_caption),
+      image_footnote: normalizeStringList(content.image_footnote || content.chart_footnote),
+      text: flattenInlineContent(content.content).trim(),
+    }
+  }
+
+  if (type === 'code' || type === 'algorithm') {
+    return {
+      ...base,
+      type: 'text',
+      text: flattenInlineContent(content.code_content || content.algorithm_content).trim(),
+    }
+  }
+
+  if (type === 'list' || type === 'index') {
+    return {
+      ...base,
+      type: 'text',
+      text: normalizeStringList(content.list_items).join('\n'),
+    }
+  }
+
+  if (type.startsWith('page_')) {
+    return {
+      ...base,
+      type: 'discarded',
+      text: flattenInlineContent(content[`${type}_content`]).trim(),
+    }
+  }
+
+  return null
+}
+
+function convertContentListV2(parsed: unknown): any[] | null {
+  if (!Array.isArray(parsed) || !parsed.every(page => Array.isArray(page))) return null
+
+  return parsed.flatMap((page, pageIdx) =>
+    (page as unknown[])
+      .map(item => item && typeof item === 'object'
+        ? convertContentListV2PageItem(item as Record<string, unknown>, pageIdx)
+        : null)
+      .filter(Boolean),
+  )
+}
+
+function normalizeContentList(parsed: unknown, zipPath: string): any[] | null {
+  if (isContentListV2Path(zipPath)) {
+    return convertContentListV2(parsed)
+  }
+
+  if (Array.isArray(parsed)) return parsed
+  if (!parsed || typeof parsed !== 'object') return null
+
+  const maybeRecord = parsed as Record<string, unknown>
+  if (Array.isArray(maybeRecord.content_list)) return maybeRecord.content_list
+  if (Array.isArray(maybeRecord.contentList)) return maybeRecord.contentList
+  if (Array.isArray(maybeRecord.data)) return maybeRecord.data
+  return null
+}
+
+function markdownPriority(zipPath: string): number {
+  const fileName = zipPath.split('/').pop()?.toLowerCase() ?? zipPath.toLowerCase()
+  if (fileName === 'content_list_parsed.md') return 0
+  if (fileName === 'full.md') return 1
+  return 2
 }
 
 export class MineruParserAdapter implements IDocumentParser {
   private readonly baseUrl: string
   private readonly apiKey: string
   private readonly outputDir: string
+  private readonly modelVersion: MineruModelVersion
   private progressStore?: IProgressStore
   private currentTaskId?: string
+  private currentUserId?: string
 
   constructor(config: MineruConfig, progressStore?: IProgressStore) {
     this.baseUrl = config.baseUrl
     this.apiKey = config.apiKey
     this.outputDir = config.outputDir || path.join(process.cwd(), '.mineru-output')
+    this.modelVersion = config.modelVersion ?? 'vlm'
     this.progressStore = progressStore
   }
 
@@ -95,6 +263,7 @@ export class MineruParserAdapter implements IDocumentParser {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         url: fileUrl,
+        model_version: this.modelVersion,
         enable_formula: true,
         enable_table: true,
         language: 'vi',
@@ -185,9 +354,14 @@ export class MineruParserAdapter implements IDocumentParser {
     let contentList: any[] = [];
     let markdown = '';
     let pdfLocalPath: string | undefined;
+    const markdownCandidates: MarkdownCandidate[] = [];
+    const zipFileNames: string[] = [];
+    const imagesByPath = new Map<string, UploadedMineruImage>();
 
     for (const [zipPath, entry] of Object.entries(zip.files)) {
       if (entry.dir) continue;
+      const normalizedZipPath = zipPath.replace(/\\/g, '/');
+      zipFileNames.push(normalizedZipPath);
       const dest = path.join(outDir, zipPath);
       await fs.mkdir(path.dirname(dest), { recursive: true });
 
@@ -197,24 +371,90 @@ export class MineruParserAdapter implements IDocumentParser {
 
       await fs.writeFile(dest, data, typeof data === 'string' ? 'utf-8' : undefined);
 
+      const uploadedImage = await this.uploadLayoutImage(normalizedZipPath, data, safeName);
+      if (uploadedImage) {
+        const imagePath = normalizeMineruAssetPath(normalizedZipPath)
+        imagesByPath.set(imagePath, uploadedImage);
+        const imageDirIndex = imagePath.indexOf('images/')
+        if (imageDirIndex > 0) {
+          imagesByPath.set(imagePath.slice(imageDirIndex), uploadedImage)
+        }
+      }
+
       if (zipPath.endsWith('_origin.pdf')) {
         pdfLocalPath = dest;
       }
 
-      if (zipPath.endsWith('content_list.json') || zipPath.endsWith('_content_list_v2.json')) {
+      if (typeof data === 'string' && normalizedZipPath.toLowerCase().endsWith('.md') && data.trim()) {
+        markdownCandidates.push({
+          path: normalizedZipPath,
+          text: data.trim(),
+          priority: markdownPriority(normalizedZipPath),
+        });
+      }
+
+      if (isContentListJsonPath(normalizedZipPath)) {
         try {
-          contentList = JSON.parse(data as string);
-          markdown = contentListToMarkdown(contentList);
-          await fs.writeFile(path.join(outDir, 'content_list_parsed.md'), markdown, 'utf-8');
+          const parsedContentList = normalizeContentList(JSON.parse(data as string), normalizedZipPath);
+          if (parsedContentList?.length) {
+            contentList = parsedContentList;
+            markdown = contentListToMarkdown(contentList);
+          }
         } catch {
           console.warn(`[parse-pdf] Failed to parse content_list JSON from ${zipPath}`);
         }
       }
     }
 
-    if (!markdown) throw new InfrastructureError('content_list.json not found or empty in zip archive');
+    if (contentList.length > 0) {
+      contentList = attachImageSourcesToContentList(contentList, imagesByPath);
+      const contentListMarkdown = contentListToMarkdown(contentList);
+      if (contentListMarkdown.trim()) {
+        markdown = contentListMarkdown;
+        await fs.writeFile(path.join(outDir, 'content_list_parsed.md'), markdown, 'utf-8');
+      }
+    }
+
+    if (!markdown) {
+      const fallback = markdownCandidates.sort((a, b) => a.priority - b.priority)[0];
+      if (fallback) {
+        markdown = fallback.text;
+        console.warn(`[parse-pdf] Falling back to markdown output from ${fallback.path}; content_list JSON was missing or empty.`);
+      }
+    }
+
+    if (!markdown) {
+      const entryList = zipFileNames.slice(0, 20).join(', ') || 'no files';
+      throw new InfrastructureError(`MinerU output zip did not contain readable markdown or content_list JSON. Entries: ${entryList}`);
+    }
+
     console.log(`[parse-pdf] Saved to ${outDir}${pdfLocalPath ? `, pdf: ${pdfLocalPath}` : ''}`);
     return { markdown, contentList, pdfLocalPath };
+  }
+
+  private async uploadLayoutImage(zipPath: string, data: string | Buffer, safeName: string): Promise<UploadedMineruImage | null> {
+    if (!this.currentUserId || !this.currentTaskId || !Buffer.isBuffer(data)) return null
+
+    const normalizedPath = normalizeMineruAssetPath(zipPath)
+    const mimeType = mimeTypeForImagePath(normalizedPath)
+    if (!normalizedPath || !mimeType.startsWith('image/')) return null
+
+    try {
+      const storagePath = buildLayoutImageStoragePath(this.currentUserId, this.currentTaskId, safeName, normalizedPath)
+      await getBucket().file(storagePath).save(data, {
+        metadata: {
+          cacheControl: 'private, max-age=31536000',
+          contentType: mimeType,
+        },
+      })
+      return {
+        storagePath,
+        url: layoutImageUrl(storagePath),
+        mimeType,
+      }
+    } catch {
+      return null
+    }
   }
 
   private async deleteTempFile(filePath: string): Promise<void> {
@@ -225,18 +465,24 @@ export class MineruParserAdapter implements IDocumentParser {
     }
   }
 
-  async extractMarkdown(fileUrl: string, safeName: string, taskId?: string): Promise<ParseResult> {
+  async extractMarkdown(fileUrl: string, safeName: string, taskId?: string, userId?: string): Promise<ParseResult> {
     this.currentTaskId = taskId
+    this.currentUserId = userId
     
-    const pdfBuffer = await this.downloadPdfBuffer(fileUrl)
-    const pdfDocument = await PDFDocument.load(pdfBuffer)
-    const pageCount = pdfDocument.getPageCount()
+    try {
+      const pdfBuffer = await this.downloadPdfBuffer(fileUrl)
+      const pdfDocument = await PDFDocument.load(pdfBuffer)
+      const pageCount = pdfDocument.getPageCount()
 
-    if (pageCount <= 200) {
-      await this.reportProgress(1, 1, pageCount)
-      return await this.parseSingleDocument(fileUrl, safeName)
+      if (pageCount <= 200) {
+        await this.reportProgress(1, 1, pageCount)
+        return await this.parseSingleDocument(fileUrl, safeName)
+      }
+
+      return await this.parseLargeDocument(safeName, pdfBuffer, pageCount)
+    } finally {
+      this.currentTaskId = undefined
+      this.currentUserId = undefined
     }
-
-    return await this.parseLargeDocument(safeName, pdfBuffer, pageCount)
   }
 }

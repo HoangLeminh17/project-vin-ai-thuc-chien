@@ -4,12 +4,14 @@ import { useState, useEffect, useCallback, Fragment, useRef } from 'react'
 import { T } from '@/app/components/synapsy'
 import { FlatCard, RATING_META, submitRating } from './types'
 import { parseCitations } from '@/lib/citations'
+import { trackEvent } from '@/lib/metrics-client'
 
 interface Props {
   cards: FlatCard[]
   initialCardId?: string
   onExit: () => void
   onCardChange?: (cardId: string) => void
+  onRated?: () => void
 }
 
 type EvaluationLabel = 'correct' | 'partial' | 'incorrect'
@@ -24,6 +26,7 @@ function getAnswerComplexity(answer: string) {
 }
 
 export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props) {
+export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated }: Props) {
   const [idx, setIdx] = useState(() => {
     if (!initialCardId) return 0
     const i = cards.findIndex(c => c.id === initialCardId)
@@ -56,6 +59,8 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props)
   const advance = useCallback((ratingIndex: number) => {
     if (!card) return
     submitRating(card, ratingIndex)
+      .then(() => onRated?.())
+      .catch(() => setToast('Không lưu được đánh giá'))
     const { label, interval } = RATING_META[ratingIndex]
     setToast(`${label} · ${interval}`)
     setSlideDir('out')
@@ -66,6 +71,7 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props)
       setDraftAnswer('')
       resetEvaluation()
       if (nextIdx >= total) {
+        trackEvent('course_complete', { totalCards: total });
         onExit()
         return
       }
@@ -157,6 +163,7 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props)
   const hideAnswer = useCallback(() => {
     setRevealed(false)
   }, [])
+  }, [card, idx, total, onExit, onRated])
 
   const lastInitialCardId = useRef(initialCardId)
   useEffect(() => {

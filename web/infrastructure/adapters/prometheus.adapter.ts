@@ -33,7 +33,7 @@ export class PrometheusAdapter implements IMonitoringPort {
     this.metricHistogram = new Histogram({
       name: 'synapsy_metrics_value',
       help: 'Distribution of various metrics',
-      labelNames: ['metric_name', 'provider'],
+      labelNames: ['metric_name', 'provider', 'useCase', 'status'],
       buckets: [100, 500, 1000, 2000, 5000, 10000, 30000, 60000], 
       registers: [this.registry],
     })
@@ -70,7 +70,9 @@ export class PrometheusAdapter implements IMonitoringPort {
   recordMetric(name: string, value: number, tags?: Record<string, string>): void {
     this.metricHistogram.observe({ 
       metric_name: name,
-      provider: tags?.provider || 'none'
+      provider: tags?.provider || 'none',
+      useCase: tags?.useCase || 'none',
+      status: tags?.status || 'none'
     }, value)
   }
 

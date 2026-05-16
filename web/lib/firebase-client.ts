@@ -33,22 +33,12 @@ const googleProvider = new GoogleAuthProvider();
 
 export async function signInWithGoogle() {
   if (!auth?.app) {
-    alert("Vui lòng cấu hình các biến môi trường NEXT_PUBLIC_FIREBASE_* trong file .env trước khi đăng nhập.");
-    return;
+    const message = 'Vui lòng cấu hình các biến môi trường NEXT_PUBLIC_FIREBASE_* trong file .env trước khi đăng nhập.';
+    alert(message);
+    throw new Error(message);
   }
   try {
     const result = await signInWithPopup(auth, googleProvider);
-    const idToken = await result.user.getIdToken();
-    
-    // Call our login API to set the session cookie
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken }),
-    });
-
-    if (!res.ok) throw new Error('Failed to login to server');
-    
     return result.user;
   } catch (error) {
     console.error('Error signing in with Google', error);
@@ -59,7 +49,6 @@ export async function signInWithGoogle() {
 export async function signOut() {
   try {
     await firebaseSignOut(auth);
-    await fetch('/api/auth/logout', { method: 'POST' });
   } catch (error) {
     console.error('Error signing out', error);
     throw error;

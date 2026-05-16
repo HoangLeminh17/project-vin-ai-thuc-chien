@@ -6,6 +6,7 @@ import { T } from '@/app/components/synapsy'
 import { FlatCard } from './types'
 import { parseCitations } from '@/lib/citations'
 import { buildValidChunkIds } from '@/lib/citation-utils'
+import { trackEvent } from '@/lib/metrics-client'
 
 const PdfPanel = dynamic(() => import('./PdfPanel').then(m => ({ default: m.PdfPanel })), { ssr: false })
 
@@ -148,11 +149,24 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
 
           {/* Canonical answer */}
           <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <span className="sy-mono" style={{ fontSize: 10, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>Câu trả lời</span>
+              <button 
+                onClick={() => {
+                  trackEvent('hallucination_report', { cardId: card.id, context: 'edit_mode' });
+                  alert('Cảm ơn bạn đã báo cáo. Chúng tôi sẽ kiểm tra lại nội dung này.');
+                }}
+                style={{ fontSize: 9, color: T.srsAgain, background: 'none', border: `1px solid ${T.srsAgain}40`, padding: '2px 8px', borderRadius: 12, cursor: 'pointer', fontWeight: 600 }}
+              >
+                ⚠ Báo cáo lỗi AI
+              </button>
             </div>
             <div className="sy-serif" style={{ fontSize: 15, fontWeight: 500, color: T.ink, lineHeight: 1.5 }}>
-              <CitedText text={card.concept.answer} validChunkIds={validChunkIds} sharedMap={globalCiteMap} onCiteClick={id => { setSelectedChunkId(id); setShowSource(true) }} />
+              <CitedText text={card.concept.answer} validChunkIds={validChunkIds} sharedMap={globalCiteMap} onCiteClick={id => { 
+              setSelectedChunkId(id); 
+              setShowSource(true);
+              trackEvent('citation_click', { chunkId: id, cardId: card.id });
+            }} />
             </div>
           </div>
 

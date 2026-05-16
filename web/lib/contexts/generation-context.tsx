@@ -54,7 +54,7 @@ function cachedDiagnosticQuestionsCover(courseId: string, chunks: ContentChunk[]
 
 export function GenerationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { saveCourse, updateCourse, courses } = useCourses(user?.uid ?? null);
+  const { saveCourse, courses } = useCourses(user?.uid ?? null);
 
   const [status, setStatus] = useState<GenerationState['status']>('idle');
   const [course, setCourse] = useState<Course | null>(null);
@@ -292,7 +292,10 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         c && (c.contentHash === hash || (!c.contentHash && c.title === resolvedCourse!.title))
       );
       if (existing) {
-        const check = await fetch(`/api/courses/${existing.id}`)
+        const check = await fetch(`/api/courses/${existing.id}`, {
+          cache: 'no-store',
+          credentials: 'same-origin',
+        })
         if (
           check.ok &&
           existing.courseContent?.chapters?.length &&
@@ -319,7 +322,6 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       const fromCache = data.fromCache;
       setIsFromCache(!!fromCache);
       const chapters = resolvedCourse.chapters.map((_, i) => i);
-      const accumulatedChapters: ChapterContent[] = [];
       let currentSavedId: string | null = null;
 
       const hasLegacyOutline = resolvedCourse.chapters.some(ch =>
@@ -366,43 +368,37 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         }
         setStatus('done');
       } else {
-        const accumulatedChapterMap: Record<number, ChapterContent> = {}
-        for (const i of chapters) {
-          const chapterLessons = resolvedCourse!.chapters[i]?.lessons ?? []
-          const rawContexts = chapterLessons.map(l => extractRawContext(contentList, l.source_chunk_start, l.source_chunk_end))
-          const ch = await fetchChapter(i, resolvedCourse || undefined, hash, rawContexts);
-          if (ch) {
-            if (validChunkIds.size > 0) validateCitationMarkers(ch, validChunkIds)
-            accumulatedChapters.push(ch);
-            accumulatedChapterMap[i] = ch
-            if (user && resolvedCourse) {
-              const content: CourseContent = { chapters: [...accumulatedChapters] };
-              if (!currentSavedId) {
-                const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl);
-                if (saved) {
-                  currentSavedId = saved.id;
-                  setSavedCourseId(saved.id);
-                  localStorage.setItem(`justGenerated_${saved.id}`, 'true')
-                }
-              } else {
-                await updateCourse(currentSavedId, content);
-              }
-            }
+        const results = await Promise.all(
+          chapters.map(i => {
+            const chapterLessons = resolvedCourse!.chapters[i]?.lessons ?? []
+            const rawContexts = chapterLessons.map(l => extractRawContext(contentList, l.source_chunk_start, l.source_chunk_end))
+            return fetchChapter(i, resolvedCourse || undefined, hash, rawContexts)
+          })
+        )
+        results.forEach(ch => { if (ch && validChunkIds.size > 0) validateCitationMarkers(ch, validChunkIds) })
+        if (user && resolvedCourse) {
+          const chapterList = results.filter(Boolean) as ChapterContent[]
+          const content: CourseContent = { chapters: chapterList }
+          const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl)
+          if (saved) {
+            currentSavedId = saved.id
+            setSavedCourseId(saved.id)
+            localStorage.setItem(`justGenerated_${saved.id}`, 'true')
           }
         }
         if (currentSavedId && user && resolvedCourse) {
-          runDiagnosticPrefetch(
-            currentSavedId,
-            buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, accumulatedChapterMap),
+          const chapterMap = results.reduce<Record<number, ChapterContent>>(
+            (acc, ch, i) => { if (ch) acc[i] = ch; return acc }, {}
           )
+          runDiagnosticPrefetch(currentSavedId, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, chapterMap))
         }
-        setStatus('done');
+        setStatus('done')
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
     }
-  }, [courses, user, saveCourse, updateCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
+  }, [courses, user, saveCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
 
   const value = useMemo(() => ({
     status,

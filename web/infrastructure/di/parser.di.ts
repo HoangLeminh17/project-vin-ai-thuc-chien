@@ -12,7 +12,8 @@ const apiKey = process.env.PDF_MINERU_API_KEY;
 export const parserAdapter = new MineruParserAdapter({
   baseUrl: baseUrl || '',
   apiKey: apiKey || '',
-  outputDir: path.join(process.cwd(), '.mineru-output')
+  outputDir: path.join(process.cwd(), '.mineru-output'),
+  modelVersion: (process.env.PDF_MINERU_MODEL_VERSION as 'pipeline' | 'vlm' | 'MinerU-HTML' | undefined) ?? 'vlm',
 }, progressStore);
 
 const rawParseDocumentUseCase = new ParseDocumentUseCase(storageAdapter, parserAdapter);

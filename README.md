@@ -17,9 +17,9 @@ Màn hình học dùng layout **master-detail**: cây điều hướng cố đ�
 - **Database**: Firebase Firestore (lưu course + tiến độ SRS)
 - **Storage**: Firebase Storage (PDF + layout JSON; client upload, server proxy bằng Admin SDK)
 - **PDF parsing**: MinerU Precision API
-- **Giám sát**: Prometheus + Grafana (latency, token usage, system health)
+- **Giám sát & Quan sát**: OpenTelemetry (Distributed Tracing), Prometheus + Grafana (Metrics), Loki (Logging), Jaeger (Tracing), Alertmanager (Cảnh báo Discord)
 - **Bảo mật**: Role-Based Access Control (RBAC) qua Firebase Custom Claims
-- **Rate limiting/progress**: Redis cho rate limit và trạng thái parse progress
+- **Tốc độ/Tiến độ**: Redis cho rate limit và trạng thái parse progress + UKT state persistence
 
 ## Bắt đầu
 
@@ -227,10 +227,12 @@ Dự án được thiết kế để chạy tối ưu trên **Railway**. Xem hư
 
 ### 2. Quan sát hệ thống
 Hệ thống tích hợp sẵn bộ công cụ giám sát:
-- **Prometheus**: Thu thập metrics từ các service qua `/api/metrics` (chỉ dành cho Admin).
-- **Grafana**: Dashboard trực quan hóa chuyên sâu.
+- **OpenTelemetry**: Thu thập trace và metrics xuyên suốt các service.
+- **Prometheus**: Lưu trữ metrics từ Web và UKT.
+- **Grafana**: Dashboard trực quan hóa chuyên sâu (Metrics, Logs, Traces).
+- **Loki & Jaeger**: Phân tích log tập trung và truy vết luồng request (Distributed Tracing).
 - **Admin Dashboard**: Giao diện quản trị trực tiếp trên Web App để theo dõi Logs và Usage.
-- **Discord Alerts**: Cảnh báo lỗi hệ thống thời gian thực.
+- **Discord Alerts**: Cảnh báo lỗi hệ thống thời gian thực qua Alertmanager.
 
 ## AI logging
 

@@ -18,6 +18,7 @@ type View = 'init' | 'diagnostic-intro' | 'diagnostic-loading' | 'diagnostic-qui
 interface Props {
   course: SavedCourse
   progressMap: Record<string, ProgressEntry>
+  onProgressChange?: () => void
   onExit: () => void
   layoutStorageUrl?: string | null
   preferredDetailTab?: 'study'
@@ -34,6 +35,7 @@ function LoadingOverlay({ label }: { label: string }) {
 }
 
 export function CourseFlow({ course, progressMap, onExit, layoutStorageUrl, preferredDetailTab }: Props) {
+export function CourseFlow({ course, progressMap, onProgressChange, onExit, layoutStorageUrl }: Props) {
   const [view, setView] = useState<View>('init')
   const [diagnosticQuestions, setDiagnosticQuestions] = useState<DiagnosticQuestion[]>([])
   const [diagnosticState, setDiagnosticState] = useState<Record<string, number>>({})
@@ -100,6 +102,8 @@ export function CourseFlow({ course, progressMap, onExit, layoutStorageUrl, pref
       const res = await fetch('/api/diagnostic-quiz', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        credentials: 'same-origin',
         body: JSON.stringify({ chunks }),
       })
       if (!res.ok) throw new Error('Quiz generation failed')
@@ -159,6 +163,7 @@ export function CourseFlow({ course, progressMap, onExit, layoutStorageUrl, pref
       course={course}
       progressMap={progressMap}
       diagnosticState={diagnosticState}
+      onProgressChange={onProgressChange}
       onExit={onExit}
       layoutStorageUrl={layoutStorageUrl}
       preferredDetailTab={preferredDetailTab}

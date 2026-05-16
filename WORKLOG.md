@@ -10,6 +10,10 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| MinerU VLM parser output compatibility | Nguyen Binh Thanh | #122 |
+| User-scoped UI state refresh + review UI consistency | Nguyen Binh Thanh | #120 |
+| Parallelize fresh course generation (Promise.all) | Nguyen Binh Thanh | #118 |
+| Parallel diagnostic quiz generation (3.5 min → ~10s) | Nguyen Binh Thanh | #117 |
 | Fix Vitest CJS config startup path on Linux CI | Nguyen Binh Thanh | #116 |
 | Multi-card lessons + chapter one-tap card tree | Nguyen Binh Thanh | #115 |
 | Việt hóa kc_name registry + spider chart labels | Nguyen Binh Thanh | #114 |
@@ -32,6 +36,91 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+### [ADR-50] Serve ảnh thật trong panel tài liệu nguồn - 16/05/2026
+
+**Người làm:** Codex | **Ref:** branch `fix/real-source-images`
+
+**Bối cảnh:** `PdfPanel` đã đọc được các item `type: "image"` từ MinerU `contentList`, nhưng chỉ render placeholder `[Hình ảnh]`. Sau PR #122, parser có thêm luồng MinerU VLM và fallback markdown-only; cần giữ hai trường hợp này tách bạch để chỉ render ảnh thật khi structured `contentList` có asset ảnh đã được lưu.
+
+**Quyết định:**
+- Khi parser giải nén zip MinerU, upload các file ảnh trong zip vào Firebase Storage theo namespace `course-layout-images/{userId}/{taskId}/...`.
+- Giữ `img_path` gốc của MinerU, nhưng gắn thêm `img_storage_path`, `img_url`, và `image_mime_type` vào item ảnh trong `contentList` trước khi frontend lưu layout JSON.
+- Thêm `/api/layout-image` để proxy ảnh có xác thực, chỉ cho phép đọc path dưới prefix của chính user.
+- `PdfPanel` render ảnh thật nếu layout có `img_url`; course cũ, markdown-only fallback, hoặc upload ảnh fail vẫn fallback về placeholder.
+
+**Hệ quả:**
+- (+) Panel tài liệu nguồn hiển thị được hình thật từ PDF thay vì chỉ có placeholder.
+- (+) Tương thích với cả output MinerU VLM đã normalize về flat `contentList` và output pipeline/normal có `img_path`.
+- (+) API ảnh không expose public bucket URL; quyền đọc gắn với session user.
+- (-) Course đã tạo trước thay đổi này không tự có ảnh thật vì layout JSON cũ chưa có `img_url`.
+- (-) Fallback markdown-only từ MinerU không có structured image item nên không thể render ảnh thật.
+
+---
+
+### [ADR-49] MinerU VLM output contract compatibility - 16/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #122 (`fix/mineru-vlm-output`)
+
+**Bối cảnh:** Sau khi chuyển hướng dùng MinerU VLM theo tài liệu mới, một số job parse trả về zip không còn khớp giả định cũ của adapter. Code cũ chỉ đọc `content_list.json` / `_content_list_v2.json`; nếu zip chỉ có markdown hoặc `*_content_list_v2.json` dạng page-grouped của VLM thì `/api/parse-pdf` trả lỗi generic `An internal service failure occurred`.
+
+**Quyết định:**
+- Gửi `model_version: "vlm"` khi submit task Precision API, có thể override bằng `PDF_MINERU_MODEL_VERSION` nếu cần rollback sang `pipeline`.
+- Không dùng `make_mode`; tài liệu MinerU hiện mô tả `model_version` và output mặc định gồm `full.md`, `*_content_list.json`, `*_content_list_v2.json`.
+- Normalize `content_list_v2.json` từ cấu trúc page-grouped `type + content` về flat content list tương thích `contentListToMarkdown`, citation anchors, và `PdfPanel`.
+- Nếu không có structured content list nhưng zip có markdown (`content_list_parsed.md`, `full.md`, hoặc file `.md` khác), dùng markdown làm fallback để không chặn course generation.
+- Nếu zip thật sự không có nội dung đọc được, `/api/parse-pdf` trả lỗi user-actionable thay vì generic infrastructure failure.
+
+**Hệ quả:**
+- (+) Tương thích tốt hơn với VLM backend MinerU 2.5/3.0 và các zip markdown-only.
+- (+) Giữ contract nội bộ hiện tại (`contentList` flat) nên Stage 1/Stage 2, citation validation, và source panel không cần đổi lớn.
+- (-) Fallback markdown không có bbox/contentList đầy đủ, nên source highlighting có thể kém hơn với những file không có structured JSON.
+- (-) `content_list_v2.json` là development format theo tài liệu MinerU, cần test regression khi MinerU đổi schema.
+
+---
+
+### [ADR-48] Parallelize Stage 2 generation cho Fresh Course - 16/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #118 (`perf/parallel-stage2-generation`)
+
+**Bối cảnh:** Sau khi Stage 1 (Planner) hoàn thành, hệ thống tạo Stage 2 (Generator) cho từng chương. Trước đây, `GenerationContext` gọi `fetchChapter` tuần tự cho từng chương để tiết kiệm rate limit và dễ theo dõi tiến độ từng phần. Tuy nhiên, với các khóa học lớn (8-12 chương), tổng thời gian chờ có thể lên tới 3-5 phút dù mỗi chương chỉ mất ~20-30 giây.
+
+**Quyết định:**
+- Trong `GenerationContext`, sử dụng `Promise.all` để kích hoạt toàn bộ các lời gọi Stage 2 cùng lúc thay vì đợi từng chương.
+- Các chương vẫn được lưu vào cache và Firestore khi hoàn thành lời gọi song song.
+- UI `PipelineTracker` vẫn hiển thị tiến độ tổng hợp dựa trên số lượng chương đã hoàn thành trong `courseContentMap`.
+- Vẫn giữ cơ chế retry/error handling riêng lẻ cho từng chương để đảm bảo một chương lỗi không làm hỏng cả khóa học.
+
+**Hệ quả:**
+- (+) Latency tạo toàn bộ nội dung khóa học giảm từ vài phút xuống còn ~30-40 giây (bằng thời gian của chương dài nhất).
+- (+) Tận dụng tối đa concurrency của AI providers (DeepSeek/OpenAI).
+- (-) Tăng rủi ro chạm Rate Limit (429) khi gửi 10+ request cùng lúc. Được xử lý bằng cơ chế retry có backoff đã cài đặt ở tầng adapter.
+- (-) Khó theo dõi "luồng" sinh từng chương theo thứ tự, nhưng UX tổng thể tốt hơn nhiều vì quá trình "Done" nhanh hơn.
+
+---
+
+### [ADR-47] Parallel per-chunk generation để giảm latency diagnostic quiz - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #117 (`perf/parallel-diagnostic-quiz`)
+
+**Bối cảnh:** Endpoint `/api/diagnostic-quiz` mất ~3.5 phút để hoàn thành. Jaeger trace cho thấy bottleneck nằm ở một lời gọi LLM duy nhất trong `GenerateDiagnosticQuizUseCase.execute()`: toàn bộ chunk của course (thường 20-30 lesson) được nối thành một prompt khổng lồ rồi gửi đi một lần. DeepSeek phải sinh 5,000–8,000 output token trong một response trước khi trả về bất cứ dữ liệu nào — Node.js bị block trong suốt thời gian đó.
+
+**Phân tích các phương án:**
+- **Parallel (Promise.all)**: Tách thành N lời gọi song song (1 chunk = 1 câu hỏi), concurrency limit 4. Latency giảm từ ~210s xuống ~10s. Tăng token do lặp lại system prompt N lần, nhưng DeepSeek không có fixed RPM/TPM — giới hạn là dynamic, retry bằng exponential backoff.
+- **Streaming (Vercel AI SDK)**: Giữ 1 lời gọi, stream kết quả về UI. Không giảm backend time, chỉ cải thiện perceived UX. Phức tạp hơn nhiều (SSE, partial JSON parsing, UI thay đổi).
+- **Batching**: Chia thành nhóm N chunk, xử lý tuần tự. Ít rủi ro rate limit nhưng không tối ưu latency.
+
+**Quyết định:**
+- Chọn **Parallel per-chunk** với semaphore concurrency=4 và `withRetry` (exponential backoff, max 3 retries) để xử lý 429 dynamic từ DeepSeek.
+- Mỗi lời gọi sinh đúng 1 câu hỏi cho 1 chunk; kết quả được merge lại thành `DiagnosticQuiz` đầy đủ.
+- Token usage được cộng dồn từ tất cả lời gọi song song và báo cáo về `IUsageRepository` như cũ.
+- Không thay đổi interface `IAiService` hay contract của use case — chỉ thay đổi implementation trong `OpenAiAdapter`.
+
+**Hệ quả:**
+- (+) Latency giảm từ ~3.5 phút xuống ~8–15 giây (phụ thuộc DeepSeek server load).
+- (+) DeepSeek không có fixed rate limit — dynamic 429 được handle tự động bằng backoff.
+- (-) Tổng token tăng do system prompt lặp lại N lần (khoảng +500 tokens/chunk). Với 25 chunk: +12,500 prompt tokens so với call đơn.
+- (-) Nếu DeepSeek chịu tải cao, 4 concurrent requests vẫn có thể bị 429 — retry giải quyết được nhưng có thể tăng latency trong peak hours.
 
 ---
 
@@ -616,6 +705,40 @@ Lý do DELETE nhanh hơn: bỏ được overhead chờ serial response chain (tr
 
 ---
 
+### [ADR-26] Backend Diagnostic Quiz Use Case — 02/05/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** PR #42
+
+**Bối cảnh:** Trước đây diagnostic quiz được generate hoàn toàn ở frontend hoặc gộp chung trong luồng Stage 2. Điều này làm tăng độ trễ và khó kiểm soát chất lượng câu hỏi. Cần một Use Case riêng biệt ở backend để đảm bảo mỗi lesson có đúng 1 câu hỏi chẩn đoán với độ phủ 100%.
+
+**Quyết định:**
+- Xây dựng `GenerateDiagnosticQuizUseCase` tại tầng Core.
+- Logic: Nhận danh sách chunks (lessons), gọi LLM để sinh chính xác 1 câu hỏi cho mỗi chunk ID.
+- Kết quả được trả về dưới dạng JSON schema chuẩn `DiagnosticQuiz`.
+
+**Hệ quả:**
+- (+) Đảm bảo độ phủ kiến thức 100% (lesson-scoped coverage).
+- (+) Tách biệt logic chẩn đoán giúp dễ dàng bảo trì và tối ưu prompt độc lập với Stage 2.
+
+---
+
+### [ADR-25] SRS Prioritization và Monitoring Base — 01/05/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** PR #43, #44
+
+**Bối cảnh:** Khi số lượng thẻ bài lớn, user cần biết thẻ nào cần ưu tiên ôn tập trước. Đồng thời, hệ thống bắt đầu cần cơ chế giám sát (Monitoring) để theo dõi các lỗi AI và latency.
+
+**Quyết định:**
+- Implement logic sắp xếp thẻ dựa trên `next_due_date` của thuật toán SM2 trong `ProgressRepository`.
+- Thiết lập các endpoint `/api/metrics` cơ bản để Prometheus có thể bắt đầu scrape dữ liệu.
+- Thêm `trace_id` vào các log AI để phục vụ việc truy vết (traceability) sau này.
+
+**Hệ quả:**
+- (+) Dashboard ôn tập hiển thị thẻ theo thứ tự ưu tiên chính xác.
+- (+) Đặt nền móng cho hệ thống giám sát tập trung.
+
+---
+
 ### [ADR-24] Tách CourseFlow + luồng chẩn đoán + sửa lỗi generation — 03/05/2026
 
 **Người làm:** Nguyễn Bình Thành | **Ref:** PR #46, #47, #48, #49, #50
@@ -672,6 +795,22 @@ Lý do DELETE nhanh hơn: bỏ được overhead chờ serial response chain (tr
 | Fix log hook UTF-8 encoding and course style border conflict | Nguyễn Bình Thành | #35, #39 |
 | Gamification follow-up: library mastery ring + 30-day heatmap | Nguyễn Bình Thành | #36, #37 |
 | UKT service, duplicate course flow, planning/content transformation groundwork | Lê Kim Dũng | #40, #41 |
+
+---
+
+### [ADR-23b] UKT Service Groundwork và Duplicate Course Flow — 25/04/2026
+
+**Người làm:** Lê Kim Dũng | **Ref:** PR #40, #41
+
+**Bối cảnh:** Hệ thống cần theo dõi kiến thức người dùng (Knowledge Tracing) một cách hệ thống thay vì chỉ dựa trên SRS. Đồng thời, cần xử lý trường hợp user upload cùng một file PDF nhiều lần để tránh lãng phí token.
+
+**Quyết định:**
+- Khởi tạo `UKT service` (Python/FastAPI) tách biệt để xử lý các mô hình học máy về kiến thức (BKT/DKT).
+- Xây dựng luồng check `contentHash` trước khi bắt đầu generation. Nếu course đã tồn tại và thuộc về user khác, thực hiện "clone" thay vì regenerate.
+
+**Hệ quả:**
+- (+) Tiết kiệm token cho các nội dung phổ biến.
+- (+) Chuẩn bị sẵn sàng cho việc phân tích năng lực người dùng sâu hơn.
 
 ---
 
