@@ -74,6 +74,8 @@ export function NavRail({ activeTab, onTabChange, userInitials, onLogout }: Prop
             <button
               key={id}
               onClick={() => onTabChange(id)}
+              onMouseEnter={e => { if (!active) e.currentTarget.style.background = T.bgSunken }}
+              onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
               style={{
                 width: 44, height: 50,
                 background: active ? T.accent : 'transparent',
