@@ -10,6 +10,8 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| MinerU VLM parser output compatibility | Nguyen Binh Thanh | #122 |
+| User-scoped UI state refresh + review UI consistency | Nguyen Binh Thanh | #120 |
 | Parallelize fresh course generation (Promise.all) | Nguyen Binh Thanh | #118 |
 | Parallel diagnostic quiz generation (3.5 min → ~10s) | Nguyen Binh Thanh | #117 |
 | Fix Vitest CJS config startup path on Linux CI | Nguyen Binh Thanh | #116 |
@@ -34,6 +36,27 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+### [ADR-49] MinerU VLM output contract compatibility - 16/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #122 (`fix/mineru-vlm-output`)
+
+**Bối cảnh:** Sau khi chuyển hướng dùng MinerU VLM theo tài liệu mới, một số job parse trả về zip không còn khớp giả định cũ của adapter. Code cũ chỉ đọc `content_list.json` / `_content_list_v2.json`; nếu zip chỉ có markdown hoặc `*_content_list_v2.json` dạng page-grouped của VLM thì `/api/parse-pdf` trả lỗi generic `An internal service failure occurred`.
+
+**Quyết định:**
+- Gửi `model_version: "vlm"` khi submit task Precision API, có thể override bằng `PDF_MINERU_MODEL_VERSION` nếu cần rollback sang `pipeline`.
+- Không dùng `make_mode`; tài liệu MinerU hiện mô tả `model_version` và output mặc định gồm `full.md`, `*_content_list.json`, `*_content_list_v2.json`.
+- Normalize `content_list_v2.json` từ cấu trúc page-grouped `type + content` về flat content list tương thích `contentListToMarkdown`, citation anchors, và `PdfPanel`.
+- Nếu không có structured content list nhưng zip có markdown (`content_list_parsed.md`, `full.md`, hoặc file `.md` khác), dùng markdown làm fallback để không chặn course generation.
+- Nếu zip thật sự không có nội dung đọc được, `/api/parse-pdf` trả lỗi user-actionable thay vì generic infrastructure failure.
+
+**Hệ quả:**
+- (+) Tương thích tốt hơn với VLM backend MinerU 2.5/3.0 và các zip markdown-only.
+- (+) Giữ contract nội bộ hiện tại (`contentList` flat) nên Stage 1/Stage 2, citation validation, và source panel không cần đổi lớn.
+- (-) Fallback markdown không có bbox/contentList đầy đủ, nên source highlighting có thể kém hơn với những file không có structured JSON.
+- (-) `content_list_v2.json` là development format theo tài liệu MinerU, cần test regression khi MinerU đổi schema.
+
+---
 
 ### [ADR-48] Parallelize Stage 2 generation cho Fresh Course - 16/05/2026
 

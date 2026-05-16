@@ -85,6 +85,7 @@ const storageAdapter = new FirebaseStorageAdapter(getBucket());
 const parserAdapter = new MineruParserAdapter({
   baseUrl: normalizeBaseUrl(process.env.PDF_MINERU_BASE_URL),
   apiKey: process.env.PDF_MINERU_API_KEY!,
+  modelVersion: (process.env.PDF_MINERU_MODEL_VERSION as 'pipeline' | 'vlm' | 'MinerU-HTML' | undefined) ?? 'vlm',
 });
 // Setup AI Adapters with fallback chain
 const provider = process.env.AI_PROVIDER?.toLowerCase();

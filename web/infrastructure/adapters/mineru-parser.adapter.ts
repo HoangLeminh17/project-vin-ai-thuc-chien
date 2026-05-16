@@ -15,10 +15,13 @@ type MarkdownCandidate = {
   priority: number
 }
 
+type MineruModelVersion = 'pipeline' | 'vlm' | 'MinerU-HTML'
+
 export interface MineruConfig {
   baseUrl: string
   apiKey: string
   outputDir?: string
+  modelVersion?: MineruModelVersion
 }
 
 function isContentListJsonPath(zipPath: string): boolean {
@@ -28,7 +31,130 @@ function isContentListJsonPath(zipPath: string): boolean {
     lowerPath.endsWith('_content_list_v2.json')
 }
 
-function normalizeContentList(parsed: unknown): any[] | null {
+function isContentListV2Path(zipPath: string): boolean {
+  return zipPath.toLowerCase().endsWith('content_list_v2.json')
+}
+
+function flattenInlineContent(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (Array.isArray(value)) return value.map(flattenInlineContent).filter(Boolean).join('')
+  if (!value || typeof value !== 'object') return ''
+
+  const record = value as Record<string, unknown>
+  if (typeof record.content === 'string') return record.content
+  if (Array.isArray(record.children)) return flattenInlineContent(record.children)
+  return ''
+}
+
+function normalizeStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .map(item => flattenInlineContent(item).trim())
+    .filter(Boolean)
+}
+
+function convertContentListV2PageItem(item: Record<string, unknown>, pageIdx: number) {
+  const type = typeof item.type === 'string' ? item.type : ''
+  const content = item.content && typeof item.content === 'object'
+    ? item.content as Record<string, unknown>
+    : {}
+  const base = {
+    bbox: item.bbox,
+    page_idx: pageIdx,
+  }
+
+  if (type === 'title') {
+    return {
+      ...base,
+      type: 'text',
+      text: flattenInlineContent(content.title_content).trim(),
+      text_level: Number(content.level) || 1,
+    }
+  }
+
+  if (type === 'paragraph') {
+    return {
+      ...base,
+      type: 'text',
+      text: flattenInlineContent(content.paragraph_content).trim(),
+    }
+  }
+
+  if (type === 'equation_interline') {
+    return {
+      ...base,
+      type: 'text',
+      text: flattenInlineContent(content.math_content).trim(),
+    }
+  }
+
+  if (type === 'table') {
+    return {
+      ...base,
+      type: 'table',
+      img_path: content.img_path,
+      table_caption: normalizeStringList(content.table_caption),
+      table_footnote: normalizeStringList(content.table_footnote),
+      table_body: flattenInlineContent(content.table_body || content.html || content.content).trim(),
+    }
+  }
+
+  if (type === 'image' || type === 'chart') {
+    return {
+      ...base,
+      type,
+      img_path: content.img_path,
+      sub_type: item.sub_type,
+      image_caption: normalizeStringList(content.image_caption || content.chart_caption),
+      image_footnote: normalizeStringList(content.image_footnote || content.chart_footnote),
+      text: flattenInlineContent(content.content).trim(),
+    }
+  }
+
+  if (type === 'code' || type === 'algorithm') {
+    return {
+      ...base,
+      type: 'text',
+      text: flattenInlineContent(content.code_content || content.algorithm_content).trim(),
+    }
+  }
+
+  if (type === 'list' || type === 'index') {
+    return {
+      ...base,
+      type: 'text',
+      text: normalizeStringList(content.list_items).join('\n'),
+    }
+  }
+
+  if (type.startsWith('page_')) {
+    return {
+      ...base,
+      type: 'discarded',
+      text: flattenInlineContent(content[`${type}_content`]).trim(),
+    }
+  }
+
+  return null
+}
+
+function convertContentListV2(parsed: unknown): any[] | null {
+  if (!Array.isArray(parsed) || !parsed.every(page => Array.isArray(page))) return null
+
+  return parsed.flatMap((page, pageIdx) =>
+    (page as unknown[])
+      .map(item => item && typeof item === 'object'
+        ? convertContentListV2PageItem(item as Record<string, unknown>, pageIdx)
+        : null)
+      .filter(Boolean),
+  )
+}
+
+function normalizeContentList(parsed: unknown, zipPath: string): any[] | null {
+  if (isContentListV2Path(zipPath)) {
+    return convertContentListV2(parsed)
+  }
+
   if (Array.isArray(parsed)) return parsed
   if (!parsed || typeof parsed !== 'object') return null
 
@@ -50,6 +176,7 @@ export class MineruParserAdapter implements IDocumentParser {
   private readonly baseUrl: string
   private readonly apiKey: string
   private readonly outputDir: string
+  private readonly modelVersion: MineruModelVersion
   private progressStore?: IProgressStore
   private currentTaskId?: string
 
@@ -57,6 +184,7 @@ export class MineruParserAdapter implements IDocumentParser {
     this.baseUrl = config.baseUrl
     this.apiKey = config.apiKey
     this.outputDir = config.outputDir || path.join(process.cwd(), '.mineru-output')
+    this.modelVersion = config.modelVersion ?? 'vlm'
     this.progressStore = progressStore
   }
 
@@ -126,10 +254,10 @@ export class MineruParserAdapter implements IDocumentParser {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         url: fileUrl,
+        model_version: this.modelVersion,
         enable_formula: true,
         enable_table: true,
         language: 'vi',
-        make_mode: 'content_list_v2',
       }),
     });
     const data = await res.json();
@@ -247,7 +375,7 @@ export class MineruParserAdapter implements IDocumentParser {
 
       if (isContentListJsonPath(normalizedZipPath)) {
         try {
-          const parsedContentList = normalizeContentList(JSON.parse(data as string));
+          const parsedContentList = normalizeContentList(JSON.parse(data as string), normalizedZipPath);
           if (parsedContentList?.length) {
             contentList = parsedContentList;
             markdown = contentListToMarkdown(contentList);
