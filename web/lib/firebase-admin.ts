@@ -2,6 +2,7 @@ import { initializeApp, getApps, cert, type App } from 'firebase-admin/app'
 import { getStorage } from 'firebase-admin/storage'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
+import { logger } from '@/infrastructure/di/logger.di'
 
 // A recursive proxy that returns itself for any property access or function call.
 // This allows any chain like bucket.file(path).save(data).then(...) to not crash.
@@ -27,7 +28,7 @@ function getApp(): App {
 
   if (!projectId || !clientEmail || !privateKey || !storageBucket) {
     if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'test') {
-      console.warn('Firebase Admin env vars missing - using recursive dummy proxy');
+      logger.warn('Firebase Admin env vars missing; using recursive dummy proxy')
       return createRecursiveProxy();
     }
     throw new Error('Missing Firebase Admin env vars')

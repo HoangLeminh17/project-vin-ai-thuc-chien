@@ -13,7 +13,7 @@ try {
   const consoleMonitoring = new ConsoleMonitoringAdapter(logger, alertAdapter);
   monitoringInstance = new CompositeMonitoringAdapter([consoleMonitoring, prometheusRegistry]);
 } catch (e) {
-  console.error('[DI Modular] Failed to initialize Monitoring:', e);
+  logger.error('[DI Modular] Failed to initialize Monitoring', { err: e })
   monitoringInstance = new ConsoleMonitoringAdapter(logger, alertAdapter);
 }
 

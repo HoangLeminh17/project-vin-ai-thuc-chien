@@ -1,10 +1,11 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
-import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
+import type { Course, ChapterContent, DiagnosticQuiz } from '@/core/models/learning-model'
+import { logger } from '@/infrastructure/di/logger.di'
 
 export class ChainAiAdapter implements IAiService {
   constructor(private adapters: IAiService[]) {
     if (adapters.length === 0) {
-      console.warn('[ChainAiAdapter] ⚠️  No AI adapters provided! API calls will fail.')
+      logger.warn('[ChainAiAdapter] No AI adapters provided; API calls will fail')
     }
   }
 
@@ -21,11 +22,11 @@ export class ChainAiAdapter implements IAiService {
     for (const adapter of this.adapters) {
       try {
         const name = adapter.constructor.name
-        console.log(`[ChainAiAdapter] Trying AI provider: ${name}`)
+        logger.info('[ChainAiAdapter] trying AI provider', { provider: name })
         return await adapter.generateCourse(markdown)
       } catch (e: any) {
         const errorMsg = e?.message || String(e);
-        console.warn(`[ChainAiAdapter] Provider ${adapter.constructor.name} failed: ${errorMsg}`)
+        logger.warn('[ChainAiAdapter] provider failed', { provider: adapter.constructor.name, error: errorMsg })
         errors.push({ 
           adapter: adapter.constructor.name, 
           error: errorMsg 
@@ -44,6 +45,34 @@ export class ChainAiAdapter implements IAiService {
     )
   }
 
+  async generateChapterContent(input: string): Promise<ChapterContent> {
+    if (this.adapters.length === 0) {
+      throw new Error(
+        'No AI providers configured.\n' +
+        'Configure at least one: OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, or HUGGINGFACE_API_KEY'
+      )
+    }
+
+    const errors: { adapter: string; error: string }[] = []
+
+    for (const adapter of this.adapters) {
+      try {
+        const name = adapter.constructor.name
+        logger.info('[ChainAiAdapter] trying AI provider for chapter content', { provider: name })
+        return await adapter.generateChapterContent(input)
+      } catch (e: any) {
+        const errorMsg = e?.message || String(e)
+        logger.warn('[ChainAiAdapter] provider failed chapter content', { provider: adapter.constructor.name, error: errorMsg })
+        errors.push({ adapter: adapter.constructor.name, error: errorMsg })
+      }
+    }
+
+    const errorSummary = errors.map(e => `${e.adapter}: ${e.error}`).join('\n')
+    throw new Error(
+      `All AI adapters failed for chapter content.\n\nAttempted providers:\n${errorSummary}`
+    )
+  }
+
   async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {
     if (this.adapters.length === 0) {
       throw new Error(
@@ -57,11 +86,11 @@ export class ChainAiAdapter implements IAiService {
     for (const adapter of this.adapters) {
       try {
         const name = adapter.constructor.name
-        console.log(`[ChainAiAdapter] Trying AI provider for diagnostic: ${name}`)
+        logger.info('[ChainAiAdapter] trying AI provider for diagnostic', { provider: name })
         return await adapter.generateDiagnosticQuiz(chunks)
       } catch (e: any) {
         const errorMsg = e?.message || String(e);
-        console.warn(`[ChainAiAdapter] Provider ${adapter.constructor.name} failed diagnostic: ${errorMsg}`)
+        logger.warn('[ChainAiAdapter] provider failed diagnostic', { provider: adapter.constructor.name, error: errorMsg })
         errors.push({ 
           adapter: adapter.constructor.name, 
           error: errorMsg 

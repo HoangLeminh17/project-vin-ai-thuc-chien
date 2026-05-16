@@ -58,6 +58,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
+# Used by entrypoint to drop privileges after fixing volume permissions.
+RUN apk add --no-cache su-exec
+
 COPY --from=builder /app/public ./public
 
 # Set permission cho cache và thư mục tạm
@@ -68,15 +71,19 @@ RUN chown nextjs:nodejs .next
 RUN chown nextjs:nodejs .mineru-output
 RUN chown nextjs:nodejs .ai-log
 
+COPY docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
 # Copy output build
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-USER nextjs
+USER root
 
 EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
+ENTRYPOINT ["./docker-entrypoint.sh"]
 CMD ["node", "server.js"]

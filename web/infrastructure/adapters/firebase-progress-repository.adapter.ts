@@ -1,6 +1,8 @@
 import { IProgressRepository } from '@/core/ports/progress-repository.port';
 import { CardProgress } from '@/core/entities/card-progress.entity';
 import { getDb } from '@/lib/firebase-admin';
+import { Transaction, DocumentSnapshot, DocumentReference } from 'firebase-admin/firestore';
+import { logger } from '@/infrastructure/di/logger.di'
 
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -38,15 +40,46 @@ export class FirebaseProgressRepository implements IProgressRepository {
 
   async save(progress: CardProgress): Promise<void> {
     const { id, ...data } = progress;
-    await getDb()
-      .collection(this.collectionName)
-      .doc(id)
-      .set({
-        ...data,
-        nextReviewDate: data.nextReviewDate, // Firestore handles JS Dates
-        lastReviewedAt: data.lastReviewedAt || null,
-        updatedAt: new Date(),
-      }, { merge: true });
+    const db = getDb();
+    
+    // 1. Save card progress
+    await db.collection(this.collectionName).doc(id).set({
+      ...data,
+      nextReviewDate: data.nextReviewDate, // Firestore handles JS Dates
+      lastReviewedAt: data.lastReviewedAt || null,
+      updatedAt: new Date(),
+    }, { merge: true });
+
+    // 2. Update O(1) summary for streak
+    if (data.lastReviewedAt) {
+      const statsRef = db.collection('user_stats').doc(data.userId) as DocumentReference;
+      const lastReviewAt = data.lastReviewedAt instanceof Date ? data.lastReviewedAt : (data.lastReviewedAt as any).toDate();
+      const todayStr = dayKey(lastReviewAt);
+
+      try {
+        await db.runTransaction(async (transaction: Transaction) => {
+          const statsDoc = await transaction.get(statsRef) as any as DocumentSnapshot;
+          if (!statsDoc.exists) {
+            transaction.set(statsRef, { lastReviewDate: todayStr, streak: 1 });
+          } else {
+            const statsData = statsDoc.data()!;
+            if (statsData.lastReviewDate !== todayStr) {
+              const yesterday = new Date(lastReviewAt);
+              yesterday.setDate(yesterday.getDate() - 1);
+              const yesterdayStr = dayKey(yesterday);
+              
+              if (statsData.lastReviewDate === yesterdayStr) {
+                transaction.update(statsRef, { lastReviewDate: todayStr, streak: statsData.streak + 1 });
+              } else {
+                transaction.update(statsRef, { lastReviewDate: todayStr, streak: 1 });
+              }
+            }
+          }
+        });
+      } catch (e) {
+        logger.error('Failed to update streak summary', { err: e })
+      }
+    }
   }
 
   async getDueCards(userId: string, date: Date): Promise<CardProgress[]> {
@@ -64,35 +97,69 @@ export class FirebaseProgressRepository implements IProgressRepository {
     const snapshot = await getDb()
       .collection(this.collectionName)
       .where('userId', '==', userId)
+      .select('status', 'nextReviewDate', 'lastReviewedAt', 'cardId', 'userId', 'interval', 'easeFactor', 'repetitions', 'topic', 'kcId', 'moduleId')
       .get();
     return snapshot.docs.map((doc: any) => this.mapToEntity(doc.id, doc.data()));
   }
 
   async getStats(userId: string): Promise<{ new: number; learning: number; due: number; streak: number }> {
     const now = new Date();
-    const snapshot = await getDb()
-      .collection(this.collectionName)
-      .where('userId', '==', userId)
-      .get();
+    const db = getDb();
+    const baseQuery = db.collection(this.collectionName).where('userId', '==', userId);
 
-    const stats = { new: 0, learning: 0, due: 0, streak: 0 };
-    const reviewDays = new Set<string>(); // YYYY-MM-DD, local time
+    // 1. Use aggregation queries for O(1) count performance
+    // 2. Also fetch the pre-calculated summary for O(1) streak
+    const [newSnap, learningSnap, dueSnap, statsDocResult] = await Promise.all([
+      baseQuery.where('status', '==', 'NEW').count().get(),
+      baseQuery.where('status', '==', 'LEARNING').count().get(),
+      baseQuery.where('nextReviewDate', '<=', now).count().get(),
+      db.collection('user_stats').doc(userId).get() as Promise<DocumentSnapshot>
+    ]);
 
-    snapshot.docs.forEach((doc: any) => {
-      const data = doc.data();
-      if (data.status === 'NEW') stats.new++;
-      else if (data.status === 'LEARNING') stats.learning++;
+    const stats = {
+      new: newSnap.data().count,
+      learning: learningSnap.data().count,
+      due: dueSnap.data().count,
+      streak: 0
+    };
 
-      const nextReview = data.nextReviewDate.toDate ? data.nextReviewDate.toDate() : new Date(data.nextReviewDate);
-      if (nextReview <= now) stats.due++;
+    if (statsDocResult.exists) {
+      const statsData = statsDocResult.data()!;
+      stats.streak = statsData.streak || 0;
+      
+      // Verification: If the last review was more than 1 day ago, streak is broken
+      const lastReview = statsData.lastReviewDate;
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      const todayStr = dayKey(now);
+      const yesterdayStr = dayKey(yesterday);
 
-      if (data.lastReviewedAt) {
-        const d = data.lastReviewedAt.toDate ? data.lastReviewedAt.toDate() : new Date(data.lastReviewedAt);
-        reviewDays.add(dayKey(d));
+      if (lastReview !== todayStr && lastReview !== yesterdayStr) {
+        stats.streak = 0;
       }
-    });
+    } else {
+      // Fallback to O(N) calculation if summary doesn't exist yet
+      const reviewSnap = await baseQuery.select('lastReviewedAt').get();
+      const reviewDays = new Set<string>();
+      reviewSnap.docs.forEach((doc: any) => {
+        const data = doc.data();
+        if (data.lastReviewedAt) {
+          const d = data.lastReviewedAt.toDate ? data.lastReviewedAt.toDate() : new Date(data.lastReviewedAt);
+          reviewDays.add(dayKey(d));
+        }
+      });
+      stats.streak = computeStreak(reviewDays, now);
+      
+      // Initialize the summary for next time
+      const lastDay = Array.from(reviewDays).sort().pop();
+      if (lastDay) {
+        await db.collection('user_stats').doc(userId).set({
+          lastReviewDate: lastDay,
+          streak: stats.streak
+        }, { merge: true });
+      }
+    }
 
-    stats.streak = computeStreak(reviewDays, now);
     return stats;
   }
 

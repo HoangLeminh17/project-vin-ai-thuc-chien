@@ -62,7 +62,7 @@ export default function AdminMonitorPage() {
         setUsage({ daily: data.daily || [], recent: data.recent || [] });
       }
     } catch (err) {
-      console.error('Không tải được dữ liệu giám sát', err);
+      devError('Không tải được dữ liệu giám sát', err)
     } finally {
       setLoading(false);
     }
@@ -326,3 +326,4 @@ export default function AdminMonitorPage() {
     </div>
   );
 }
+import { devError } from '@/lib/devlog'

@@ -2,13 +2,12 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Cài đặt build dependencies nếu cần
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# requirements.txt uses prebuilt wheels (no native compilation expected),
+# so we avoid installing build-essential to keep the image smaller.
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m pip install --no-cache-dir --upgrade pip
+RUN pip install --retries 5 --default-timeout=1000 --no-cache-dir -r requirements.txt
 
 COPY app/       ./app/
 COPY model/     ./model/

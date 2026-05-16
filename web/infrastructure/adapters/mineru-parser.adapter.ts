@@ -4,6 +4,7 @@ import JSZip from 'jszip';
 import fs from 'fs/promises';
 import path from 'path';
 import { InfrastructureError } from '@/core/errors/domain-error'
+import { logger } from '@/infrastructure/di/logger.di'
 import { contentListToMarkdown } from './content-list-converter'
 import { getBucket } from '@/lib/firebase-admin'
 import { PDFDocument } from 'pdf-lib'
@@ -401,7 +402,7 @@ export class MineruParserAdapter implements IDocumentParser {
             markdown = contentListToMarkdown(contentList);
           }
         } catch {
-          console.warn(`[parse-pdf] Failed to parse content_list JSON from ${zipPath}`);
+          logger.warn('[parse-pdf] Failed to parse content_list JSON', { zipPath })
         }
       }
     }
@@ -419,7 +420,7 @@ export class MineruParserAdapter implements IDocumentParser {
       const fallback = markdownCandidates.sort((a, b) => a.priority - b.priority)[0];
       if (fallback) {
         markdown = fallback.text;
-        console.warn(`[parse-pdf] Falling back to markdown output from ${fallback.path}; content_list JSON was missing or empty.`);
+        logger.warn('[parse-pdf] Falling back to markdown output; content_list JSON missing/empty', { path: fallback.path })
       }
     }
 
@@ -428,7 +429,7 @@ export class MineruParserAdapter implements IDocumentParser {
       throw new InfrastructureError(`MinerU output zip did not contain readable markdown or content_list JSON. Entries: ${entryList}`);
     }
 
-    console.log(`[parse-pdf] Saved to ${outDir}${pdfLocalPath ? `, pdf: ${pdfLocalPath}` : ''}`);
+    logger.info('[parse-pdf] Saved output', { outDir, pdfLocalPath })
     return { markdown, contentList, pdfLocalPath };
   }
 
