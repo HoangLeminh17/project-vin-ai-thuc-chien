@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
+import { handleApiError } from '@/lib/api-utils'
 
 export const POST = withApiMetrics('/api/diagnostic-quiz', async function POST(req: NextRequest) {
   try {
@@ -41,6 +42,6 @@ export const POST = withApiMetrics('/api/diagnostic-quiz', async function POST(r
 
     return NextResponse.json({ quiz, tokens })
   } catch (error: any) {
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 })
+    return handleApiError(error, 'POST /api/diagnostic-quiz')
   }
 })

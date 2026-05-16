@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
+import { handleApiError } from '@/lib/api-utils';
 
 async function loginHandler(req: Request) {
   try {
@@ -27,7 +28,10 @@ async function loginHandler(req: Request) {
 
     return response;
   } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 401 });
+    // Avoid leaking auth/provider error details to clients.
+    // Still log/monitor via the shared handler.
+    const res = handleApiError(error, 'POST /api/auth/login');
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401, headers: res.headers });
   }
 }
 
