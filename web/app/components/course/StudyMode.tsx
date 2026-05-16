@@ -162,7 +162,6 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
   const hideAnswer = useCallback(() => {
     setRevealed(false)
   }, [])
-  }, [card, idx, total, onExit, onRated])
 
   const lastInitialCardId = useRef(initialCardId)
   useEffect(() => {
