@@ -175,6 +175,11 @@ Tất cả đều có `cache: 'no-store'` — không tận dụng bất kỳ cac
 
 [firestore-course.adapter.ts:L74-L85](file:///d:/AI%20In%20Action/A20-App-046/web/infrastructure/adapters/firestore-course.adapter.ts#L74-L85): `getById()` fetch doc, check userId, trả về data — nhưng `delete()` [L87-L98](file:///d:/AI%20In%20Action/A20-App-046/web/infrastructure/adapters/firestore-course.adapter.ts#L87-L98) cũng fetch + check rồi delete. API route nào gọi `getById` rồi `delete` sẽ fetch doc **2 lần**.
 
+**✅ Đã giải quyết:**
+- Tách logic “fetch + verify ownership” thành helper nội bộ `getOwnedCourseDoc(id, userId)` để tái sử dụng và tránh copy/paste logic check quyền.
+- `delete()` gọi trực tiếp `getOwnedCourseDoc()` (không đi qua `getById()`), đảm bảo luồng xóa chỉ cần **1 lần read** để verify ownership rồi thực hiện `docRef.delete()`.
+- Giảm số lượt đọc Firestore ở các luồng xóa và đồng thời chuẩn hóa kiểm tra quyền truy cập ở một chỗ.
+
 ### 4.4 Error messages leak internal details (Medium)
 
 Nhiều adapter trả raw error messages lên client:
@@ -182,6 +187,10 @@ Nhiều adapter trả raw error messages lên client:
 - [mineru-parser.adapter.ts:L216](file:///d:/AI%20In%20Action/A20-App-046/web/infrastructure/adapters/mineru-parser.adapter.ts#L216): `Check PDF_MINERU_API_KEY` — leak env var names
 
 **Khuyến nghị:** Wrap lỗi trước khi trả client, chỉ log chi tiết server-side.
+
+**✅ Đã giải quyết:**
+- Chuẩn hóa tầng API dùng `handleApiError()` để map `InfrastructureError` về response generic (`502` với message an toàn), tránh trả chi tiết lỗi upstream ra client.
+- Chi tiết lỗi (message/stack) vẫn được log server-side qua `logger` và gửi về `monitoring.captureException(...)` để debug mà không lộ thông tin nhạy cảm cho người dùng.
 
 ---
 
@@ -193,9 +202,16 @@ Nhiều adapter trả raw error messages lên client:
 
 Nếu dùng cho cache/debug thì cần mount volume. Nếu không cần thì `MineruParserAdapter` nên clean up sau khi process.
 
+**✅ Đã giải quyết:**
+- Mount volume `mineru-output:/app/.mineru-output` trong `docker-compose.yml` để persist output parse qua các lần restart container.
+- `web/Dockerfile` đảm bảo tạo thư mục và set quyền sở hữu phù hợp (`nextjs:nodejs`) để tránh lỗi permission khi chạy non-root.
+
 ### 5.2 UKT Dockerfile cài `build-essential` nhưng requirements.txt chỉ là pure Python (Low)
 
 [UKT/Dockerfile:L6-L8](file:///d:/AI%20In%20Action/A20-App-046/UKT/Dockerfile#L6-L8): Cài `build-essential` (~200MB) cho compilation, nhưng [requirements.txt](file:///d:/AI%20In%20Action/A20-App-046/UKT/requirements.txt) chủ yếu là wheel packages. Có thể dùng multi-stage build để giảm image size.
+
+**✅ Đã giải quyết:**
+- Bỏ cài đặt `build-essential` trong `UKT/Dockerfile` (dựa trên giả định `requirements.txt` dùng prebuilt wheels), giúp giảm đáng kể kích thước image và thời gian build.
 
 ### 5.3 Docker Compose thiếu resource limits (Medium)
 
@@ -208,6 +224,9 @@ deploy:
     limits:
       memory: 512M
 ```
+
+**✅ Đã giải quyết:**
+- Bổ sung `deploy.resources.limits` (CPU/memory) cho các services trong `docker-compose.yml` để giảm rủi ro OOM khi có spike tải.
 
 ---
 
@@ -224,6 +243,11 @@ Global mutable state + sync endpoints (`def predict`, `def update`) không threa
 
 **Khuyến nghị:** Dùng `async def` cho endpoints, và inject `engine`/`store` qua FastAPI dependency injection thay vì global.
 
+**✅ Đã giải quyết:**
+- Loại bỏ module-level globals; chuyển `engine`/`store` sang `app.state` và khởi tạo trong `lifespan()`.
+- Endpoints chuyển sang `async def` và lấy dependency qua `Depends(get_engine)`/`Depends(get_store)` để tránh shared mutable state không kiểm soát.
+- `/health` phản ánh trạng thái model đã load thông qua `app.state.engine`.
+
 ### 6.2 `_build_sequence_tensor` dùng `hash()` không reproducible (Medium)
 
 [ukt_engine.py:L205](file:///d:/AI%20In%20Action/A20-App-046/UKT/app/ukt_engine.py#L205):
@@ -234,9 +258,16 @@ Python `hash()` khác nhau giữa các process (do PYTHONHASHSEED). Model infere
 
 **Fix:** Dùng `hashlib.md5(kc_id.encode()).hexdigest()[:8]` hoặc lookup table.
 
+**✅ Đã giải quyết:**
+- Thay `hash()` bằng hàm mapping ổn định `stable_kc_int(kc_id)` (dựa trên `hashlib`), đảm bảo kết quả deterministic giữa các lần restart/process.
+
 ### 6.3 Redis không pipeline batch operations (Low)
 
 [state_store.py](file:///d:/AI%20In%20Action/A20-App-046/UKT/app/state_store.py): Mỗi `get()`/`set()` là 1 round-trip Redis. Nếu predict xử lý 50+ KCs, nên dùng Redis pipeline.
+
+**✅ Đã giải quyết:**
+- Bổ sung `get_many(student_ids)` sử dụng Redis pipeline để batch `GET` nhiều keys trong 1 round-trip.
+- API `/state/batch` dùng `get_many()` để phục vụ batch lookup hiệu quả.
 
 ---
 
@@ -248,6 +279,10 @@ Python `hash()` khác nhau giữa các process (do PYTHONHASHSEED). Model infere
 - UKT dùng **Python logging** (plaintext)
 - Cả hai đều gửi về Loki nhưng format khác nhau → khó query cross-service
 
+**✅ Đã giải quyết:**
+- UKT cấu hình structured logging (JSON) qua `configure_logging()` để log có cấu trúc tương tự web (dễ query trên Loki).
+- Giữ log chi tiết server-side; API web vẫn wrap lỗi trả client an toàn qua `handleApiError()`.
+
 ### 7.2 `console.log` còn nhiều trong production code (Low)
 
 Nhiều file dùng `console.log`/`console.warn` thay vì logger adapter:
@@ -255,6 +290,10 @@ Nhiều file dùng `console.log`/`console.warn` thay vì logger adapter:
 - [di.ts](file:///d:/AI%20In%20Action/A20-App-046/web/infrastructure/di.ts): 10+ `console.log/error`
 
 Nên route qua `PinoLoggerAdapter` để tận dụng structured logging + Loki.
+
+**✅ Đã giải quyết:**
+- Thêm hook ở `instrumentation.node.ts` để redirect `console.log/warn/error` sang `logger` (structured) khi chạy server.
+- Giảm rủi ro log rời rạc trong production; các `console.*` còn lại chủ yếu nằm trong test/dev scripts.
 
 ---
 
