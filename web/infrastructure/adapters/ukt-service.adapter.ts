@@ -1,6 +1,9 @@
 import { IUKTService, PredictRequest, PredictResponse, StateResponse, UpdateRequest, UpdateResponse } from '@/core/ports/ukt.port';
 import { InfrastructureError } from '@/core/errors/domain-error';
 
+const TIMEOUT_MS = 8_000;
+const RETRY_DELAY_MS = 1_000;
+
 // Replace path segments ≥8 chars (UIDs, UUIDs, encoded IDs) to avoid leaking user data in logs
 function maskPath(path: string): string {
   return path.replace(/\/[A-Za-z0-9_%.-]{8,}/g, '/[id]');
@@ -10,9 +13,13 @@ export class UKTServiceAdapter implements IUKTService {
   constructor(private readonly baseUrl: string) {}
 
   private async request<T>(path: string, options: RequestInit): Promise<T> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     const safeUrl = `${this.baseUrl}${maskPath(path)}`;
+
     try {
-      const res = await fetch(`${this.baseUrl}${path}`, options);
+      const res = await fetch(`${this.baseUrl}${path}`, { ...options, signal: controller.signal });
+      clearTimeout(timer);
 
       if (!res.ok) {
         const text = await res.text();
@@ -21,6 +28,7 @@ export class UKTServiceAdapter implements IUKTService {
 
       return res.json();
     } catch (e) {
+      clearTimeout(timer);
       if (e instanceof InfrastructureError) throw e;
       throw new InfrastructureError(`UKT unreachable [${safeUrl}]: ${(e as Error).message}`, e);
     }
