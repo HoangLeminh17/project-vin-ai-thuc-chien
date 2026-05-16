@@ -836,47 +836,49 @@ export default function Home() {
       />
 
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-        {activeTab === 'dashboard' && (
-          <DashboardPanel
-            user={user}
-            srsStats={srsStats}
-            srsLoading={srsLoading}
-            moduleMastery={moduleMastery}
-            uktMasteryLoading={uktMasteryLoading}
-            progressMap={progressMap}
-            streak={streak}
-            totalCards={totalCards}
-            onLogin={login}
-            onLogout={logout}
-          />
-        )}
-        {activeTab === 'courses' && (
-          <CoursesPanel
-            courses={uniqueCourses}
-            coursesLoading={coursesLoading}
-            progressMap={progressMap}
-            deleteError={deleteError}
-            file={file}
-            dragOver={dragOver}
-            onUploadClick={() => inputRef.current?.click()}
-            onDrop={handleDrop}
-            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onFileStart={handleStart}
-            onFileClear={() => setFile(null)}
-            onDeleteCourse={deleteCourse}
-            onCourseClick={id => router.push(`/course/${id}`)}
-            error={error}
-          />
-        )}
-        {activeTab === 'srs' && (
-          <SRSPanel
-            srsStats={srsStats}
-            srsLoading={srsLoading}
-            courses={uniqueCourses}
-            progressMap={progressMap}
-          />
-        )}
+        <div key={activeTab} className="sy-animate-tab-enter" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          {activeTab === 'dashboard' && (
+            <DashboardPanel
+              user={user}
+              srsStats={srsStats}
+              srsLoading={srsLoading}
+              moduleMastery={moduleMastery}
+              uktMasteryLoading={uktMasteryLoading}
+              progressMap={progressMap}
+              streak={streak}
+              totalCards={totalCards}
+              onLogin={login}
+              onLogout={logout}
+            />
+          )}
+          {activeTab === 'courses' && (
+            <CoursesPanel
+              courses={uniqueCourses}
+              coursesLoading={coursesLoading}
+              progressMap={progressMap}
+              deleteError={deleteError}
+              file={file}
+              dragOver={dragOver}
+              onUploadClick={() => inputRef.current?.click()}
+              onDrop={handleDrop}
+              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onFileStart={handleStart}
+              onFileClear={() => setFile(null)}
+              onDeleteCourse={deleteCourse}
+              onCourseClick={id => router.push(`/course/${id}`)}
+              error={error}
+            />
+          )}
+          {activeTab === 'srs' && (
+            <SRSPanel
+              srsStats={srsStats}
+              srsLoading={srsLoading}
+              courses={uniqueCourses}
+              progressMap={progressMap}
+            />
+          )}
+        </div>
       </div>
     </div>
   )
