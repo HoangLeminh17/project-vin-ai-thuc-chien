@@ -10,6 +10,8 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Study-first short-answer self-check flow + direct-to-study entry | Lê Minh Hoàng | #126 |
+| Course ready-state action rail layout after pipeline | Lê Minh Hoàng | #121 |
 | MinerU VLM parser output compatibility | Nguyen Binh Thanh | #122 |
 | User-scoped UI state refresh + review UI consistency | Nguyen Binh Thanh | #120 |
 | Parallelize fresh course generation (Promise.all) | Nguyen Binh Thanh | #118 |
@@ -126,7 +128,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-47] Study-first short-answer self-check flow - 16/05/2026
 
-**Người làm:** Minh Hoang | **Ref:** branch `feat/input-short-answer-and-check`, commits `eb4d20e`, `9341569`
+**Người làm:** Lê Minh Hoàng | **Ref:** PR #126 (`feat/input-short-answer-and-check`), commits `eb4d20e`, `9341569`
 
 **Bối cảnh:** `StudyMode` trước đây chỉ cho reveal đáp án và đánh giá SRS, chưa có luồng active recall nhập câu trả lời ngắn. Flow vào khóa học sau khi generate cũng còn đi vào tab Sửa trước, còn card hành động "Khóa học đã sẵn sàng" nằm xa khu Pipeline nên không gần ngữ cảnh.
 
