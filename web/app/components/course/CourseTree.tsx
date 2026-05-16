@@ -120,13 +120,14 @@ export interface Props {
   course: SavedCourse
   progressMap: Record<string, ProgressEntry>
   diagnosticState: Record<string, number>
+  onProgressChange?: () => void
   onExit: () => void
   layoutStorageUrl?: string | null
 }
 
 // ── CourseTree ─────────────────────────────────────────────────────────────────
 
-export function CourseTree({ course, progressMap, diagnosticState, onExit, layoutStorageUrl }: Props) {
+export function CourseTree({ course, progressMap, diagnosticState, onProgressChange, onExit, layoutStorageUrl }: Props) {
   const chapters = course.course.chapters
   const allCards = useMemo(() => flattenCards(course), [course])
 
@@ -245,7 +246,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
           </div>
         </div>
         <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
-          <StudyMode cards={deck} onExit={() => setStudyOverlay(false)} />
+          <StudyMode cards={deck} onRated={onProgressChange} onExit={() => setStudyOverlay(false)} />
         </div>
       </div>
     )
@@ -459,6 +460,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
             <StudyMode
               cards={allCards}
               initialCardId={activeCard.id}
+              onRated={onProgressChange}
               onCardChange={(id) => {
                 const card = allCards.find(c => c.id === id)
                 if (card && card.id !== activeCard.id) {
