@@ -172,7 +172,6 @@ export default function Home() {
         coursesLoading={coursesLoading}
         deleteError={deleteError}
         deleteCourse={deleteCourse}
-        progressMap={progressMap}
         courseStatsMap={courseStatsMap}
         file={file}
         setFile={setFile}

@@ -4,8 +4,6 @@ import { type DragEvent, useState, RefObject } from 'react'
 import { useRouter } from 'next/navigation'
 import { T, SynapsyRing } from '@/app/components/synapsy'
 import { SavedCourse } from '@/core/models/saved-course'
-import { ProgressMap } from '@/lib/hooks/use-progress-map'
-import { courseStats } from '@/lib/course-stats'
 
 interface CourseLibraryProps {
   user: any
@@ -14,7 +12,6 @@ interface CourseLibraryProps {
   coursesLoading: boolean
   deleteError: string
   deleteCourse: (id: string) => Promise<boolean>
-  progressMap: ProgressMap
   courseStatsMap: Record<string, any>
   file: File | null
   setFile: (f: File | null) => void
@@ -30,7 +27,6 @@ export function CourseLibrary({
   coursesLoading,
   deleteError,
   deleteCourse,
-  progressMap,
   courseStatsMap,
   file,
   setFile,

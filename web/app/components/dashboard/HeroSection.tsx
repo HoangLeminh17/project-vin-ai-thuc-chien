@@ -15,8 +15,6 @@ interface HeroSectionProps {
 export function HeroSection({ user, srsStats, srsLoading, inputRef }: HeroSectionProps) {
   if (!user) return null
 
-  const streak = srsStats?.streak ?? 0
-
   return (
     <section
       style={{
