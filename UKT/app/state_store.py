@@ -7,6 +7,7 @@ State Store — lưu knowledge state per student.
 import os
 import json
 import logging
+import threading
 
 logger = logging.getLogger(__name__)
 DEFAULT_STATE_TTL_SECONDS = 90 * 86400
@@ -16,6 +17,7 @@ class StateStore:
     def __init__(self):
         self._redis = None
         self._mem: dict = {}
+        self._mem_lock = threading.RLock()
         redis_url = os.getenv("REDIS_URL", "")
 
         if redis_url:
@@ -40,7 +42,8 @@ class StateStore:
         if self._redis:
             raw = self._redis.get(key)
             return json.loads(raw) if raw else None
-        return self._mem.get(key)
+        with self._mem_lock:
+            return self._mem.get(key)
 
     def _jsonable_state(self, state: dict) -> dict:
         normalized = {}
@@ -62,11 +65,13 @@ class StateStore:
         if self._redis:
             self._redis.setex(key, ttl_seconds, json.dumps(normalized))
         else:
-            self._mem[key] = normalized
+            with self._mem_lock:
+                self._mem[key] = normalized
 
     def delete(self, student_id: str):
         key = f"ukt:state:{student_id}"
         if self._redis:
             self._redis.delete(key)
         else:
-            self._mem.pop(key, None)
+            with self._mem_lock:
+                self._mem.pop(key, None)
