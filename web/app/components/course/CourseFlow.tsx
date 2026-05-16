@@ -21,6 +21,7 @@ interface Props {
   onProgressChange?: () => void
   onExit: () => void
   layoutStorageUrl?: string | null
+  preferredDetailTab?: 'study'
 }
 
 function LoadingOverlay({ label }: { label: string }) {
@@ -33,6 +34,7 @@ function LoadingOverlay({ label }: { label: string }) {
   )
 }
 
+export function CourseFlow({ course, progressMap, onExit, layoutStorageUrl, preferredDetailTab }: Props) {
 export function CourseFlow({ course, progressMap, onProgressChange, onExit, layoutStorageUrl }: Props) {
   const [view, setView] = useState<View>('init')
   const [diagnosticQuestions, setDiagnosticQuestions] = useState<DiagnosticQuestion[]>([])
@@ -164,6 +166,7 @@ export function CourseFlow({ course, progressMap, onProgressChange, onExit, layo
       onProgressChange={onProgressChange}
       onExit={onExit}
       layoutStorageUrl={layoutStorageUrl}
+      preferredDetailTab={preferredDetailTab}
     />
   )
 }
