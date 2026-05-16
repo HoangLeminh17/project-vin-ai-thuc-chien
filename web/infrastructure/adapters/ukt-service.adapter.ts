@@ -9,40 +9,33 @@ function maskPath(path: string): string {
 export class UKTServiceAdapter implements IUKTService {
   constructor(private readonly baseUrl: string) {}
 
-  private async uktFetch<T>(path: string, body: any): Promise<T> {
+  private async request<T>(path: string, options: RequestInit): Promise<T> {
+    const safeUrl = `${this.baseUrl}${maskPath(path)}`;
     try {
-      const res = await fetch(`${this.baseUrl}${path}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      const res = await fetch(`${this.baseUrl}${path}`, options);
 
       if (!res.ok) {
         const text = await res.text();
-        throw new InfrastructureError(`UKT Service Error (${res.status}): ${text}`);
+        throw new InfrastructureError(`UKT ${res.status} [${safeUrl}]: ${text}`);
       }
 
-      return await res.json();
+      return res.json();
     } catch (e) {
       if (e instanceof InfrastructureError) throw e;
-      throw new InfrastructureError(`Connection error to UKT Service: ${path}`, e);
+      throw new InfrastructureError(`UKT unreachable [${safeUrl}]: ${(e as Error).message}`, e);
     }
   }
 
-  private async uktGet<T>(path: string): Promise<T> {
-    try {
-      const res = await fetch(`${this.baseUrl}${path}`, { method: 'GET' });
+  private uktFetch<T>(path: string, body: unknown): Promise<T> {
+    return this.request<T>(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
 
-      if (!res.ok) {
-        const text = await res.text();
-        throw new InfrastructureError(`UKT Service Error (${res.status}): ${text}`);
-      }
-
-      return await res.json();
-    } catch (e) {
-      if (e instanceof InfrastructureError) throw e;
-      throw new InfrastructureError(`Connection error to UKT Service: ${path}`, e);
-    }
+  private uktGet<T>(path: string): Promise<T> {
+    return this.request<T>(path, { method: 'GET' });
   }
 
   async predict(req: PredictRequest): Promise<PredictResponse> {
