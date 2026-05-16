@@ -10,7 +10,8 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| MinerU VLM parser output compatibility + user-scoped UI state refresh | Nguyen Binh Thanh | #120 |
+| MinerU VLM parser output compatibility | Nguyen Binh Thanh | #122 |
+| User-scoped UI state refresh + review UI consistency | Nguyen Binh Thanh | #120 |
 | Parallelize fresh course generation (Promise.all) | Nguyen Binh Thanh | #118 |
 | Parallel diagnostic quiz generation (3.5 min → ~10s) | Nguyen Binh Thanh | #117 |
 | Fix Vitest CJS config startup path on Linux CI | Nguyen Binh Thanh | #116 |
@@ -38,7 +39,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-49] MinerU VLM output contract compatibility - 16/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #120 (`fix/ui-user-state-refresh`)
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #122 (`fix/mineru-vlm-output`)
 
 **Bối cảnh:** Sau khi chuyển hướng dùng MinerU VLM theo tài liệu mới, một số job parse trả về zip không còn khớp giả định cũ của adapter. Code cũ chỉ đọc `content_list.json` / `_content_list_v2.json`; nếu zip chỉ có markdown hoặc `*_content_list_v2.json` dạng page-grouped của VLM thì `/api/parse-pdf` trả lỗi generic `An internal service failure occurred`.
 
