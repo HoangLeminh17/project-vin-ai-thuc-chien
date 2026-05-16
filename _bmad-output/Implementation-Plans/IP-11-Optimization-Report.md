@@ -61,23 +61,20 @@ Stage 2 gọi trực tiếp `ai.ts` (bypass hoàn toàn DI container), còn Stag
 
 [prompts.ts](file:///d:/AI%20In%20Action/A20-App-046/web/lib/prompts.ts) chứa cả `PLANNER_PROMPT` và `PLANNER_PROMPT_LIGHTWEIGHT`, `DIAGNOSTIC_QUIZ_PROMPT` và `DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT`. Không rõ logic chuyển đổi giữa full/lightweight — nếu không dùng lightweight thì nên xóa.
 
+**✅ Đã kiểm tra & làm rõ:** Các bản prompt `_LIGHTWEIGHT` đang được sử dụng cụ thể bởi `HuggingFaceAdapter` (trong `infrastructure/adapters/huggingface.adapter.ts`). Lý do là API của HuggingFace có giới hạn context window nhỏ hơn (8192 tokens), nên cần prompt ngắn gọn hơn để dành không gian cho nội dung bài học. Vì vậy, việc giữ lại các bản prompt này là có chủ đích.
+
 ---
 
 ## ⚡ 2. Hiệu Năng Frontend
+### 2.1 page.tsx quá lớn — 738 dòng (High) 🔴
 
-### 2.1 `page.tsx` quá lớn — 738 dòng (High) 🔴
+**Vấn đề:** File [page.tsx](file:///d:/AI%20In%20Action/A20-App-046/web/app/page.tsx) là một monolithic component chứa toàn bộ dashboard, logic generation, SRS stats, heatmap, và UKT mastery. Điều này gây khó khăn cho bảo trì và làm chậm quá trình render do các hook lồng nhau.
 
-[page.tsx](file:///d:/AI%20In%20Action/A20-App-046/web/app/page.tsx) chứa **toàn bộ logic** của trang chủ: 5 custom hooks, 3 sub-components, và main render — tất cả trong 1 file.
-
-**Hệ quả:**
-- Mọi state change (ví dụ hover course card) trigger re-render toàn bộ page
-- Không tận dụng được React code-splitting
-- Khó maintain và test
-
-**Khuyến nghị:** Tách thành:
-- `hooks/useSRSStats.ts`, `hooks/useProgressMap.ts`, `hooks/useUktMastery.ts`
-- `components/PipelineTracker.tsx`, `components/GenerationScreen.tsx`
-- `components/CourseLibrary.tsx`, `components/HeroSection.tsx`
+**✅ Đã thực hiện — commit `refactor-frontend`:**
+- Tách các hooks vào `lib/hooks/` (`useSRSStats`, `useProgressMap`, `useUktMastery`).
+- Tách các components vào `app/components/dashboard/` (8 components mới).
+- `page.tsx` giảm từ **738 dòng xuống còn ~230 dòng**, tập trung vào routing trạng thái (idle, parsing, generating, done, error).
+- Cấu trúc thư mục rõ ràng, dễ bảo trì và test hơn.
 
 ### 2.2 Waterfall API calls trên trang chủ (High) 🔴
 
@@ -100,28 +97,26 @@ Tất cả đều có `cache: 'no-store'` — không tận dụng bất kỳ cac
 
 [page.tsx:L494](file:///d:/AI%20In%20Action/A20-App-046/web/app/page.tsx#L494): `totalLibraryCards` tính `courseStats()` cho tất cả courses, rồi ở [page.tsx:L665](file:///d:/AI%20In%20Action/A20-App-046/web/app/page.tsx#L665) lại tính lại `courseStats()` cho từng card render. **Tính 2 lần cho mỗi course**.
 
-**Fix:** Dùng `useMemo` để cache kết quả `courseStats`:
-```tsx
-const courseStatsMap = useMemo(() => 
-  Object.fromEntries(uniqueCourses.map(c => [c.id, courseStats(c, progressMap)])),
-  [uniqueCourses, progressMap]
-)
-```
+**✅ Đã giải quyết — commit `optimize-stats`:**
+- Sử dụng `useMemo` trong `page.tsx` để tính toán `courseStatsMap` một lần duy nhất cho tất cả các khóa học.
+- `totalLibraryCards` sử dụng kết quả từ `courseStatsMap`.
+- `CourseLibrary` nhận `courseStatsMap` làm prop và truy xuất kết quả trực tiếp bằng `id`, loại bỏ hoàn toàn việc tính toán lặp lại trong quá trình render danh sách khóa học.
 
-### 2.4 `generation-context.tsx` dependency array quá rộng (Medium)
+### 2.4 generation-context.tsx dependency array quá rộng (Medium)
 
-[generation-context.tsx:L401](file:///d:/AI%20In%20Action/A20-App-046/web/lib/contexts/generation-context.tsx#L401):
-```tsx
-}, [courses, user, saveCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
-```
+[generation-context.tsx:L403](file:///d:/AI%20In%20Action/A20-App-046/web/lib/contexts/generation-context.tsx#L403): Value object cho Provider có array deps quá dài. Bất kỳ thay đổi nhỏ nào trong các state (ví dụ `parseProgress`) cũng làm toàn bộ các components consume context này re-render.
 
-`courses` thay đổi mỗi khi list refresh → `startGeneration` callback bị tạo lại → mọi child re-render. Nên dùng `useRef` cho `courses`.
+**✅ Đã thực hiện — commit `split-generation-context`:**
+- Chia nhỏ `GenerationContext` thành 3 context chuyên biệt: `GenerationStateContext`, `GenerationProgressContext`, và `GenerationActionsContext`.
+- Cung cấp các hooks tương ứng: `useGenerationState`, `useGenerationProgress`, và `useGenerationActions`.
+- Tách `LoadingScreen` ra thành component riêng, chỉ consume `useGenerationProgress`. Kết quả là các cập nhật progress (500ms/lần) chỉ làm re-render component loading nhỏ, không còn ảnh hưởng đến toàn bộ `page.tsx` hay các logic nghiệp vụ khác.
+- Giảm thiểu đáng kể "render noise" và cải thiện độ nhạy của UI.
 
 ### 2.5 Progress polling interval quá thấp (Low)
 
-[generation-context.tsx:L228](file:///d:/AI%20In%20Action/A20-App-046/web/lib/contexts/generation-context.tsx#L228): Polling mỗi **500ms** trong khi MinerU processing mất 3-5 phút. Mỗi giây 2 requests → hàng trăm requests không cần thiết.
+[generation-context.tsx:L228](file:///d:/AI%20In%20Action/A20-App-046/web/lib/contexts/generation-context.tsx#L228): `setTimeout(r, 500)` — Poll progress mỗi 0.5s là quá dày cho một tiến trình kéo dài 3-5 phút.
 
-**Khuyến nghị:** Tăng lên 3-5 giây, hoặc dùng exponential backoff.
+**✅ Đã thực hiện:** Tăng thời gian polling lên **2000ms (2s)** để giảm tải cho server mà vẫn đảm bảo trải nghiệm người dùng mượt mà.
 
 ---
 

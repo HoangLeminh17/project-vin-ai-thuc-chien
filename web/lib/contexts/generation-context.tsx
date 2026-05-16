@@ -13,7 +13,7 @@ import type { ContentChunk } from '@/core/ports/ai.port';
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
 
-interface GenerationState {
+export interface GenerationState {
   status: 'idle' | 'parsing' | 'generating' | 'done';
   course: Course | null;
   courseContentMap: Record<number, ChapterContent>;
@@ -26,16 +26,21 @@ interface GenerationState {
   isFromCache: boolean;
   diagnosticStatus: DiagnosticStatus;
   pdfLocalPath: string | null;
+}
+
+export interface GenerationProgress {
   parseProgress: { currentChunk: number; totalChunks: number; percentComplete: number } | null;
 }
 
-interface GenerationContextType extends GenerationState {
+export interface GenerationActions {
   startGeneration: (file: File) => Promise<void>;
   resetGeneration: () => void;
   fetchChapter: (i: number, overrideCourse?: Course, overrideHash?: string, rawContexts?: string[]) => Promise<ChapterContent | null>;
 }
 
-const GenerationContext = createContext<GenerationContextType | undefined>(undefined);
+const GenerationStateContext = createContext<GenerationState | undefined>(undefined);
+const GenerationProgressContext = createContext<GenerationProgress | undefined>(undefined);
+const GenerationActionsContext = createContext<GenerationActions | undefined>(undefined);
 
 function cachedDiagnosticQuestionsCover(courseId: string, chunks: ContentChunk[]): boolean {
   const cached = localStorage.getItem(`diagnosticQuestions_${courseId}`)
@@ -50,6 +55,26 @@ function cachedDiagnosticQuestionsCover(courseId: string, chunks: ContentChunk[]
 
   localStorage.removeItem(`diagnosticQuestions_${courseId}`)
   return false
+}
+
+// Extract verbatim source text for a lesson's chunk range from the flat contentList.
+// Chunk ID format: chunk-{page_idx}-{globalIndex} — globalIndex is the flat array position.
+function extractRawContext(
+  contentList: Array<{ type?: string; text?: string; table_body?: string; page_idx?: number }>,
+  start: string | undefined,
+  end: string | undefined,
+): string {
+  if (!start) return ''
+  const idx = (id: string) => parseInt(id.match(/chunk-\d+-(\d+)/)?.[1] ?? '-1')
+  const s = idx(start)
+  const e = end ? idx(end) : s
+  if (s < 0) return ''
+  return contentList
+    .slice(s, Math.max(s, e) + 1)
+    .filter(item => item.type !== 'discarded' && item.type !== 'image')
+    .map(item => item.text ?? item.table_body ?? '')
+    .filter(Boolean)
+    .join('\n\n')
 }
 
 export function GenerationProvider({ children }: { children: React.ReactNode }) {
@@ -68,7 +93,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const [isFromCache, setIsFromCache] = useState(false);
   const [diagnosticStatus, setDiagnosticStatus] = useState<DiagnosticStatus>('idle');
   const [pdfLocalPath, setPdfLocalPath] = useState<string | null>(null);
-  const [parseProgress, setParseProgress] = useState<{ currentChunk: number; totalChunks: number; percentComplete: number } | null>(null);
+  const [parseProgress, setParseProgress] = useState<GenerationProgress['parseProgress']>(null);
 
   const resetGeneration = useCallback(() => {
     setStatus('idle');
@@ -144,26 +169,6 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     }
   }, [course, currentHash]);
 
-  // Extract verbatim source text for a lesson's chunk range from the flat contentList.
-  // Chunk ID format: chunk-{page_idx}-{globalIndex} — globalIndex is the flat array position.
-  function extractRawContext(
-    contentList: Array<{ type?: string; text?: string; table_body?: string; page_idx?: number }>,
-    start: string | undefined,
-    end: string | undefined,
-  ): string {
-    if (!start) return ''
-    const idx = (id: string) => parseInt(id.match(/chunk-\d+-(\d+)/)?.[1] ?? '-1')
-    const s = idx(start)
-    const e = end ? idx(end) : s
-    if (s < 0) return ''
-    return contentList
-      .slice(s, Math.max(s, e) + 1)
-      .filter(item => item.type !== 'discarded' && item.type !== 'image')
-      .map(item => item.text ?? item.table_body ?? '')
-      .filter(Boolean)
-      .join('\n\n')
-  }
-
   const startGeneration = useCallback(async (file: File) => {
     resetGeneration();
     setStatus('parsing');
@@ -225,7 +230,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             } catch {
               // Polling failed, continue silently
             }
-            await new Promise(r => setTimeout(r, 500));
+            await new Promise(r => setTimeout(r, 2000));
           }
         };
         void pollProgress();
@@ -400,7 +405,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     }
   }, [courses, user, saveCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
 
-  const value = useMemo(() => ({
+  const stateValue = useMemo(() => ({
     status,
     course,
     courseContentMap,
@@ -413,23 +418,51 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     isFromCache,
     diagnosticStatus,
     pdfLocalPath,
+  }), [status, course, courseContentMap, stage2Loading, stage2Errors, rawMarkdown, error, currentHash, savedCourseId, isFromCache, diagnosticStatus, pdfLocalPath]);
+
+  const progressValue = useMemo(() => ({
     parseProgress,
+  }), [parseProgress]);
+
+  const actionsValue = useMemo(() => ({
     startGeneration,
     resetGeneration,
-    fetchChapter
-  }), [status, course, courseContentMap, stage2Loading, stage2Errors, rawMarkdown, error, currentHash, savedCourseId, isFromCache, diagnosticStatus, pdfLocalPath, parseProgress, startGeneration, resetGeneration, fetchChapter]);
+    fetchChapter,
+  }), [startGeneration, resetGeneration, fetchChapter]);
 
   return (
-    <GenerationContext.Provider value={value}>
-      {children}
-    </GenerationContext.Provider>
+    <GenerationActionsContext.Provider value={actionsValue}>
+      <GenerationStateContext.Provider value={stateValue}>
+        <GenerationProgressContext.Provider value={progressValue}>
+          {children}
+        </GenerationProgressContext.Provider>
+      </GenerationStateContext.Provider>
+    </GenerationActionsContext.Provider>
   );
 }
 
-export function useGeneration() {
-  const context = useContext(GenerationContext);
-  if (context === undefined) {
-    throw new Error('useGeneration must be used within a GenerationProvider');
-  }
+export function useGenerationState() {
+  const context = useContext(GenerationStateContext);
+  if (context === undefined) throw new Error('useGenerationState must be used within a GenerationProvider');
   return context;
+}
+
+export function useGenerationProgress() {
+  const context = useContext(GenerationProgressContext);
+  if (context === undefined) throw new Error('useGenerationProgress must be used within a GenerationProvider');
+  return context;
+}
+
+export function useGenerationActions() {
+  const context = useContext(GenerationActionsContext);
+  if (context === undefined) throw new Error('useGenerationActions must be used within a GenerationProvider');
+  return context;
+}
+
+/** @deprecated Use granular hooks for better performance */
+export function useGeneration() {
+  const state = useGenerationState();
+  const progress = useGenerationProgress();
+  const actions = useGenerationActions();
+  return { ...state, ...progress, ...actions };
 }
