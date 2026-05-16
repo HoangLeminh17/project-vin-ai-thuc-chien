@@ -10,6 +10,9 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Prometheus monitoring adapter + system dashboard visualization | Lê Kim Dũng | main@30e473d |
+| Grafana dashboards + metrics collection API + course mode UI components | Lê Kim Dũng | main@296832a |
+| Integration tests for `MineruParserAdapter` output extraction | Lê Kim Dũng | main@14fb97b |
 | Study-first short-answer self-check flow + direct-to-study entry | Lê Minh Hoàng | #126 |
 | Course ready-state action rail layout after pipeline | Lê Minh Hoàng | #121 |
 | MinerU VLM parser output compatibility | Nguyen Binh Thanh | #122 |
