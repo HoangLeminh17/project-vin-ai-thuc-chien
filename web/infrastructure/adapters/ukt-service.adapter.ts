@@ -12,25 +12,34 @@ function maskPath(path: string): string {
 export class UKTServiceAdapter implements IUKTService {
   constructor(private readonly baseUrl: string) {}
 
-  private async request<T>(path: string, options: RequestInit): Promise<T> {
+  private async request<T>(path: string, options: RequestInit, attempt = 1): Promise<T> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+    const start = Date.now();
     const safeUrl = `${this.baseUrl}${maskPath(path)}`;
 
     try {
       const res = await fetch(`${this.baseUrl}${path}`, { ...options, signal: controller.signal });
       clearTimeout(timer);
+      const duration = Date.now() - start;
 
       if (!res.ok) {
         const text = await res.text();
-        throw new InfrastructureError(`UKT ${res.status} [${safeUrl}]: ${text}`);
+        throw new InfrastructureError(`UKT ${res.status} after ${duration}ms [${safeUrl}]: ${text}`);
       }
 
       return res.json();
     } catch (e) {
       clearTimeout(timer);
+      const duration = Date.now() - start;
       if (e instanceof InfrastructureError) throw e;
-      throw new InfrastructureError(`UKT unreachable [${safeUrl}]: ${(e as Error).message}`, e);
+
+      const isTimeout = (e as Error).name === 'AbortError';
+      const reason = isTimeout ? `timeout after ${TIMEOUT_MS}ms` : (e as Error).message;
+      throw new InfrastructureError(
+        `UKT unreachable after ${duration}ms [${safeUrl}] (attempt ${attempt}): ${reason}`,
+        e
+      );
     }
   }
 
