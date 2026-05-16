@@ -93,9 +93,9 @@ export default function DiagnosticPage({ params }: { params: Promise<{ id: strin
     try {
       // In a real implementation, you'd call a Next.js API route that calls the UKT service
       // Example: await fetch('/api/ukt/update', { ... })
-      console.log('Sending to UKT:', { topic: currentQ.topic, rating: uktRating });
+      devLog('Sending to UKT:', { topic: currentQ.topic, rating: uktRating })
     } catch (e) {
-      console.error('Failed to update UKT', e);
+      devError('Failed to update UKT', e)
     }
 
     // 2. Move to next question
@@ -258,3 +258,4 @@ export default function DiagnosticPage({ params }: { params: Promise<{ id: strin
     </div>
   );
 }
+import { devLog, devError } from '@/lib/devlog'

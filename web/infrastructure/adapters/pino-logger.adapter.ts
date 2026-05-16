@@ -27,10 +27,10 @@ export class PinoLoggerAdapter implements ILoggerPort {
         const req = createRequire(__filename)
         req('pino-loki')
         hasPinoLoki = true
-      } catch (e) {
+      } catch {
         // If pino-loki isn't present in the runtime image, fall back to stdout.
         // This avoids crashing the whole app due to logging.
-        console.warn('[Logger] pino-loki not available; falling back to stdout', e)
+        // Avoid console.*; pino isn't initialized yet.
       }
 
       if (!hasPinoLoki) {

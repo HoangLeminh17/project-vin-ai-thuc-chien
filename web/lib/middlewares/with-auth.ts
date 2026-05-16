@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/infrastructure/di/logger.di'
 
 type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<Response | NextResponse>;
 
@@ -30,7 +31,7 @@ export function withAuth(handler: ApiHandler): ApiHandler {
       
       return handler(modifiedReq, ...args);
     } catch (error) {
-      console.error('[AuthMiddleware] Error verifying session:', error);
+      logger.error('[AuthMiddleware] Error verifying session', { err: error })
       return NextResponse.json({ 
         success: false, 
         error: 'Internal Server Error during authentication' 

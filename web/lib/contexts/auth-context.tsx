@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, signInWithGoogle, signOut } from '../firebase-client';
+import { devError } from '@/lib/devlog'
 
 export type UserRole = 'admin' | 'user';
 
@@ -57,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(firebaseUser);
           setRole((idTokenResult.claims.role as UserRole) || 'user');
         } catch (error) {
-          console.error('Failed to sync session or fetch role:', error);
+          devError('Failed to sync session or fetch role:', error)
           await fetch('/api/auth/logout', {
             method: 'POST',
             cache: 'no-store',

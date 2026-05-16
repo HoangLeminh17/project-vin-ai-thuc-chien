@@ -4,6 +4,7 @@ import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
 import type { Course, ChapterContent, DiagnosticQuiz, DiagnosticQuestion } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
 import { withRetry } from '@/lib/retry'
+import { logger } from '@/infrastructure/di/logger.di'
 
 const QUIZ_CONCURRENCY = 4
 
@@ -83,7 +84,7 @@ export class OpenAiAdapter implements IAiService {
       : null
 
     if (tokens) {
-      console.log(`[openai-adapter] Tokens — prompt: ${tokens.promptTokens}, completion: ${tokens.completionTokens}, total: ${tokens.totalTokens}`)
+      logger.info('[openai-adapter] token usage', tokens)
     }
 
     const text = data.choices?.[0]?.message?.content

@@ -1,5 +1,6 @@
 import { IRateLimitProvider, RateLimitResult } from '@/core/ports/rate-limit.port'
 import Redis from 'ioredis'
+import { logger } from '@/infrastructure/di/logger.di'
 
 export interface RedisRateLimitConfig {
   url: string
@@ -15,7 +16,7 @@ export class RedisRateLimitAdapter implements IRateLimitProvider {
   constructor(config: RedisRateLimitConfig) {
     let url = config.url
     if (!url.startsWith('redis://') && !url.startsWith('rediss://') && !url.startsWith('unix://')) {
-      console.log('[RedisRateLimitAdapter] REDIS_URL missing prefix, auto-fixing to redis://')
+      logger.info('[RedisRateLimitAdapter] REDIS_URL missing prefix, auto-fixing to redis://')
       url = `redis://${url}`
     }
 
@@ -23,7 +24,7 @@ export class RedisRateLimitAdapter implements IRateLimitProvider {
     this.limits = config.limits || {}
 
     this.redis.on('error', (err) => {
-      console.error('[RedisRateLimitAdapter] Redis connection error:', err)
+      logger.error('[RedisRateLimitAdapter] Redis connection error', { err })
     })
   }
 
@@ -70,7 +71,7 @@ export class RedisRateLimitAdapter implements IRateLimitProvider {
         reset: now + (limit.windowSeconds * 1000), // Approximate reset time
       }
     } catch (e) {
-      console.error(`[RedisRateLimitAdapter] Failed to check limit for ${identifier}/${action}:`, e)
+      logger.error('[RedisRateLimitAdapter] Failed to check limit', { identifier, action, err: e })
       // Fail-open strategy
       return {
         success: true,

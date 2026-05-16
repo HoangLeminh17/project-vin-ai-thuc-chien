@@ -10,6 +10,7 @@ import { buildValidChunkIds, validateCitationMarkers } from '@/lib/citation-util
 import { buildDiagnosticChunks, diagnosticQuestionsCoverChunks } from '@/lib/diagnostic-chunks';
 import { courseContentNeedsCardRegeneration } from '@/lib/course-content-version';
 import type { ContentChunk } from '@/core/ports/ai.port';
+import { devError } from '@/lib/devlog'
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -161,7 +162,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       setCourseContentMap(prev => ({ ...prev, [i]: data.chapter }));
       return data.chapter;
     } catch (e) {
-      console.error(`Failed to fetch chapter ${i}:`, e);
+      devError(`Failed to fetch chapter ${i}:`, e)
       setStage2Errors(prev => ({ ...prev, [i]: e instanceof Error ? e.message : 'Unknown error' }));
       return null;
     } finally {

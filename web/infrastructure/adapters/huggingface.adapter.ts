@@ -3,6 +3,7 @@ import { PLANNER_PROMPT_LIGHTWEIGHT, STAGE2_CHAPTER_PROMPT, DIAGNOSTIC_QUIZ_PROM
 import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
 import type { Course, ChapterContent, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
+import { logger } from '@/infrastructure/di/logger.di'
 
 export interface HuggingFaceConfig {
   apiKey: string
@@ -33,7 +34,7 @@ export class HuggingFaceAdapter implements IAiService {
    */
   private async safeFetch(systemPrompt: string, userContent: string): Promise<{ text: string; tokens: TokenUsage | null }> {
     const url = this.baseUrl
-    console.log(`[HuggingFace] Calling Router API for model: ${this.model}`)
+    logger.info('[HuggingFace] calling router API', { model: this.model })
 
     try {
       const response = await fetch(url, {

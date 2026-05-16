@@ -3,6 +3,7 @@ import { PLANNER_PROMPT, STAGE2_CHAPTER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@
 import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
 import type { Course, ChapterContent, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
+import { logger } from '@/infrastructure/di/logger.di'
 
 export interface GeminiConfig {
   apiKey: string
@@ -72,7 +73,7 @@ export class GeminiAdapter implements IAiService {
       : null
 
     if (tokens) {
-      console.log(`[gemini-adapter] Tokens - prompt: ${tokens.promptTokens}, completion: ${tokens.completionTokens}, total: ${tokens.totalTokens}`)
+      logger.info('[gemini-adapter] token usage', tokens)
     }
 
     const text = data.candidates?.[0]?.content?.parts
@@ -88,7 +89,7 @@ export class GeminiAdapter implements IAiService {
     try {
       course = JSON.parse(text);
     } catch (e) {
-      console.error('[GeminiAdapter] JSON parse error:', text);
+      logger.warn('[GeminiAdapter] JSON parse error', { textPreview: text.slice(0, 2000) })
       throw new InfrastructureError('Failed to process AI service response', e);
     }
 

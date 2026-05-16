@@ -1,9 +1,10 @@
 import { IAlertPort, AlertContext } from '@/core/ports/alert.port';
+import { logger } from '@/infrastructure/di/logger.di'
 
 export class WebhookAlertAdapter implements IAlertPort {
   constructor(private readonly webhookUrl: string) {
     if (!webhookUrl) {
-      console.warn('[WebhookAlertAdapter] No webhook URL provided. Alerts will only be logged locally.');
+      logger.warn('[WebhookAlertAdapter] No webhook URL provided; alerts will only be logged locally')
     }
   }
 
@@ -21,7 +22,7 @@ export class WebhookAlertAdapter implements IAlertPort {
 
   private async postToWebhook(payload: any): Promise<void> {
     if (!this.webhookUrl) {
-      console.warn('[WebhookAlertAdapter/Local]', JSON.stringify(payload, null, 2));
+      logger.warn('[WebhookAlertAdapter/Local]', { payload })
       return;
     }
 
@@ -39,10 +40,10 @@ export class WebhookAlertAdapter implements IAlertPort {
         try {
           bodyText = await response.text()
         } catch {}
-        console.error(`[WebhookAlertAdapter] Failed to send alert. Status: ${response.status}`, bodyText.slice(0, 1000));
+        logger.error('[WebhookAlertAdapter] Failed to send alert', { status: response.status, body: bodyText.slice(0, 1000) })
       }
     } catch (e) {
-      console.error('[WebhookAlertAdapter] Error sending alert webhook:', e);
+      logger.error('[WebhookAlertAdapter] Error sending alert webhook', { err: e })
     }
   }
 

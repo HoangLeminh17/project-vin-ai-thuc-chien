@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { monitoring } from '@/infrastructure/di'
 import { handleApiError } from '@/lib/api-utils'
+import { withApiLogging } from '@/lib/middlewares/with-api-logging'
+import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 
 export const dynamic = 'force-dynamic'
 
-export async function POST(req: NextRequest) {
+const handler = async (req: NextRequest) => {
   try {
     const { eventName, properties } = await req.json()
     
@@ -20,3 +22,5 @@ export async function POST(req: NextRequest) {
     return handleApiError(error, 'POST /api/metrics/event')
   }
 }
+
+export const POST = withApiLogging('/api/metrics/event', withApiMetrics('/api/metrics/event', handler))

@@ -11,6 +11,9 @@
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 
+// Server-only helper; keep logs structured.
+import { logger } from '@/infrastructure/di/logger.di'
+
 export async function extractFacts(content: string): Promise<string[]> {
   const messages = [
     {
@@ -44,7 +47,7 @@ export async function extractFacts(content: string): Promise<string[]> {
         return JSON.parse(text).facts || []
       }
     } catch (e) {
-      console.error('[extractFacts] OpenAI failed:', e)
+      logger.error('[extractFacts] OpenAI failed', { err: e })
     }
   }
 
@@ -71,7 +74,7 @@ export async function extractFacts(content: string): Promise<string[]> {
         return JSON.parse(text).facts || []
       }
     } catch (e) {
-      console.error('[extractFacts] Hugging Face failed:', e)
+      logger.error('[extractFacts] Hugging Face failed', { err: e })
     }
   }
 

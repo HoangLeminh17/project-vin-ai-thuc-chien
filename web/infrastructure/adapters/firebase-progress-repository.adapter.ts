@@ -2,6 +2,7 @@ import { IProgressRepository } from '@/core/ports/progress-repository.port';
 import { CardProgress } from '@/core/entities/card-progress.entity';
 import { getDb } from '@/lib/firebase-admin';
 import { Transaction, DocumentSnapshot, DocumentReference } from 'firebase-admin/firestore';
+import { logger } from '@/infrastructure/di/logger.di'
 
 function dayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -76,7 +77,7 @@ export class FirebaseProgressRepository implements IProgressRepository {
           }
         });
       } catch (e) {
-        console.error('Failed to update streak summary:', e);
+        logger.error('Failed to update streak summary', { err: e })
       }
     }
   }

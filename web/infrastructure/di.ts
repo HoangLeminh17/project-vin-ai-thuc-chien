@@ -59,7 +59,7 @@ try {
   const consoleMonitoring = new ConsoleMonitoringAdapter(logger, alertAdapter);
   monitoringInstance = new CompositeMonitoringAdapter([consoleMonitoring, prometheusRegistry]);
 } catch (e) {
-  console.error('[DI] Failed to initialize Monitoring:', e);
+  logger.error('[DI] Failed to initialize Monitoring', { err: e })
   monitoringInstance = new ConsoleMonitoringAdapter(logger, alertAdapter);
 }
 export const monitoring = monitoringInstance;
@@ -76,7 +76,7 @@ if (process.env.REDIS_URL) {
       }
     });
   } catch (e) {
-    console.error('[DI] Failed to initialize Redis Rate Limiter:', e);
+    logger.error('[DI] Failed to initialize Redis Rate Limiter', { err: e })
   }
 }
 export const rateLimiter = rateLimiterInstance;
@@ -118,34 +118,34 @@ if (provider) {
   // Strict mode: AI_PROVIDER explicitly set, use only that provider
   if (provider === 'gemini') {
     if (!gemini) {
-      console.error('⚠️  AI_PROVIDER=gemini but GEMINI_API_KEY is not configured. Will fail at runtime.');
+      logger.error('AI_PROVIDER=gemini but GEMINI_API_KEY is not configured; will fail at runtime')
     } else {
       aiAdapters.push(gemini);
     }
   } else if (provider === 'openai') {
     if (!openai) {
-      console.error('⚠️  AI_PROVIDER=openai but OPENAI_API_KEY is not configured. Will fail at runtime.');
+      logger.error('AI_PROVIDER=openai but OPENAI_API_KEY is not configured; will fail at runtime')
     } else {
       aiAdapters.push(openai);
     }
   } else if (provider === 'huggingface') {
     if (!huggingface) {
-      console.error('⚠️  AI_PROVIDER=huggingface but HUGGINGFACE_API_KEY is not configured. Will fail at runtime.');
+      logger.error('AI_PROVIDER=huggingface but HUGGINGFACE_API_KEY is not configured; will fail at runtime')
     } else {
       aiAdapters.push(huggingface);
     }
   } else if (provider === 'deepseek') {
     if (!deepseek) {
-      console.error('⚠️  AI_PROVIDER=deepseek but DEEPSEEK_API_KEY is not configured. Will fail at runtime.');
+      logger.error('AI_PROVIDER=deepseek but DEEPSEEK_API_KEY is not configured; will fail at runtime')
     } else {
       aiAdapters.push(deepseek);
     }
   } else {
-    console.error(`⚠️  Unknown AI_PROVIDER: ${provider}. Valid options: gemini, openai, deepseek, huggingface`);
+    logger.error('Unknown AI_PROVIDER', { provider, valid: ['gemini', 'openai', 'deepseek', 'huggingface'] })
   }
   
   if (aiAdapters.length > 0) {
-    console.log(`[DI] Using AI_PROVIDER=${provider} (strict mode, no fallback)`);
+    logger.info('[DI] Using AI_PROVIDER (strict mode, no fallback)', { provider })
   }
 } else {
   // Fallback mode: no AI_PROVIDER set, try all available providers
@@ -155,9 +155,11 @@ if (provider) {
   if (huggingface) aiAdapters.push(huggingface);
   
   if (aiAdapters.length > 0) {
-    console.log('[DI] AI_PROVIDER not set, using fallback chain');
+    logger.info('[DI] AI_PROVIDER not set; using fallback chain')
   } else {
-    console.warn('[DI] ⚠️  No AI providers configured. API calls will fail at runtime. Set at least one: OPENAI_API_KEY, DEEPSEEK_API_KEY, GEMINI_API_KEY, HUGGINGFACE_API_KEY');
+    logger.warn('[DI] No AI providers configured; API calls will fail at runtime', {
+      required: ['OPENAI_API_KEY', 'DEEPSEEK_API_KEY', 'GEMINI_API_KEY', 'HUGGINGFACE_API_KEY'],
+    })
   }
 }
 

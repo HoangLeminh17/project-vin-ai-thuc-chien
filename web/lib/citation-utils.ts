@@ -1,5 +1,6 @@
 import type { ChapterContent } from './types'
 import { getLessonCards } from './course-cards'
+import { devWarn } from '@/lib/devlog'
 
 type ContentListItem = { type?: string; page_idx?: number; sourceChunkIndex?: number }
 
@@ -33,7 +34,7 @@ export function validateCitationMarkers(
       let match
       while ((match = CITATION_MARKER_RE.exec(text)) !== null) {
         if (!validChunkIds.has(match[1])) {
-          console.warn(`[citation] Hallucinated marker [${match[1]}] in lesson "${lesson.lesson_title}" — kept in text, rendered disabled`)
+          devWarn(`[citation] Hallucinated marker [${match[1]}] in lesson "${lesson.lesson_title}" — kept in text, rendered disabled`)
         }
       }
     })
