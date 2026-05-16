@@ -370,9 +370,9 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
                   {/* Chapter row */}
                   <button
                     onClick={() => toggleChapter(ci)}
-                    style={{ width: '100%', textAlign: 'left', padding: '9px 20px 9px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: `1px solid ${T.ink10}`, transition: 'background 0.1s' }}
+                    style={{ width: '100%', textAlign: 'left', padding: '8px 14px 8px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: T.bgSunken, border: 'none', borderBottom: `1px solid ${T.ink10}`, transition: 'background 0.1s' }}
                     onMouseEnter={e => (e.currentTarget.style.background = T.bgSunken)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    onMouseLeave={e => (e.currentTarget.style.background = T.bgSunken)}
                   >
                     <span style={{ width: 3, height: 28, borderRadius: 2, background: chCol.dot, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
