@@ -1,19 +1,19 @@
-# PIPELINE.md - File map & data flow
+# PIPELINE.md - Bản đồ tệp & luồng dữ liệu
 
-Tai lieu tham chieu nhanh cho Synapsy: cau truc repo, API routes, key types, luong AI pipeline, UI state va monitoring hien tai.
+Tài liệu tham khảo nhanh cho Synapsy: cấu trúc repo, API routes, các kiểu dữ liệu chính (key types), luồng AI pipeline, trạng thái UI và hệ thống giám sát hiện tại.
 
 ---
 
-## Repo shape
+## Cấu trúc Repo (Repo shape)
 
-Repo hien tai la monorepo nho:
+Repo hiện tại là một monorepo nhỏ:
 
 ```
 .
-  web/                  # Next.js app chinh
-  UKT/                  # Python Knowledge Tracing microservice
-  monitoring/           # Prometheus, Grafana, Loki, Jaeger, Alertmanager, OTel
-  .github/workflows/    # CI
+  web/                  # Ứng dụng Next.js chính
+  UKT/                  # Microservice Knowledge Tracing (Python)
+  monitoring/           # Cấu hình Prometheus, Grafana, Loki, Jaeger, Alertmanager, OTel
+  .github/workflows/    # Quy trình CI/CD
   README.md
   ARCHITECTURE.md
   CLAUDE.md
@@ -22,7 +22,7 @@ Repo hien tai la monorepo nho:
   JOURNAL.md
 ```
 
-> Luu y: cac path trong tai lieu nay mac dinh tinh tu repo root. App code nam trong `web/`, khong nam truc tiep o root.
+> **Lưu ý**: Các đường dẫn trong tài liệu này mặc định tính từ gốc repo. Mã nguồn ứng dụng nằm trong `web/`, không nằm trực tiếp ở root.
 
 ---
 
@@ -161,7 +161,7 @@ UKT chay rieng o `http://localhost:8000` trong Docker Compose, duoc web app goi 
 
 `/predict` seed hoặc refresh KC state từ quiz interactions. `/update` cũng khởi tạo state còn thiếu để user chỉ dùng SRS vẫn có tín hiệu UKT sau khi bỏ qua diagnostic. `/state/{student_id}` trả persisted KC state để dashboard aggregate.
 
-### Monitoring
+### Hệ thống giám sát (Monitoring)
 
 ```
 monitoring/
@@ -172,82 +172,83 @@ monitoring/
     provisioning/
   otel-collector/
   alertmanager/
+  bridge/               # Discord Bridge cho Alertmanager
 ```
 
-Docker Compose khoi dong Redis, UKT, web, Prometheus, Grafana, OpenTelemetry Collector, Jaeger, Loki va Alertmanager.
+Docker Compose khởi động Redis, UKT, Web, Prometheus, Grafana, OpenTelemetry Collector, Jaeger, Loki và Alertmanager. Toàn bộ hệ thống được instrument để hỗ trợ **Distributed Tracing** qua OTel.
 
 ---
 
 ## API Routes
 
-### Auth
+### Xác thực (Auth)
 
-| Method | Route | File | Ghi chu |
+| Phương thức | Route | Tệp | Ghi chú |
 | :--- | :--- | :--- | :--- |
-| POST | `/api/auth/login` | `web/app/api/auth/login/route.ts` | Tao Firebase session cookie |
-| POST | `/api/auth/logout` | `web/app/api/auth/logout/route.ts` | Xoa session |
-| GET | `/api/auth/me` | `web/app/api/auth/me/route.ts` | Tra user hien tai |
+| POST | `/api/auth/login` | `web/app/api/auth/login/route.ts` | Tạo Firebase session cookie |
+| POST | `/api/auth/logout` | `web/app/api/auth/logout/route.ts` | Xóa session |
+| GET | `/api/auth/me` | `web/app/api/auth/me/route.ts` | Trả về thông tin user hiện tại |
 
-### Course generation
+### Tạo khóa học (Course generation)
 
-| Method | Route | File | Ghi chu |
+| Phương thức | Route | Tệp | Ghi chú |
 | :--- | :--- | :--- | :--- |
-| POST | `/api/parse-pdf` | `web/app/api/parse-pdf/route.ts` | Auth, PDF <= 20 MB, MinerU parse |
-| GET | `/api/parse-pdf/progress` | `web/app/api/parse-pdf/progress/route.ts` | Poll parse chunk progress by `taskId` |
-| POST | `/api/generate-course` | `web/app/api/generate-course/route.ts` | Stage 1 planner, rate limited, cache by markdown hash |
-| POST | `/api/generate-content` | `web/app/api/generate-content/route.ts` | Stage 2 concept cards + chapter quiz |
-| POST | `/api/extract-facts` | `web/app/api/extract-facts/route.ts` | Flash facts while waiting |
-| POST | `/api/diagnostic-quiz` | `web/app/api/diagnostic-quiz/route.ts` | Diagnostic MCQ generation |
+| POST | `/api/parse-pdf` | `web/app/api/parse-pdf/route.ts` | Xác thực, PDF <= 20 MB, gọi MinerU parse |
+| GET | `/api/parse-pdf/progress` | `web/app/api/parse-pdf/progress/route.ts` | Kiểm tra tiến độ parse theo `taskId` |
+| POST | `/api/generate-course` | `web/app/api/generate-course/route.ts` | Stage 1 planner, giới hạn tần suất, cache theo hash markdown |
+| POST | `/api/generate-content` | `web/app/api/generate-content/route.ts` | Stage 2 sinh concept cards + chapter quiz |
+| POST | `/api/extract-facts` | `web/app/api/extract-facts/route.ts` | Trích xuất sự thật nhanh cho Flash Facts UI |
+| POST | `/api/diagnostic-quiz` | `web/app/api/diagnostic-quiz/route.ts` | Tạo câu hỏi trắc nghiệm chẩn đoán |
 
-### Course storage and source serving
+### Lưu trữ khóa học & Nguồn tài liệu
 
-| Method | Route | File | Ghi chu |
+| Phương thức | Route | Tệp | Ghi chú |
 | :--- | :--- | :--- | :--- |
-| GET | `/api/courses` | `web/app/api/courses/route.ts` | List current user's courses |
-| GET | `/api/courses/[id]` | `web/app/api/courses/[id]/route.ts` | Get one course |
-| PATCH/DELETE | `/api/courses/[id]` | `web/app/api/courses/[id]/route.ts` | Update/delete saved course |
-| GET | `/api/pdf-serve` | `web/app/api/pdf-serve/route.ts` | Admin SDK proxy to PDF bytes |
-| GET | `/api/pdf-source` | `web/app/api/pdf-source/route.ts` | Source PDF helper route |
-| GET | `/api/layout-serve` | `web/app/api/layout-serve/route.ts` | Admin SDK proxy to MinerU layout JSON |
+| GET | `/api/courses` | `web/app/api/courses/route.ts` | Liệt kê các khóa học của user hiện tại |
+| GET | `/api/courses/[id]` | `web/app/api/courses/[id]/route.ts` | Lấy chi tiết một khóa học |
+| PATCH/DELETE | `/api/courses/[id]` | `web/app/api/courses/[id]/route.ts` | Cập nhật hoặc xóa khóa học đã lưu |
+| GET | `/api/pdf-serve` | `web/app/api/pdf-serve/route.ts` | Proxy qua Admin SDK để lấy bytes PDF |
+| GET | `/api/pdf-source` | `web/app/api/pdf-source/route.ts` | Route hỗ trợ lấy nguồn PDF |
+| GET | `/api/layout-serve` | `web/app/api/layout-serve/route.ts` | Proxy lấy tệp layout JSON từ MinerU |
 
-### Progress and review
+### Tiến độ & Ôn tập (Progress & Review)
 
-| Method | Route | File | Ghi chu |
+| Phương thức | Route | Tệp | Ghi chú |
 | :--- | :--- | :--- | :--- |
-| GET | `/api/progress/map` | `web/app/api/progress/map/route.ts` | SRS progress keyed by `ci-li` |
-| GET | `/api/progress/stats` | `web/app/api/progress/stats/route.ts` | Due/new/learning/streak stats |
-| GET | `/api/progress/due` | `web/app/api/progress/due/route.ts` | Cards due for review |
-| POST | `/api/progress/review` | `web/app/api/progress/review/route.ts` | Submit SM2 rating |
-| POST | `/api/ukt/interactions` | `web/app/api/ukt/interactions/route.ts` | Seed UKT with KC-tagged diagnostic quiz interactions |
-| GET | `/api/ukt/mastery` | `web/app/api/ukt/mastery/route.ts` | UKT state của user đã đăng nhập + aggregate mastery theo 8 module |
+| GET | `/api/progress/map` | `web/app/api/progress/map/route.ts` | Tiến độ SRS theo khóa `ci-li` |
+| GET | `/api/progress/stats` | `web/app/api/progress/stats/route.ts` | Thống kê thẻ đến hạn/mới/đang học/streak |
+| GET | `/api/progress/due` | `web/app/api/progress/due/route.ts` | Danh sách thẻ đến hạn ôn tập |
+| POST | `/api/progress/review` | `web/app/api/progress/review/route.ts` | Gửi đánh giá SM2 |
+| POST | `/api/ukt/interactions` | `web/app/api/ukt/interactions/route.ts` | Cung cấp tín hiệu chẩn đoán gắn KC cho UKT |
+| GET | `/api/ukt/mastery` | `web/app/api/ukt/mastery/route.ts` | Lấy trạng thái UKT và tổng hợp theo 8 module |
 
-### Admin and health
+### Quản trị & Sức khỏe (Admin & Health)
 
-| Method | Route | File | Ghi chu |
+| Phương thức | Route | Tệp | Ghi chú |
 | :--- | :--- | :--- | :--- |
-| GET | `/api/admin/logs` | `web/app/api/admin/logs/route.ts` | Admin-only logs |
-| GET | `/api/admin/usage` | `web/app/api/admin/usage/route.ts` | Admin-only AI usage |
+| GET | `/api/admin/logs` | `web/app/api/admin/logs/route.ts` | Logs cho Admin |
+| GET | `/api/admin/usage` | `web/app/api/admin/usage/route.ts` | Thống kê sử dụng AI cho Admin |
 | GET | `/api/metrics` | `web/app/api/metrics/route.ts` | Prometheus metrics |
-| GET | `/api/health` | `web/app/api/health/route.ts` | Health check |
+| GET | `/api/health` | `web/app/api/health/route.ts` | Kiểm tra sức khỏe hệ thống |
 
 ---
 
-## Pages
+## Trang giao diện (Pages)
 
-| Path | File | Ghi chu |
+| Đường dẫn | Tệp | Ghi chú |
 | :--- | :--- | :--- |
-| `/` | `web/app/page.tsx` | Main app: login, SRS stats, library, upload, generation |
-| `/dashboard` | `web/app/dashboard/page.tsx` | Redirect ve `/` |
-| `/course/[id]` | `web/app/course/[id]/page.tsx` | Course viewer |
-| `/course/[id]/diagnostic` | `web/app/course/[id]/diagnostic/page.tsx` | Diagnostic route |
-| `/review` | `web/app/review/page.tsx` | SRS review deck |
-| `/admin/monitor` | `web/app/admin/monitor/page.tsx` | Admin monitor |
+| `/` | `web/app/page.tsx` | Trang chính: login, SRS stats, thư viện, tải lên, generation |
+| `/dashboard` | `web/app/dashboard/page.tsx` | Redirect về `/` |
+| `/course/[id]` | `web/app/course/[id]/page.tsx` | Xem nội dung khóa học |
+| `/course/[id]/diagnostic` | `web/app/course/[id]/diagnostic/page.tsx` | Trang chẩn đoán kiến thức |
+| `/review` | `web/app/review/page.tsx` | Bộ thẻ ôn tập SRS |
+| `/admin/monitor` | `web/app/admin/monitor/page.tsx` | Màn hình giám sát cho Admin |
 
 ---
 
-## Key Types
+## Các kiểu dữ liệu chính (Key Types)
 
-Canonical learning models nam o `web/core/models/learning-model.ts`. `web/lib/types.ts` hien con giu mot ban tuong duong de tuong thich voi code cu.
+Các model học tập chính (Canonical learning models) nằm ở `web/core/models/learning-model.ts`. Tệp `web/lib/types.ts` hiện vẫn giữ một bản tương đương để duy trì tính tương thích với mã nguồn cũ.
 
 ```ts
 type OutlinePoint = {
@@ -352,89 +353,89 @@ type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error'
 
 ---
 
-## Knowledge Components
+## Thành phần kiến thức (Knowledge Components - KC)
 
-KC identity is now deterministic and registry-backed so UKT can trace mastery across sessions and documents.
+Định danh KC hiện tại là cố định (deterministic) và được hỗ trợ bởi một registry y khoa, giúp UKT có thể truy vết mức độ thông thạo xuyên suốt các phiên học và các tài liệu khác nhau.
 
-Source of truth:
+### Nguồn chân lý (Source of truth):
 
 - `web/core/models/knowledge.ts`
 - `KNOWLEDGE_MAP_VERSION = medical-v1`
-- Fixed spider chart modules: Giải phẫu, Sinh lý, Dược lý, Vi sinh, Bệnh lý, Lâm sàng, Hóa sinh, Miễn dịch (registry id vẫn dùng English slugs).
-- Each KC has stable `kc_id`, display `kc_name`, and parent `module_id`.
+- Các module trên spider chart cố định: Giải phẫu, Sinh lý, Dược lý, Vi sinh, Bệnh lý, Lâm sàng, Hóa sinh, Miễn dịch (ID trong registry vẫn dùng slug tiếng Anh).
+- Mỗi KC có `kc_id` ổn định, `kc_name` hiển thị và `module_id` cha.
 
-Rules:
+### Quy tắc (Rules):
 
-- Stage 1 Planner must classify each lesson into `Lesson.knowledge`.
-- The Planner may only choose a `kc_id` from the fixed registry. It must not invent free-text KC IDs.
-- Server-side `normalizeCourseKnowledge()` validates LLM output and falls back deterministically to `{module}.general` or `clinical.general`.
-- Stage 2 does not own KC identity. It receives `knowledge` as input and `attachChunkRange()` attaches `kc_id/module_id` to generated concept cards.
-- Diagnostic quiz questions copy KC metadata from lesson chunks, then `GenerateDiagnosticQuizUseCase` overwrites AI output from the trusted chunk map.
-- UKT receives `kc_id`, not free-text `topic`.
+- **Stage 1 Planner**: Phải phân loại từng bài học (lesson) vào `Lesson.knowledge`.
+- Planner chỉ được chọn `kc_id` từ registry cố định, không được tự tạo ID tự do.
+- Hàm `normalizeCourseKnowledge()` ở server-side sẽ xác thực đầu ra của LLM và tự động chuyển về `{module}.general` hoặc `clinical.general` nếu cần.
+- **Stage 2**: Không sở hữu định danh KC. Nó nhận `knowledge` đầu vào và hàm `attachChunkRange()` sẽ gắn `kc_id/module_id` vào các concept cards được tạo ra.
+- **Câu hỏi chẩn đoán**: Sao chép metadata KC từ các đoạn bài học, sau đó `GenerateDiagnosticQuizUseCase` sẽ ghi đè metadata từ bản đồ chunk đáng tin cậy.
+- **UKT**: Nhận `kc_id` trực tiếp, không dùng `topic` tự do.
 
-Spider chart semantics:
+### Ý nghĩa của Spider Chart:
 
-- Axis = `module_id` from the fixed module list.
-- `aggregateModuleMastery()` luôn trả đúng 8 axis theo thứ tự `MEDICAL_MODULES`.
-- Axis score aggregate UKT `p_correct` của các KC trong module đó, chỉ fallback sang `mu` khi không có `p_correct`.
-- Axis độ không chắc aggregate UKT `sigma`; UI vẽ thành band mềm trên spider chart và hiện phần trăm độ chắc (`1 - sigma`) trong list bên cạnh.
-- Module unknown / chưa có dữ liệu hiển thị dạng no-data, không coi là đã mastered.
-- Diagnostic và SRS đều ghi signal vào cùng KC namespace. Chapter quiz attempt nên dùng `/api/ukt/interactions` với cùng metadata `kc_id` khi UI chapter quiz được nối vào submit flow.
-- Main dashboard đọc persisted UKT state qua `/api/ukt/mastery`, nên chart là bề mặt cá nhân hóa user, không chỉ là widget sau diagnostic.
+- Trục (Axis) = `module_id` từ danh sách module cố định.
+- `aggregateModuleMastery()` luôn trả về đúng 8 trục theo thứ tự trong `MEDICAL_MODULES`.
+- Điểm số trên mỗi trục tổng hợp từ `p_correct` của các KC thuộc module đó, fallback sang `mu` nếu thiếu `p_correct`.
+- Độ không chắc chắn (Uncertainty) tổng hợp từ `sigma` của UKT; UI vẽ thành dải mềm trên spider chart và hiển thị phần trăm độ chắc chắn (`1 - sigma`) trong danh sách bên cạnh.
+- Module chưa có dữ liệu sẽ hiển thị ở trạng thái "no-data", không coi là đã thông thạo 0%.
+- Cả Diagnostic và SRS đều gửi tín hiệu vào cùng một namespace KC.
+- Dashboard chính đọc trạng thái UKT bền vững qua `/api/ukt/mastery`, biến chart thành bề mặt cá nhân hóa lâu dài cho người dùng.
 
 ---
 
-## Course Generation Flow
+## Luồng tạo khóa học (Course Generation Flow)
 
-### High-level pipeline
+### Quy trình tổng quát (High-level pipeline)
 
 ```
-User selects PDF
+Người dùng chọn PDF
     |
-    | client uploadBytes -> Firebase Storage course-pdfs/{uid}/{uuid}.pdf
+    | Client upload thẳng lên Firebase Storage: course-pdfs/{uid}/{uuid}.pdf
     v
 POST /api/parse-pdf
     |
     | ParseDocumentUseCase -> MineruParserAdapter
-    | - PDF <= 200 pages: one MinerU task
-    | - PDF > 200 pages: split into 200-page chunks with 3-page overlap
-    | - merge chunk contentList, de-dupe overlap, add sourceChunkIndex
+    | - PDF <= 200 trang: xử lý trong 1 task MinerU
+    | - PDF > 200 trang: chia nhỏ thành các đoạn 200 trang (overlap 3 trang)
+    | - Gộp contentList, khử trùng lặp đoạn overlap, gắn sourceChunkIndex
     |
-    | returns markdown + contentList + taskId
-    | client polls GET /api/parse-pdf/progress?taskId=...
+    | Trả về markdown + contentList + taskId
+    | Client poll GET /api/parse-pdf/progress?taskId=...
     |
-    | client uploadBytes -> Firebase Storage course-layouts/{uid}/{uuid}.json
-    | POST /api/extract-facts runs for Flash Facts UI
+    | Client upload layout JSON lên Firebase Storage: course-layouts/{uid}/{uuid}.json
+    | POST /api/extract-facts chạy song song cho Flash Facts UI
     v
 POST /api/generate-course
     |
-    | Stage 1 Planner through GenerateCourseUseCase
-    | ChainAiAdapter prefers configured providers from di/ai.di.ts
-    | lessons are normalized with deterministic Lesson.knowledge KC metadata
-    | cache: course_cache/{hash}
+    | Stage 1 Planner qua GenerateCourseUseCase
+    | ChainAiAdapter ưu tiên các provider được cấu hình trong di/ai.di.ts
+    | Các bài học được chuẩn hóa với metadata KC cố định (medical-v1)
+    | Cache: course_cache/{hash}
     |
-    | if cached outline is legacy string[]:
-    |   client retries with force:true to regenerate OutlinePoint[]
+    | Nếu phát hiện outline cũ (dạng string[]):
+    |   Client gọi lại với force:true để tạo mới OutlinePoint[]
     v
 POST /api/generate-content
     |
-    | Stage 2 Generator per chapter
-    | input = chapter outline + raw_context extracted from contentList
-    | input also carries Lesson.knowledge; concept cards get kc_id/module_id attached post-generation
-    | emits one canonical source-backed answer + followUps; detail is legacy only
-    | large chapter input is split/merged by stage2-chunking.ts
-    | cache: course_cache/{hash}/chapters/{i}
+    | Stage 2 Generator chạy theo từng chương (chapter)
+    | Đầu vào = outline chương + raw_context trích xuất từ contentList
+    | Truyền kèm Lesson.knowledge; Concept cards được gắn kc_id/module_id sau khi tạo
+    | Chỉ sinh 1 câu trả lời canonical dựa trên nguồn + followUps; detail là legacy
+    | Các chương quá lớn được chia nhỏ/gộp lại qua stage2-chunking.ts
+    | Cache: course_cache/{hash}/chapters/{i}
     |
-    | citation markers are validated against contentList chunk IDs
+    | Xác thực trích dẫn (citation markers) đối chiếu với ID chunk trong contentList
     v
-Save partial/full course to Firestore courses/{id}
+Lưu khóa học (từng phần hoặc toàn bộ) vào Firestore: courses/{id}
     |
-    | after full course content is available:
-    | build one diagnostic chunk per lesson id ("ci-li") from outline + canonical answer + trusted kc_id/module_id metadata
-    | fire-and-forget POST /api/diagnostic-quiz with { chunks }
-    | localStorage diagnosticQuestions_{id}
+    | Sau khi có đầy đủ nội dung khóa học:
+    | Xây dựng chunk chẩn đoán cho mỗi lesson id ("ci-li") từ outline + canonical answer
+    | Fire-and-forget POST /api/diagnostic-quiz với { chunks }
+    | Lưu localStorage: diagnosticQuestions_{id}
     v
-status = done
+Trạng thái = done
 ```
 
 ### Canonical answer token impact
@@ -661,40 +662,39 @@ Flow:
 
 ---
 
-## Quan sát hệ thống
+## Quan sát & Giám sát hệ thống (Observability)
 
-Web app:
+### Web App:
+- `/api/metrics`: Cung cấp metrics định dạng Prometheus.
+- `prometheus.adapter.ts`: Ghi lại latency, mức sử dụng token và các chỉ số sức khỏe.
+- `pino-logger.adapter.ts`: Cung cấp logs có cấu trúc, gửi sang Loki qua OTel.
+- `instrumentation.ts`: Tự động gửi traces sang OpenTelemetry Collector.
+- `webhook-alert.adapter.ts`: Gửi cảnh báo Discord cho các sự kiện quan trọng.
 
-- `/api/metrics` exposes Prometheus metrics.
-- `prometheus.adapter.ts` records latency, usage and health metrics.
-- `pino-logger.adapter.ts` provides structured logs.
-- `firestore-usage.adapter.ts` persists usage data.
-- `webhook-alert.adapter.ts` sends Discord alerts for notable events.
-
-Monitoring stack:
-
-- Prometheus scrapes metrics.
-- Grafana dashboards live under `monitoring/grafana/provisioning`.
-- Loki stores logs.
-- Jaeger receives traces through OpenTelemetry Collector.
-- Alertmanager sends alerts.
+### Monitoring Stack:
+- **Prometheus**: Thu thập (scrape) metrics từ Web và OTel Collector.
+- **Grafana**: Hiển thị dashboard (cấu hình tại `monitoring/grafana/provisioning`).
+- **Loki**: Lưu trữ logs tập trung.
+- **Jaeger**: Tiếp nhận và hiển thị traces thông qua OTel Collector.
+- **Alertmanager**: Quản lý và gửi cảnh báo.
+- **OTel Collector**: Trạm trung chuyển trace/metrics/logs giữa ứng dụng và các backend giám sát.
 
 ---
 
-## CI/CD
+## Quy trình CI/CD
 
-GitHub Actions workflow:
+Workflow trên GitHub Actions:
 
 ```
 .github/workflows/cicd.yml
 ```
 
-Current workflow runs on pushes to `main` and ignores `monitoring/**`. It uses path filters:
+Quy trình hiện tại sẽ chạy khi có lệnh push vào nhánh `main` (bỏ qua các thay đổi trong `monitoring/**`). Sử dụng bộ lọc đường dẫn:
 
-- `web/**` changes run Node 20 install, typecheck, lint, smoke tests, unit tests, then Railway deploy for the web service.
-- `UKT/**` changes run Python 3.11 setup, Ruff, pytest, then Railway deploy for the UKT service.
+- Thay đổi trong `web/**`: Chạy cài đặt Node 20, kiểm tra kiểu (typecheck), lint, smoke tests, unit tests, sau đó deploy lên Railway cho service `web`.
+- Thay đổi trong `UKT/**`: Chạy thiết lập Python 3.11, Ruff, pytest, sau đó deploy lên Railway cho service `ukt-service`.
 
-Local commands from `web/`:
+Các lệnh chạy local từ thư mục `web/`:
 
 ```bash
 npm run lint
@@ -702,17 +702,17 @@ npm run test
 npm run build
 ```
 
-Docker Compose from repo root:
+Docker Compose từ gốc repo:
 
 ```bash
 docker-compose up --build
 ```
 
-Root Docker Compose default `REDIS_URL=redis://redis:6379` cho cả web và UKT nếu `.env` không override. Redis bật AOF và dùng named volume `redis-data`, nên UKT mastery state local sống qua các lần restart container bình thường thay vì rơi về in-memory state.
+`docker-compose.yml` ở root mặc định cấu hình `REDIS_URL=redis://redis:6379` cho cả Web và UKT nếu `.env` không ghi đè. Redis đã bật AOF và sử dụng volume định danh `redis-data`, giúp trạng thái thông thạo (mastery) của UKT local bền vững qua các lần khởi động lại container.
 
-Ports in local Docker:
+Các cổng (ports) trong Docker local:
 
-| Service | Port |
+| Dịch vụ | Cổng |
 | :--- | :--- |
 | Web | `http://localhost:3002` |
 | UKT | `http://localhost:8000` |
