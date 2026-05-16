@@ -535,6 +535,47 @@ function SRSPanel({ srsStats, srsLoading, selectedCourseIds, courseRows }: SRSPa
   )
 }
 
+// ── Global top bar (44px, full width) ────────────────────────────────────────
+
+function TopBar({ activeTab, displayName, initials, onLogout }: {
+  activeTab: NavTab
+  displayName: string
+  initials: string
+  onLogout?: () => void
+}) {
+  const SECTION_LABEL: Record<NavTab, string> = {
+    dashboard: 'Tổng quan',
+    courses: 'Khoá học',
+    srs: 'Ôn tập SRS',
+  }
+  return (
+    <div style={{
+      height: 44, flexShrink: 0,
+      background: '#ffffff', borderBottom: '1px solid #eaecf2',
+      display: 'flex', alignItems: 'center', padding: '0 18px', gap: 12, zIndex: 50,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ width: 26, height: 26, background: T.accent, borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <SynapsyLogo size={14} color="#ffffff" />
+        </div>
+        <span style={{ fontSize: 14, fontWeight: 800, color: '#111827', letterSpacing: '-0.01em', fontFamily: T.fontSans }}>Synapsy</span>
+      </div>
+      <div style={{ width: 1, height: 16, background: '#e5e7eb', flexShrink: 0 }} />
+      <span style={{ fontSize: 13, color: '#9ca3af', fontFamily: T.fontSans }}>{SECTION_LABEL[activeTab]}</span>
+      <div style={{ flex: 1 }} />
+      {displayName && <span style={{ fontSize: 13, color: '#6b7280', fontFamily: T.fontSans }}>{displayName}</span>}
+      <button
+        onClick={onLogout}
+        style={{
+          width: 30, height: 30, borderRadius: '50%', background: T.accent,
+          border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          fontSize: 11, fontWeight: 700, color: '#fff', cursor: 'pointer', flexShrink: 0, fontFamily: T.fontSans,
+        }}
+      >{initials}</button>
+    </div>
+  )
+}
+
 // ── Main home ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
@@ -549,6 +590,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
   const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([])
+  const [drawerCollapsed, setDrawerCollapsed] = useState(false)
 
   const prevStatus = useRef(status)
   useEffect(() => {
@@ -697,33 +739,56 @@ export default function Home() {
     )
   }
 
-  // ── 3-column NavRail shell ─────────────────────────────────────────────────
+  // ── Shell: TopBar + body (NavRail | DocDrawer | main) ─────────────────────
 
   return (
-    <div style={{ height: '100vh', display: 'flex', overflow: 'hidden', background: T.bg, fontFamily: T.fontSans, color: T.ink }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', fontFamily: T.fontSans, color: T.ink }}>
       <input ref={inputRef} type="file" accept="application/pdf" style={{ display: 'none' }} onChange={e => handleFile(e.target.files?.[0] ?? null)} />
 
-      {/* Column 1 — NavRail */}
-      <NavRail
+      {/* Global top bar */}
+      <TopBar
         activeTab={activeTab}
-        onTabChange={setActiveTab}
-        userInitials={userInitials}
+        displayName={user.displayName || user.email || ''}
+        initials={userInitials ?? 'U'}
         onLogout={logout}
       />
 
-      {/* Column 2 — DocDrawer */}
-      <DocDrawer
-        activeTab={activeTab}
-        courses={courseRows}
-        coursesLoading={coursesLoading}
-        selectedCourseId={selectedCourseId}
-        selectedCourseIds={selectedCourseIds}
-        onCourseAction={handleCourseAction}
-        onUploadClick={() => inputRef.current?.click()}
-      />
+      {/* Body row */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        {/* Panel 1 — NavRail */}
+        <NavRail activeTab={activeTab} onTabChange={setActiveTab} />
 
-      {/* Column 3 — Main content (tab-switched) */}
-      <div key={activeTab} className="sy-animate-tab-enter" style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+        {/* Panel 2 — DocDrawer */}
+        <DocDrawer
+          activeTab={activeTab}
+          courses={courseRows}
+          coursesLoading={coursesLoading}
+          collapsed={drawerCollapsed}
+          selectedCourseId={selectedCourseId}
+          selectedCourseIds={selectedCourseIds}
+          onCourseAction={handleCourseAction}
+          onUploadClick={() => inputRef.current?.click()}
+        />
+
+        {/* Drawer collapse toggle — floats on the drawer's right edge */}
+        <div style={{ position: 'relative', width: 0, flexShrink: 0, zIndex: 30 }}>
+          <button
+            onClick={() => setDrawerCollapsed(c => !c)}
+            style={{
+              position: 'absolute', left: -11, top: '50%', transform: 'translateY(-50%)',
+              width: 22, height: 22, borderRadius: '50%', background: '#fff',
+              border: '1px solid #e5e7eb', boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+              <path d={drawerCollapsed ? 'M2 1l4 3-4 3' : 'M6 1L2 4l4 3'} stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        {/* Panel 3 — Main content (tab-switched) */}
+        <div key={activeTab} className="sy-animate-tab-enter" style={{ flex: 1, display: 'flex', overflow: 'hidden', minWidth: 0 }}>
         {activeTab === 'dashboard' && (
           <DashboardPanel
             srsStats={srsStats}
@@ -760,6 +825,7 @@ export default function Home() {
             courseRows={courseRows}
           />
         )}
+        </div>
       </div>
     </div>
   )
