@@ -9,6 +9,14 @@ import { contentListToMarkdown } from './content-list-converter'
 import { getBucket } from '@/lib/firebase-admin'
 import { PDFDocument } from 'pdf-lib'
 import { buildPdfPageRanges, mergeMineruChunkResults, splitPdfBufferByRanges, type MineruChunkResult } from './mineru-chunking'
+import {
+  attachImageSourcesToContentList,
+  buildLayoutImageStoragePath,
+  layoutImageUrl,
+  mimeTypeForImagePath,
+  normalizeMineruAssetPath,
+  type UploadedMineruImage,
+} from './mineru-images'
 
 type MarkdownCandidate = {
   path: string
@@ -180,6 +188,7 @@ export class MineruParserAdapter implements IDocumentParser {
   private readonly modelVersion: MineruModelVersion
   private progressStore?: IProgressStore
   private currentTaskId?: string
+  private currentUserId?: string
 
   constructor(config: MineruConfig, progressStore?: IProgressStore) {
     this.baseUrl = config.baseUrl
@@ -348,6 +357,7 @@ export class MineruParserAdapter implements IDocumentParser {
     let pdfLocalPath: string | undefined;
     const markdownCandidates: MarkdownCandidate[] = [];
     const zipFileNames: string[] = [];
+    const imagesByPath = new Map<string, UploadedMineruImage>();
 
     for (const [zipPath, entry] of Object.entries(zip.files)) {
       if (entry.dir) continue;
@@ -361,6 +371,16 @@ export class MineruParserAdapter implements IDocumentParser {
         : await entry.async('nodebuffer');
 
       await fs.writeFile(dest, data, typeof data === 'string' ? 'utf-8' : undefined);
+
+      const uploadedImage = await this.uploadLayoutImage(normalizedZipPath, data, safeName);
+      if (uploadedImage) {
+        const imagePath = normalizeMineruAssetPath(normalizedZipPath)
+        imagesByPath.set(imagePath, uploadedImage);
+        const imageDirIndex = imagePath.indexOf('images/')
+        if (imageDirIndex > 0) {
+          imagesByPath.set(imagePath.slice(imageDirIndex), uploadedImage)
+        }
+      }
 
       if (zipPath.endsWith('_origin.pdf')) {
         pdfLocalPath = dest;
@@ -380,13 +400,19 @@ export class MineruParserAdapter implements IDocumentParser {
           if (parsedContentList?.length) {
             contentList = parsedContentList;
             markdown = contentListToMarkdown(contentList);
-            if (markdown.trim()) {
-              await fs.writeFile(path.join(outDir, 'content_list_parsed.md'), markdown, 'utf-8');
-            }
           }
         } catch {
           logger.warn('[parse-pdf] Failed to parse content_list JSON', { zipPath })
         }
+      }
+    }
+
+    if (contentList.length > 0) {
+      contentList = attachImageSourcesToContentList(contentList, imagesByPath);
+      const contentListMarkdown = contentListToMarkdown(contentList);
+      if (contentListMarkdown.trim()) {
+        markdown = contentListMarkdown;
+        await fs.writeFile(path.join(outDir, 'content_list_parsed.md'), markdown, 'utf-8');
       }
     }
 
@@ -407,6 +433,31 @@ export class MineruParserAdapter implements IDocumentParser {
     return { markdown, contentList, pdfLocalPath };
   }
 
+  private async uploadLayoutImage(zipPath: string, data: string | Buffer, safeName: string): Promise<UploadedMineruImage | null> {
+    if (!this.currentUserId || !this.currentTaskId || !Buffer.isBuffer(data)) return null
+
+    const normalizedPath = normalizeMineruAssetPath(zipPath)
+    const mimeType = mimeTypeForImagePath(normalizedPath)
+    if (!normalizedPath || !mimeType.startsWith('image/')) return null
+
+    try {
+      const storagePath = buildLayoutImageStoragePath(this.currentUserId, this.currentTaskId, safeName, normalizedPath)
+      await getBucket().file(storagePath).save(data, {
+        metadata: {
+          cacheControl: 'private, max-age=31536000',
+          contentType: mimeType,
+        },
+      })
+      return {
+        storagePath,
+        url: layoutImageUrl(storagePath),
+        mimeType,
+      }
+    } catch {
+      return null
+    }
+  }
+
   private async deleteTempFile(filePath: string): Promise<void> {
     try {
       await getBucket().file(filePath).delete()
@@ -415,18 +466,24 @@ export class MineruParserAdapter implements IDocumentParser {
     }
   }
 
-  async extractMarkdown(fileUrl: string, safeName: string, taskId?: string): Promise<ParseResult> {
+  async extractMarkdown(fileUrl: string, safeName: string, taskId?: string, userId?: string): Promise<ParseResult> {
     this.currentTaskId = taskId
+    this.currentUserId = userId
     
-    const pdfBuffer = await this.downloadPdfBuffer(fileUrl)
-    const pdfDocument = await PDFDocument.load(pdfBuffer)
-    const pageCount = pdfDocument.getPageCount()
+    try {
+      const pdfBuffer = await this.downloadPdfBuffer(fileUrl)
+      const pdfDocument = await PDFDocument.load(pdfBuffer)
+      const pageCount = pdfDocument.getPageCount()
 
-    if (pageCount <= 200) {
-      await this.reportProgress(1, 1, pageCount)
-      return await this.parseSingleDocument(fileUrl, safeName)
+      if (pageCount <= 200) {
+        await this.reportProgress(1, 1, pageCount)
+        return await this.parseSingleDocument(fileUrl, safeName)
+      }
+
+      return await this.parseLargeDocument(safeName, pdfBuffer, pageCount)
+    } finally {
+      this.currentTaskId = undefined
+      this.currentUserId = undefined
     }
-
-    return await this.parseLargeDocument(safeName, pdfBuffer, pageCount)
   }
 }

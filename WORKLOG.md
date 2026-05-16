@@ -10,6 +10,8 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Study-first short-answer self-check flow + direct-to-study entry | Lê Minh Hoàng | #126 |
+| Course ready-state action rail layout after pipeline | Lê Minh Hoàng | #121 |
 | MinerU VLM parser output compatibility | Nguyen Binh Thanh | #122 |
 | User-scoped UI state refresh + review UI consistency | Nguyen Binh Thanh | #120 |
 | Parallelize fresh course generation (Promise.all) | Nguyen Binh Thanh | #118 |
@@ -36,6 +38,27 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+### [ADR-50] Serve ảnh thật trong panel tài liệu nguồn - 16/05/2026
+
+**Người làm:** Codex | **Ref:** branch `fix/real-source-images`
+
+**Bối cảnh:** `PdfPanel` đã đọc được các item `type: "image"` từ MinerU `contentList`, nhưng chỉ render placeholder `[Hình ảnh]`. Sau PR #122, parser có thêm luồng MinerU VLM và fallback markdown-only; cần giữ hai trường hợp này tách bạch để chỉ render ảnh thật khi structured `contentList` có asset ảnh đã được lưu.
+
+**Quyết định:**
+- Khi parser giải nén zip MinerU, upload các file ảnh trong zip vào Firebase Storage theo namespace `course-layout-images/{userId}/{taskId}/...`.
+- Giữ `img_path` gốc của MinerU, nhưng gắn thêm `img_storage_path`, `img_url`, và `image_mime_type` vào item ảnh trong `contentList` trước khi frontend lưu layout JSON.
+- Thêm `/api/layout-image` để proxy ảnh có xác thực, chỉ cho phép đọc path dưới prefix của chính user.
+- `PdfPanel` render ảnh thật nếu layout có `img_url`; course cũ, markdown-only fallback, hoặc upload ảnh fail vẫn fallback về placeholder.
+
+**Hệ quả:**
+- (+) Panel tài liệu nguồn hiển thị được hình thật từ PDF thay vì chỉ có placeholder.
+- (+) Tương thích với cả output MinerU VLM đã normalize về flat `contentList` và output pipeline/normal có `img_path`.
+- (+) API ảnh không expose public bucket URL; quyền đọc gắn với session user.
+- (-) Course đã tạo trước thay đổi này không tự có ảnh thật vì layout JSON cũ chưa có `img_url`.
+- (-) Fallback markdown-only từ MinerU không có structured image item nên không thể render ảnh thật.
+
+---
 
 ### [ADR-49] MinerU VLM output contract compatibility - 16/05/2026
 
@@ -100,6 +123,28 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 - (+) DeepSeek không có fixed rate limit — dynamic 429 được handle tự động bằng backoff.
 - (-) Tổng token tăng do system prompt lặp lại N lần (khoảng +500 tokens/chunk). Với 25 chunk: +12,500 prompt tokens so với call đơn.
 - (-) Nếu DeepSeek chịu tải cao, 4 concurrent requests vẫn có thể bị 429 — retry giải quyết được nhưng có thể tăng latency trong peak hours.
+
+---
+
+### [ADR-47] Study-first short-answer self-check flow - 16/05/2026
+
+**Người làm:** Lê Minh Hoàng | **Ref:** PR #126 (`feat/input-short-answer-and-check`), commits `eb4d20e`, `9341569`
+
+**Bối cảnh:** `StudyMode` trước đây chỉ cho reveal đáp án và đánh giá SRS, chưa có luồng active recall nhập câu trả lời ngắn. Flow vào khóa học sau khi generate cũng còn đi vào tab Sửa trước, còn card hành động "Khóa học đã sẵn sàng" nằm xa khu Pipeline nên không gần ngữ cảnh.
+
+**Quyết định:**
+- Thêm `web/app/api/answer-evaluation/route.ts` để chấm câu trả lời qua provider AI đang cấu hình (`AI_PROVIDER`) theo 3 nhãn `correct`/`partial`/`incorrect`, có timeout, cache server-side, và fallback về heuristic local trong `web/lib/answer-similarity.ts` khi provider fail.
+- `StudyMode` thêm textbox active recall, cache client-side cho cùng câu trả lời, phân biệt 2 hành vi: `Enter` = nút chính (`Xem đáp án` hoặc `Nộp & xem đáp án`), `Space` = chỉ xem nhanh đáp án, `Esc` = blur khỏi textbox.
+- Chỉ chạy luồng chấm điểm khi canonical answer đủ dài (`> 30` từ hoặc `> 100` ký tự); card có đáp án ngắn sẽ reveal thẳng, không chấm.
+- UI reveal hiển thị `Câu trả lời của bạn` + `Câu trả lời chính xác`; trạng thái `Không chính xác` / `Không chính xác hoàn toàn` dùng tông màu nhẹ, bỏ hiển thị điểm số để giảm cảm giác bị "chấm phạt".
+- Luồng `Vào học luôn` chuyển sang `/course/[id]?tab=study`; `CourseFlow`, `CourseTree`, `web/app/course/[id]/page.tsx` nhận `preferredDetailTab='study'` để mở ngay tab Học, auto chọn card đầu tiên, và click/arrow navigation trong tree cũng đi thẳng vào study.
+- Card hành động "Khóa học đã sẵn sàng" trên `web/app/page.tsx` chuyển sang rail bên phải, đặt ngay dưới Pipeline để hợp ngữ cảnh hơn.
+
+**Hệ quả:**
+- (+) `StudyMode` có active recall flow rõ ràng: người học có thể gõ nháp, xem nhanh, hoặc nộp để so đáp án theo ngữ nghĩa.
+- (+) Các card định nghĩa / notation ngắn không bị over-grade; các card dài vẫn có AI evaluation khi cần.
+- (+) Luồng sau-generate và vào course từ library bám sát mục tiêu "học ngay", không còn rớt vào tab Sửa trừ khi user chủ động chuyển.
+- (-) Tăng thêm một server route phụ thuộc env/provider AI; khi provider chưa set đúng hoặc timeout, UI vẫn phải fallback sang local heuristic.
 
 ---
 
