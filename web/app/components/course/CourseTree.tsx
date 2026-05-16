@@ -434,24 +434,24 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
                               onClick={() => { setActiveCard(card); setDetailTab('study') }}
                               style={{
                                 width: '100%', textAlign: 'left',
-                                padding: '8px 20px 8px 46px',
+                                padding: '7px 14px 7px 46px',
                                 display: 'flex', alignItems: 'flex-start', gap: 8,
                                 cursor: 'pointer',
-                                background: isActive ? T.ink : 'transparent',
+                                background: isActive ? T.accent + '12' : 'transparent',
                                 border: 'none',
                                 borderBottom: `1px solid ${T.ink10}`,
-                                borderLeft: isActive ? `3px solid ${T.ink}` : '3px solid transparent',
+                                borderLeft: isActive ? `2px solid ${T.accent}` : '2px solid transparent',
                                 transition: 'background 0.1s',
                               }}
                               onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = T.bgSunken }}
                               onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
                             >
-                              <span className="sy-mono" style={{ fontSize: 9, color: isActive ? 'rgba(255,255,255,0.5)' : T.ink40, marginTop: 2, flexShrink: 0, minWidth: 14 }}>
+                              <span className="sy-mono" style={{ fontSize: 9, color: isActive ? T.accent : T.ink40, marginTop: 2, flexShrink: 0, minWidth: 14 }}>
                                 {cardIdx + 1}
                               </span>
                               <p className="sy-serif" style={{
-                                fontSize: 12, margin: 0, lineHeight: 1.4,
-                                color: isActive ? '#fff' : T.ink80,
+                                fontSize: 12, margin: 0, lineHeight: 1.45,
+                                color: isActive ? T.accent : T.ink80,
                                 fontWeight: isActive ? 600 : 400,
                                 flex: 1, minWidth: 0,
                                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
