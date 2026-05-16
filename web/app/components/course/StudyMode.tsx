@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Fragment, useRef } from 'react'
 import { T } from '@/app/components/synapsy'
 import { FlatCard, RATING_META, submitRating } from './types'
 import { parseCitations } from '@/lib/citations'
+import { trackEvent } from '@/lib/metrics-client'
 
 interface Props {
   cards: FlatCard[]
@@ -39,6 +40,7 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
       setToast(null)
       setRevealed(false)
       if (nextIdx >= total) {
+        trackEvent('course_complete', { totalCards: total });
         onExit()
         return
       }
