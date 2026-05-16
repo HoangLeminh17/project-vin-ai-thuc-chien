@@ -25,7 +25,6 @@ function getAnswerComplexity(answer: string) {
   return { cleaned, shouldEvaluate }
 }
 
-export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props) {
 export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated }: Props) {
   const [idx, setIdx] = useState(() => {
     if (!initialCardId) return 0
