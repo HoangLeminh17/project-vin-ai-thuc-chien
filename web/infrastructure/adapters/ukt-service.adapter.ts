@@ -34,6 +34,14 @@ export class UKTServiceAdapter implements IUKTService {
       const duration = Date.now() - start;
       if (e instanceof InfrastructureError) throw e;
 
+      // Retry once on network-level failures (ECONNRESET, DNS, etc.)
+      // Do not retry on AbortError (our own timeout) or HTTP errors — those just hammer a broken service
+      const isNetworkError = e instanceof TypeError;
+      if (isNetworkError && attempt === 1) {
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+        return this.request<T>(path, options, 2);
+      }
+
       const isTimeout = (e as Error).name === 'AbortError';
       const reason = isTimeout ? `timeout after ${TIMEOUT_MS}ms` : (e as Error).message;
       throw new InfrastructureError(
