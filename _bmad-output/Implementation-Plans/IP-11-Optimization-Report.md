@@ -55,6 +55,8 @@ Stage 2 gọi trực tiếp `ai.ts` (bypass hoàn toàn DI container), còn Stag
 
 [ai.ts:L45](file:///d:/AI%20In%20Action/A20-App-046/web/lib/ai.ts#L45) chứa hàm `generateCourse_UNUSED` — dead code ~130 dòng không ai gọi.
 
+**✅ Đã giải quyết — trong commit `a0d5487` (cùng với 1.1):** `lib/ai.ts` được viết lại từ đầu, chỉ giữ `extractFacts`. Toàn bộ dead code gồm `generateCourse_UNUSED` (~130 dòng), các hàm `getOpenAiConfig / getGeminiConfig / getDeepSeekConfig`, và toàn bộ `generateChapterContent*` đã bị xóa. File giảm từ **495 → 87 dòng**.
+
 ### 1.3 Duplicated prompt versions (Low)
 
 [prompts.ts](file:///d:/AI%20In%20Action/A20-App-046/web/lib/prompts.ts) chứa cả `PLANNER_PROMPT` và `PLANNER_PROMPT_LIGHTWEIGHT`, `DIAGNOSTIC_QUIZ_PROMPT` và `DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT`. Không rõ logic chuyển đổi giữa full/lightweight — nếu không dùng lightweight thì nên xóa.
