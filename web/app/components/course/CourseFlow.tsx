@@ -34,8 +34,7 @@ function LoadingOverlay({ label }: { label: string }) {
   )
 }
 
-export function CourseFlow({ course, progressMap, onExit, layoutStorageUrl, preferredDetailTab }: Props) {
-export function CourseFlow({ course, progressMap, onProgressChange, onExit, layoutStorageUrl }: Props) {
+export function CourseFlow({ course, progressMap, onProgressChange, onExit, layoutStorageUrl, preferredDetailTab }: Props) {
   const [view, setView] = useState<View>('init')
   const [diagnosticQuestions, setDiagnosticQuestions] = useState<DiagnosticQuestion[]>([])
   const [diagnosticState, setDiagnosticState] = useState<Record<string, number>>({})
