@@ -47,7 +47,14 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
-        run: cd web && npm ci
+        run: cd web && npm ci --include=optional
+
+      - name: Repair Linux optional native bindings
+        if: runner.os == 'Linux'
+        run: |
+          cd web
+          npm install --no-save --include=optional --no-audit --no-fund @rolldown/binding-linux-x64-gnu@1.0.0-rc.15
+          node -e "require.resolve('@rolldown/binding-linux-x64-gnu')"
 
       - name: Run Type Check
         run: cd web && npx tsc --noEmit
@@ -109,13 +116,16 @@ jobs:
         with:
           node-version: '20'
       - name: Configure npm for self-hosted runner
+        shell: bash
         run: |
-          mkdir -p ~/.npm-global
-          npm config set prefix '~/.npm-global'
+          NPM_GLOBAL_DIR="${RUNNER_TEMP:-/tmp}/npm-global"
+          mkdir -p "$NPM_GLOBAL_DIR"
+          npm config set prefix "$NPM_GLOBAL_DIR"
+          echo "NPM_CONFIG_PREFIX=$NPM_GLOBAL_DIR" >> "$GITHUB_ENV"
       - name: Install Railway CLI
-        run: npm install @railway/cli
+        run: npm install --no-save --no-audit --no-fund @railway/cli
       - name: Deploy Web App to Railway
-        run: npx railway up --service web --environment production --detach
+        run: ./node_modules/.bin/railway up --service web --environment production --detach
 
   deploy-ukt:
     needs: [changes, ukt-build-test]
@@ -136,10 +146,13 @@ jobs:
         with:
           node-version: '20'
       - name: Configure npm for self-hosted runner
+        shell: bash
         run: |
-          mkdir -p ~/.npm-global
-          npm config set prefix '~/.npm-global'
+          NPM_GLOBAL_DIR="${RUNNER_TEMP:-/tmp}/npm-global"
+          mkdir -p "$NPM_GLOBAL_DIR"
+          npm config set prefix "$NPM_GLOBAL_DIR"
+          echo "NPM_CONFIG_PREFIX=$NPM_GLOBAL_DIR" >> "$GITHUB_ENV"
       - name: Install Railway CLI
-        run: npm install @railway/cli
+        run: npm install --no-save --no-audit --no-fund @railway/cli
       - name: Deploy UKT Service to Railway
-        run: npx railway up --service ukt-service --environment production --detach
+        run: ./node_modules/.bin/railway up --service ukt-service --environment production --detach

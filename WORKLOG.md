@@ -10,6 +10,14 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Parallelize fresh course generation (Promise.all) | Nguyen Binh Thanh | #118 |
+| Parallel diagnostic quiz generation (3.5 min → ~10s) | Nguyen Binh Thanh | #117 |
+| Fix Vitest CJS config startup path on Linux CI | Nguyen Binh Thanh | #116 |
+| Multi-card lessons + chapter one-tap card tree | Nguyen Binh Thanh | #115 |
+| Việt hóa kc_name registry + spider chart labels | Nguyen Binh Thanh | #114 |
+| Enforce Vietnamese output trong diagnostic/quiz/Stage 2 prompts | Nguyen Binh Thanh | #113 |
+| Fix Vitest Rolldown optional binding trên CI Linux | Nguyen Binh Thanh | #112 |
+| Fix Railway deploy npm prefix trên self-hosted runner | Nguyen Binh Thanh | #111 |
 | Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | #110 |
 | Dashboard cá nhân hóa UKT + spider chart độ chắc chắn | Nguyen Binh Thanh | #109 |
 | Spider chart UKT theo module y khoa | Nguyen Binh Thanh | #108 |
@@ -26,6 +34,140 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
 | Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
 | Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+
+---
+
+### [ADR-47] Parallel per-chunk generation để giảm latency diagnostic quiz - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #117 (`perf/parallel-diagnostic-quiz`)
+
+**Bối cảnh:** Endpoint `/api/diagnostic-quiz` mất ~3.5 phút để hoàn thành. Jaeger trace cho thấy bottleneck nằm ở một lời gọi LLM duy nhất trong `GenerateDiagnosticQuizUseCase.execute()`: toàn bộ chunk của course (thường 20-30 lesson) được nối thành một prompt khổng lồ rồi gửi đi một lần. DeepSeek phải sinh 5,000–8,000 output token trong một response trước khi trả về bất cứ dữ liệu nào — Node.js bị block trong suốt thời gian đó.
+
+**Phân tích các phương án:**
+- **Parallel (Promise.all)**: Tách thành N lời gọi song song (1 chunk = 1 câu hỏi), concurrency limit 4. Latency giảm từ ~210s xuống ~10s. Tăng token do lặp lại system prompt N lần, nhưng DeepSeek không có fixed RPM/TPM — giới hạn là dynamic, retry bằng exponential backoff.
+- **Streaming (Vercel AI SDK)**: Giữ 1 lời gọi, stream kết quả về UI. Không giảm backend time, chỉ cải thiện perceived UX. Phức tạp hơn nhiều (SSE, partial JSON parsing, UI thay đổi).
+- **Batching**: Chia thành nhóm N chunk, xử lý tuần tự. Ít rủi ro rate limit nhưng không tối ưu latency.
+
+**Quyết định:**
+- Chọn **Parallel per-chunk** với semaphore concurrency=4 và `withRetry` (exponential backoff, max 3 retries) để xử lý 429 dynamic từ DeepSeek.
+- Mỗi lời gọi sinh đúng 1 câu hỏi cho 1 chunk; kết quả được merge lại thành `DiagnosticQuiz` đầy đủ.
+- Token usage được cộng dồn từ tất cả lời gọi song song và báo cáo về `IUsageRepository` như cũ.
+- Không thay đổi interface `IAiService` hay contract của use case — chỉ thay đổi implementation trong `OpenAiAdapter`.
+
+**Hệ quả:**
+- (+) Latency giảm từ ~3.5 phút xuống ~8–15 giây (phụ thuộc DeepSeek server load).
+- (+) DeepSeek không có fixed rate limit — dynamic 429 được handle tự động bằng backoff.
+- (-) Tổng token tăng do system prompt lặp lại N lần (khoảng +500 tokens/chunk). Với 25 chunk: +12,500 prompt tokens so với call đơn.
+- (-) Nếu DeepSeek chịu tải cao, 4 concurrent requests vẫn có thể bị 429 — retry giải quyết được nhưng có thể tăng latency trong peak hours.
+
+---
+
+### [ADR-46] Tránh Vitest CJS config startup path trên Linux CI - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #116 (`fix/vitest-config-esm`)
+
+**Bối cảnh:** Job "Run Build Safety Smoke Tests" gọi trực tiếp `NEXT_PHASE=phase-production-build npx vitest run tests/smoke tests/lib` trên Linux Node 20 và fail trước khi chạy test. Stack trace nằm ở `vitest/dist/config.cjs` khi `require()` ESM-only `std-env/dist/index.mjs`.
+
+**Quyết định:**
+- Bỏ runtime import `defineConfig` từ `vitest/config` trong `web/vitest.config.ts`.
+- Export plain config object tương đương để Vitest load config mà không đi qua helper CJS gây lỗi ESM.
+- Giữ nguyên alias `@` và test environment `node`.
+
+**Hệ quả:**
+- (+) Lệnh smoke/lib CI load được config mà không chạm lỗi `ERR_REQUIRE_ESM`.
+- (+) Không đổi test behavior.
+- (-) Mất wrapper `defineConfig`, nhưng config nhỏ và vẫn được `next build`/lint/test xác nhận.
+
+---
+
+### [ADR-45] Multi-card lessons và CourseTree mở chapter một chạm - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #115 (`feat/multi-card-lessons`)
+
+**Bối cảnh:** Thiết kế `CourseTree` đang ép 1 lesson = 1 concept card. Với các lesson dày nội dung, card bị nén quá nhiều fact và người học phải bấm 2 lần: mở chapter rồi mở lesson mới thấy card. Diagnostic vẫn nên bản đồ hóa theo lesson/KC, còn SRS cần đơn vị nhỏ hơn.
+
+**Quyết định:**
+- Stage 2 sinh `cards[]` cho mỗi lesson, thường 2-3 card atomic, tối đa 4 khi lesson có nhiều learning point riêng biệt.
+- Giữ `concept` là compatibility surface trỏ về card đầu tiên để course cũ và các surface phụ không gãy.
+- Cache Stage 2 concept-only không có `cards[]` được coi là stale và sẽ regenerate.
+- CourseTree bỏ accordion lesson: bấm chapter một lần sẽ hiện lesson label và toàn bộ concept cards bên dưới.
+- Diagnostic tiếp tục map theo lesson id `ci-li`; SRS card id mới dùng `ci-li-cardIndex`, có fallback progress cho card đầu tiên từ legacy `ci-li`.
+
+**Hệ quả:**
+- (+) Dense lesson không còn bị nén vào một card duy nhất.
+- (+) UI giống course outline hơn: chapter mở ra các lesson label và card item trực tiếp.
+- (+) Diagnostic, SRS và UKT vẫn tách đúng vai trò: diagnostic/practice theo lesson/KC, SRS theo card/KC.
+- (+) Course cũ concept-only vẫn render được, nhưng course/cache mới sẽ chuyển sang `cards[]`.
+
+---
+
+### [ADR-44] Việt hóa kc_name registry và spider chart labels - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #114 (`fix/knowledge-registry-vietnamese-labels`)
+
+**Bối cảnh:** Sau khi xây spider chart và diagnostic results, section "Theo chủ đề" hiển thị tên KC trực tiếp từ `kc_name` trong registry — nhưng các giá trị này đang là tiếng Anh ("General clinical reasoning", "General anatomy"). Spider chart có 3 label jargon nội bộ ("Bản đồ UKT", "Mức độ nắm vững theo module y khoa", "mastery + độ chắc") không thân thiện với người học. ADR-40 đã Việt hóa một phần UI nhưng bỏ qua tầng registry.
+
+**Quyết định:**
+- Dịch `MEDICAL_MODULES[].name` sang tiếng Việt: Anatomy → Giải phẫu, Physiology → Sinh lý, Pharmacology → Dược lý, Microbiology → Vi sinh, Pathology → Bệnh lý, Clinical Medicine → Lâm sàng, Biochemistry → Hóa sinh, Immunology → Miễn dịch.
+- Dịch toàn bộ 48 `MEDICAL_KCS[].kc_name` sang tiếng Việt (ví dụ: "General clinical reasoning" → "Lý luận lâm sàng đại cương").
+- Đổi 3 label spider chart: "Bản đồ UKT" → "Bản đồ năng lực", "Mức độ nắm vững theo module y khoa" → "Năng lực theo module y khoa", "mastery + độ chắc" → "Thành thạo · độ chắc chắn".
+- `kc_id` và `module_id` (English slugs) giữ nguyên — đây là stable identifier cho UKT, Firestore, và prompts.
+
+**Hệ quả:**
+- (+) "Theo chủ đề" trong DiagnosticResults hiển thị tên tiếng Việt thay vì English.
+- (+) Spider chart label thân thiện, không lộ jargon UKT với người học.
+- (+) `module_name` trong `KnowledgeComponentRef` (ghi vào Firestore) sẽ là tiếng Việt với các course mới. Course cũ giữ nguyên English `module_name` đã lưu — UKT aggregate theo `module_id` (slug) nên không ảnh hưởng tính toán.
+
+---
+
+### [ADR-43] Enforce Vietnamese output trong diagnostic/quiz/Stage 2 prompts - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #113 (`fix/prompts-vietnamese-quiz-output`)
+
+**Bối cảnh:** Diagnostic quiz và quiz trong Stage 2 đôi khi ra tiếng Anh, đôi khi tiếng Việt — không nhất quán. Concept cards Stage 2 luôn ra tiếng Việt vì phần đó có ví dụ schema tiếng Việt rõ ràng ("X hoạt động như thế nào?"). Nhưng phần quiz trong `STAGE2_CHAPTER_PROMPT` và toàn bộ `DIAGNOSTIC_QUIZ_PROMPT` / `DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT` chỉ có ví dụ schema tiếng Anh ("Question text here?", "Option A is correct because…") → LLM follow example language.
+
+**Quyết định:**
+- Thêm rule tường minh "Write ALL questions, options, and explanations in Vietnamese" vào phần quiz của `STAGE2_CHAPTER_PROMPT`.
+- Thêm "ALL question, options, and explanation text MUST be written in Vietnamese" vào `DIAGNOSTIC_QUIZ_PROMPT` và `DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT`.
+- Cập nhật ví dụ schema trong cả 3 prompt từ tiếng Anh sang tiếng Việt ("Cơ chế hoạt động của X là gì?", "Đáp án A đúng vì…").
+- Không thay đổi `PLANNER_PROMPT` — planner dùng rule "Output MUST match source document language" đã đúng.
+
+**Hệ quả:**
+- (+) Diagnostic quiz và chapter quiz nhất quán tiếng Việt.
+- (+) Concept cards Stage 2 không bị ảnh hưởng — đã có ví dụ tiếng Việt từ trước.
+- Đây là bổ sung cho ADR-40 (không phải đảo ngược) — ADR-40 chỉ Việt hóa UI copy, còn prompts chưa được enforce language.
+
+---
+
+### [ADR-42] Fix Rolldown optional binding cho Vitest CI - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #112 (`fix/ci-rolldown-optional-binding`)
+
+**Bối cảnh:** Sau PR #111, `web-build-test` fail ở bước smoke tests với lỗi `Cannot find native binding` từ `rolldown`, thiếu package optional `@rolldown/binding-linux-x64-gnu`. `web/package-lock.json` đã có binding này, nên lỗi đến từ npm optional-dependency handling trên self-hosted Linux runner, không phải thiếu lockfile.
+
+**Quyết định:**
+- Đổi bước web dependency install thành `npm ci --include=optional` để ép npm cài optional dependencies.
+- Thêm bước Linux-only repair sau `npm ci`: cài local `@rolldown/binding-linux-x64-gnu@1.0.0-rc.15` bằng `npm install --no-save --include=optional --no-audit --no-fund`.
+- Verify ngay bằng `node -e "require.resolve('@rolldown/binding-linux-x64-gnu')"` trước khi chạy typecheck/lint/Vitest.
+
+**Kết quả mong đợi:** Vitest không còn fail startup vì thiếu native Rolldown binding trên Linux CI; nếu test fail tiếp thì lỗi sẽ nằm ở test/app logic thật.
+
+---
+
+### [ADR-41] Fix Railway deploy npm prefix - 15/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #111 (`fix/railway-deploy-npm-prefix`)
+
+**Bối cảnh:** `web-build-test` đã pass nhưng job `deploy-web` fail ở bước `npx railway up` với lỗi npm `ENOENT ... _work/_temp/npm-global`. Lỗi xảy ra trước khi Railway deploy thật sự chạy, do self-hosted runner có npm global prefix trỏ tới thư mục temp chưa tồn tại hoặc không ổn định.
+
+**Quyết định:**
+- Deploy job tạo rõ thư mục npm prefix bằng `${RUNNER_TEMP:-/tmp}/npm-global`.
+- Export `NPM_CONFIG_PREFIX` qua `$GITHUB_ENV` để các bước sau dùng cùng prefix hợp lệ.
+- Cài Railway CLI local bằng `npm install --no-save --no-audit --no-fund @railway/cli`.
+- Gọi trực tiếp `./node_modules/.bin/railway up ...` thay vì `npx railway ...` để tránh `npx` chạm vào global prefix lỗi.
+- Áp dụng cùng pattern cho cả `deploy-web` và `deploy-ukt`.
+
+**Kết quả mong đợi:** CI deploy không còn fail vì thiếu thư mục npm global temp; nếu deploy fail tiếp thì lỗi sẽ đến từ Railway/project config thật, không phải npm bootstrap.
 
 ---
 

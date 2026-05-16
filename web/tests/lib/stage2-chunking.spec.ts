@@ -46,6 +46,18 @@ describe('stage2 chunking helpers', () => {
               answer: 'A1',
               followUps: [],
             },
+            cards: [
+              {
+                question: 'Q1?',
+                answer: 'A1',
+                followUps: [],
+              },
+              {
+                question: 'Q1b?',
+                answer: 'A1b',
+                followUps: [],
+              },
+            ],
           },
         ],
         quiz: {
@@ -94,6 +106,7 @@ describe('stage2 chunking helpers', () => {
 
     expect(merged.chapter_title).toBe('Chapter 1')
     expect(merged.lessons.map(lesson => lesson.lesson_title)).toEqual(['Lesson 1', 'Lesson 2'])
+    expect(merged.lessons[0].cards).toHaveLength(2)
     expect(merged.quiz.questions).toHaveLength(2)
     expect(merged.quiz.questions[0].question).toBe('What is A?')
     expect(merged.quiz.questions[1].question).toBe('What is B?')

@@ -1,4 +1,5 @@
 import type { ChapterContent } from './types'
+import { getLessonCards } from './course-cards'
 
 type ContentListItem = { type?: string; page_idx?: number; sourceChunkIndex?: number }
 
@@ -25,7 +26,7 @@ export function validateCitationMarkers(
   validChunkIds: Set<string>,
 ): void {
   chapter.lessons.forEach(lesson => {
-    const fields: Array<string | undefined> = [lesson.concept.answer]
+    const fields: Array<string | undefined> = getLessonCards(lesson).map(card => card.answer)
     fields.forEach(text => {
       if (!text) return
       CITATION_MARKER_RE.lastIndex = 0

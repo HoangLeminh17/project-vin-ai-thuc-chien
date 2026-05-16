@@ -6,6 +6,8 @@ export interface FlatCard {
   chapterTitle: string
   li: number
   lessonTitle: string
+  cardIndex: number
+  legacyProgressId?: string
   concept: ConceptCard
 }
 
