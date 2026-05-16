@@ -1,6 +1,11 @@
 import { IUKTService, PredictRequest, PredictResponse, StateResponse, UpdateRequest, UpdateResponse } from '@/core/ports/ukt.port';
 import { InfrastructureError } from '@/core/errors/domain-error';
 
+// Replace path segments ≥8 chars (UIDs, UUIDs, encoded IDs) to avoid leaking user data in logs
+function maskPath(path: string): string {
+  return path.replace(/\/[A-Za-z0-9_%.-]{8,}/g, '/[id]');
+}
+
 export class UKTServiceAdapter implements IUKTService {
   constructor(private readonly baseUrl: string) {}
 
