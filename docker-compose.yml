@@ -60,6 +60,9 @@ services:
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     ports:
       - "3002:3000"
+    volumes:
+      # Persist MinerU parsed outputs across container restarts.
+      - mineru-output:/app/.mineru-output
     depends_on:
       ukt-service:
         condition: service_healthy
@@ -163,3 +166,4 @@ services:
 
 volumes:
   redis-data:
+  mineru-output:
