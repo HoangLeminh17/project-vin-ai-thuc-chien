@@ -219,7 +219,29 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 ### Lê Kim Dũng
 
 #### Đã làm
-- (Đang chờ cập nhật từ Dũng)
+- **Spaced Repetition System (SRS)**: Hiện thực hóa thuật toán SM2 để theo dõi và lên lịch ôn tập cho từng thẻ ConceptCard.
+- **Progress Persistence**: Xây dựng `ProgressRepository` và Firestore adapter để lưu trữ bền vững trạng thái học tập của user.
+- **DI Refactoring**: Tái cấu trúc Dependency Injection tập trung tại `infrastructure/di.ts`, giúp tách biệt logic nghiệp vụ khỏi infrastructure.
+- **Course Player**: Xây dựng trang `/course/[id]` hỗ trợ tải dữ liệu trực tiếp từ Firestore, cho phép lưu và xem lại khóa học bất cứ lúc nào.
+- **UKT Groundwork**: Khởi tạo cấu trúc cho User Knowledge Tracing service và xử lý luồng khóa học trùng lặp.
+
+#### Khó nhất tuần này
+- Xử lý logic tính toán `next_due_date` và `interval` trong thuật toán SM2 để đảm bảo đồng bộ chính xác giữa client và server (Firestore).
+- Refactor DI cho toàn bộ hệ thống mà không làm gián đoạn luồng tạo khóa học đang chạy.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Refactor DI, implement SM2 algorithm, thiết kế Firestore schema cho progress | Hoàn thành bộ khung SRS ổn định |
+
+#### Học được
+- Việc tách biệt Infrastructure qua DI giúp việc đổi từ LocalStorage sang Firestore cực kỳ nhanh chóng mà không phải sửa code UI.
+
+#### Nếu làm lại, sẽ làm khác
+- Sẽ thiết kế schema cho Progress linh hoạt hơn để hỗ trợ nhiều loại bài tập khác nhau (không chỉ ConceptCard).
+
+#### Kế hoạch tuần tới
+- Xây dựng hệ thống chẩn đoán kiến thức (Diagnostic) ở backend.
 
 ---
 
@@ -261,7 +283,27 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 ### Lê Kim Dũng
 
 #### Đã làm
-- (Đang chờ cập nhật từ Dũng)
+- **Diagnostic Use Case**: Hiện thực hóa `GenerateDiagnosticQuizUseCase` ở backend, trích xuất kiến thức trọng tâm từ bài học để tạo câu hỏi chẩn đoán.
+- **SRS Prioritization**: Xây dựng logic ưu tiên thẻ ôn tập dựa trên độ khó (ease_factor) và thời gian đến hạn.
+- **Monitoring Research**: Nghiên cứu và thiết lập các metrics cơ bản cho hệ thống sử dụng Prometheus.
+- **Traceability**: Cải thiện khả năng truy vết dữ liệu trong luồng xử lý AI để phục vụ debug và audit.
+
+#### Khó nhất tuần này
+- Thiết kế prompt chẩn đoán sao cho AI sinh đúng 1 câu hỏi cho mỗi bài học (lesson-scoped) để đảm bảo độ phủ kiến thức 100%.
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| AI Agent | Tư vấn thiết kế Diagnostic use case và prompt engineering | Diagnostic API trả về kết quả ổn định |
+
+#### Học được
+- Luồng chẩn đoán (Diagnostic) là bước đệm quan trọng để cá nhân hóa lộ trình học tập ngay từ giây đầu tiên.
+
+#### Nếu làm lại, sẽ làm khác
+- Sẽ gộp bước chẩn đoán vào giai đoạn cuối của Stage 2 để tiết kiệm số lần gọi API từ frontend.
+
+#### Kế hoạch tuần tới
+- Triển khai Monitoring stack (Prometheus & Grafana) lên môi trường sản xuất (Railway).
 
 ---
 
@@ -299,6 +341,35 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 #### Kế hoạch tuần tới
 - Hoàn thiện MVP: stabilize toàn bộ CourseFlow, merge diagnostic fixes, hoàn thiện learning interface
+
+---
+
+### Lê Kim Dũng
+
+#### Đã làm
+- **Observability Stack**: Triển khai thành công Prometheus và Grafana lên Railway với cơ chế lưu trữ dữ liệu bền vững (Railway Volumes).
+- **Edge Case Hunting**: Rà soát và sửa lỗi hàng loạt các trường hợp biên liên quan đến JSON parsing và fallback content (PR #83, #87, #89).
+- **Documentation Reorg**: Tái cấu trúc toàn bộ tài liệu dự án, tách file `CONVENTIONS.md` và dọn dẹp các tệp rác trong repository.
+- **Admin RBAC**: Cấu hình phân quyền cơ bản cho các trang giám sát hệ thống.
+
+#### Khó nhất tuần này
+- Xử lý các vấn đề về quyền ghi file (permissions) và cấu hình mạng nội bộ trên Railway khi deploy cụm Monitoring.
+- Đảm bảo tính tương thích của hệ thống sau đợt dọn dẹp lớn (Refactor/Cleanup).
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| AI Agent | Fix lỗi Docker/Railway config, hỗ trợ dọn dẹp repo và tái cấu trúc docs | Repository sạch sẽ, chuẩn hóa quy trình PR |
+| Edge Case Hunter | Tìm kiếm các lỗi tiềm ẩn trong logic fallback | Phát hiện và fix 3 điểm yếu nghiêm trọng |
+
+#### Học được
+- "Dọn dẹp là một tính năng": Một repo sạch giúp team tăng tốc đáng kể và giảm bớt gánh nặng tâm lý khi review code.
+
+#### Nếu làm lại, sẽ làm khác
+- Sẽ setup Alerting (cảnh báo) ngay cùng lúc với Grafana thay vì để sang tuần sau.
+
+#### Kế hoạch tuần tới
+- Nâng cấp Monitoring lên kiến trúc Observability tập trung (Distributed Tracing với OTel).
 
 ---
 
