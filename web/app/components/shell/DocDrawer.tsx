@@ -1,6 +1,7 @@
 'use client'
 
-import { SynapsyRing, T } from '@/app/components/synapsy'
+import { useState, useMemo } from 'react'
+import { T } from '@/app/components/synapsy'
 import type { NavTab } from './NavRail'
 
 export interface CourseRow {
@@ -10,130 +11,216 @@ export interface CourseRow {
   due: number
 }
 
+interface FileNode { id: string; name: string; mastery: number | null; due: number }
+interface FolderNode { id: string; name: string; files: FileNode[] }
+
 interface Props {
   activeTab: NavTab
   courses: CourseRow[]
   coursesLoading: boolean
+  collapsed: boolean
   selectedCourseId: string | null
   selectedCourseIds: string[]
   onCourseAction: (id: string) => void
   onUploadClick: () => void
 }
 
-function FileIco() {
+// Shown when there are no real courses yet so the drawer is never blank
+const MOCK_TREE: FolderNode[] = [
+  {
+    id: 'mock-cosor', name: 'Y Khoa Cơ Sở',
+    files: [
+      { id: 'mock-giaiphau', name: 'Giải Phẫu.pdf',   mastery: null, due: 0 },
+      { id: 'mock-sinhly',   name: 'Sinh Lý.pdf',      mastery: null, due: 0 },
+    ],
+  },
+  {
+    id: 'mock-lamsang', name: 'Lâm Sàng',
+    files: [
+      { id: 'mock-noikhoa', name: 'Nội Khoa.pdf', mastery: null, due: 0 },
+    ],
+  },
+]
+
+function MasteryBadge({ value }: { value: number | null }) {
+  if (value == null) return <span style={{ color: '#9ca3af', fontSize: 11, fontFamily: T.fontMono }}>–</span>
+  const color = value >= 70 ? '#16a34a' : value >= 40 ? '#d97706' : '#dc2626'
   return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ flexShrink: 0 }}>
-      <path d="M9 1H3a1 1 0 00-1 1v12a1 1 0 001 1h10a1 1 0 001-1V5L9 1z" stroke={T.ink40} strokeWidth="1.1" fill={T.bgSoft} />
-      <path d="M9 1v4h4" stroke={T.ink40} strokeWidth="1.1" />
+    <span style={{ fontSize: 10.5, fontWeight: 700, color, background: color + '18', padding: '2px 5px', borderRadius: 4, fontFamily: T.fontMono }}>
+      {value}%
+    </span>
+  )
+}
+
+function FolderIco() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="#f59e0b">
+      <path d="M1.5 3A1.5 1.5 0 000 4.5v8A1.5 1.5 0 001.5 14h13a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H7.621a1.5 1.5 0 01-1.06-.44L5.5 3H1.5z"/>
     </svg>
   )
 }
 
-export function DocDrawer({ activeTab, courses, coursesLoading, selectedCourseId, selectedCourseIds, onCourseAction, onUploadClick }: Props) {
+function FileIco() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
+      <path d="M9 1H3a1 1 0 00-1 1v12a1 1 0 001 1h10a1 1 0 001-1V5L9 1z" stroke="#9ca3af" strokeWidth="1.1" fill="#f9fafb"/>
+      <path d="M9 1v4h4" stroke="#9ca3af" strokeWidth="1.1"/>
+    </svg>
+  )
+}
+
+export function DocDrawer({ activeTab, courses, coursesLoading, collapsed, selectedCourseId, selectedCourseIds, onCourseAction, onUploadClick }: Props) {
   const isSRS = activeTab === 'srs'
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  const tree = useMemo<FolderNode[]>(() => {
+    if (coursesLoading) return []
+    if (courses.length === 0) return MOCK_TREE
+    return [{
+      id: 'my-docs',
+      name: 'Tài liệu của tôi',
+      files: courses.map(c => ({
+        id: c.id,
+        name: c.title,
+        mastery: c.masteryPct > 0 ? c.masteryPct : null,
+        due: c.due,
+      })),
+    }]
+  }, [courses, coursesLoading])
+
+  function isOpen(folderId: string) { return expanded[folderId] ?? true }
+  function toggleFolderExpand(folderId: string) { setExpanded(e => ({ ...e, [folderId]: !isOpen(folderId) })) }
+
+  function handleFolderCheck(folder: FolderNode, e: React.MouseEvent) {
+    e.stopPropagation()
+    const ids = folder.files.map(f => f.id)
+    const allSel = ids.every(id => selectedCourseIds.includes(id))
+    if (allSel) {
+      ids.filter(id => selectedCourseIds.includes(id)).forEach(id => onCourseAction(id))
+    } else {
+      ids.filter(id => !selectedCourseIds.includes(id)).forEach(id => onCourseAction(id))
+    }
+  }
 
   return (
     <div style={{
-      width: 258, flexShrink: 0, height: '100vh',
-      background: T.bgSolid, borderRight: `1px solid ${T.ink10}`,
-      display: 'flex', flexDirection: 'column', overflow: 'hidden',
+      width: collapsed ? 0 : 258,
+      minWidth: collapsed ? 0 : 258,
+      height: '100%',
+      background: '#ffffff',
+      borderRight: '1px solid #e9eaf0',
+      display: 'flex', flexDirection: 'column',
+      overflow: 'hidden',
+      transition: 'width 0.22s ease, min-width 0.22s ease',
+      flexShrink: 0,
     }}>
       {/* Header */}
       <div style={{
         padding: '15px 16px 11px',
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        borderBottom: `1px solid ${T.ink10}`, flexShrink: 0,
+        borderBottom: '1px solid #f0f1f5', flexShrink: 0,
       }}>
-        <span style={{ fontSize: 10.5, fontWeight: 700, color: T.ink40, letterSpacing: '0.09em', fontFamily: T.fontSans }}>
+        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.09em', fontFamily: T.fontSans }}>
           {isSRS ? 'CHỌN ĐỂ ÔN TẬP' : 'TÀI LIỆU'}
         </span>
         <button
           onClick={onUploadClick}
-          title="Thêm tài liệu mới"
           style={{
-            width: 24, height: 24, background: T.bgSunken, border: 'none', borderRadius: 6,
-            cursor: 'pointer', fontSize: 16, color: T.ink60, fontWeight: 300,
+            width: 22, height: 22, background: '#f3f4f6', border: 'none', borderRadius: 6,
+            cursor: 'pointer', fontSize: 15, color: '#6b7280', fontWeight: 300,
             display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
           }}
         >+</button>
       </div>
 
-      {/* Course list */}
+      {/* Tree */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0 12px' }}>
         {coursesLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="sy-animate-pulse" style={{ height: 42, margin: '4px 12px', borderRadius: 8, background: T.ink10 }} />
+            <div key={i} className="sy-animate-pulse" style={{ height: 32, margin: '4px 12px', borderRadius: 6, background: '#f0f0f0' }} />
           ))
-        ) : courses.length === 0 ? (
-          <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-            <p style={{ fontSize: 12, color: T.ink40, margin: 0, lineHeight: 1.6 }}>
-              Chưa có tài liệu.<br />
-              <button onClick={onUploadClick} style={{ color: T.accent, background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>
-                + Tải PDF lên
-              </button>
-            </p>
-          </div>
         ) : (
-          courses.map(course => {
-            const isSel = isSRS
-              ? selectedCourseIds.includes(course.id)
-              : selectedCourseId === course.id
+          tree.map(folder => {
+            const open = isOpen(folder.id)
+            const isMockFolder = folder.id.startsWith('mock-')
+            const folderFileIds = folder.files.map(f => f.id)
+            const allSel = isSRS && folderFileIds.every(id => selectedCourseIds.includes(id))
+            const someSel = isSRS && folderFileIds.some(id => selectedCourseIds.includes(id)) && !allSel
+
             return (
-              <div
-                key={course.id}
-                onClick={() => onCourseAction(course.id)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '8px 14px', cursor: 'pointer',
-                  background: isSel && !isSRS ? T.accent + '10' : 'transparent',
-                  borderLeft: !isSRS && isSel ? `2px solid ${T.accent}` : '2px solid transparent',
-                  transition: 'background 0.1s',
-                }}
-                onMouseEnter={e => { if (!isSel || isSRS) e.currentTarget.style.background = T.bgSunken }}
-                onMouseLeave={e => { if (!isSel || isSRS) e.currentTarget.style.background = 'transparent' }}
-              >
-                {isSRS && (
-                  <input
-                    type="checkbox"
-                    checked={isSel}
-                    onChange={() => onCourseAction(course.id)}
-                    onClick={e => e.stopPropagation()}
-                    style={{ width: 13, height: 13, accentColor: T.accent, cursor: 'pointer', flexShrink: 0 }}
-                  />
-                )}
-                {!isSRS && <FileIco />}
-                <span style={{
-                  flex: 1, fontSize: 12.5,
-                  color: !isSRS && isSel ? T.accent : T.ink,
-                  fontWeight: isSel ? 600 : 400,
-                  fontFamily: T.fontSans,
-                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                }}>{course.title}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                  {course.due > 0 && (
-                    <span style={{ fontSize: 9.5, fontWeight: 700, color: '#dc2626', background: '#fff1f1', padding: '1px 5px', borderRadius: 4 }}>
-                      {course.due}
-                    </span>
+              <div key={folder.id}>
+                {/* Folder row */}
+                <div
+                  onClick={() => toggleFolderExpand(folder.id)}
+                  style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', cursor: 'pointer', userSelect: 'none' }}
+                >
+                  {isSRS && !isMockFolder && (
+                    <input
+                      type="checkbox"
+                      checked={allSel}
+                      ref={el => { if (el) el.indeterminate = someSel }}
+                      onChange={() => {}}
+                      onClick={e => handleFolderCheck(folder, e)}
+                      style={{ width: 13, height: 13, accentColor: T.accent, cursor: 'pointer', flexShrink: 0 }}
+                    />
                   )}
-                  <SynapsyRing pct={course.masteryPct} size={20} strokeWidth={2.5} />
+                  <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>
+                    <path d="M2.5 1.5l4 3-4 3" stroke="#9ca3af" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                  <FolderIco />
+                  <span style={{ fontSize: 13, fontWeight: 600, color: isMockFolder ? '#9ca3af' : '#111827', fontFamily: T.fontSans }}>{folder.name}</span>
                 </div>
+
+                {/* Files */}
+                {open && folder.files.map(file => {
+                  const isMock = file.id.startsWith('mock-')
+                  const isSel = isSRS ? selectedCourseIds.includes(file.id) : selectedCourseId === file.id
+                  return (
+                    <div
+                      key={file.id}
+                      onClick={() => { if (!isMock) onCourseAction(file.id) }}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '4px 14px 4px 32px', cursor: isMock ? 'default' : 'pointer',
+                        background: isSel ? T.accent + '18' : 'transparent',
+                        borderLeft: !isSRS && isSel ? `2px solid ${T.accent}` : '2px solid transparent',
+                        transition: 'background 0.1s',
+                        opacity: isMock ? 0.4 : 1,
+                      }}
+                    >
+                      {isSRS && !isMock && (
+                        <input
+                          type="checkbox"
+                          checked={isSel}
+                          onChange={() => onCourseAction(file.id)}
+                          onClick={e => e.stopPropagation()}
+                          style={{ width: 13, height: 13, accentColor: T.accent, cursor: 'pointer', flexShrink: 0 }}
+                        />
+                      )}
+                      <FileIco />
+                      <span style={{
+                        flex: 1, fontSize: 12.5,
+                        color: !isSRS && isSel ? T.accent : '#374151',
+                        fontWeight: isSel ? 500 : 400,
+                        fontFamily: T.fontSans,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{file.name}</span>
+                      {!isMock && <MasteryBadge value={file.mastery} />}
+                    </div>
+                  )
+                })}
               </div>
             )
           })
         )}
 
-        {courses.length > 0 && (
-          <button
+        {!coursesLoading && (
+          <div
             onClick={onUploadClick}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              padding: '8px 16px', cursor: 'pointer',
-              background: 'none', border: 'none', width: '100%', textAlign: 'left',
-              marginTop: 4,
-            }}
+            style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 5, cursor: 'pointer', marginTop: 2 }}
           >
-            <span style={{ fontSize: 12.5, color: T.ink40, fontFamily: T.fontSans }}>+ Thêm tài liệu</span>
-          </button>
+            <span style={{ fontSize: 12.5, color: '#9ca3af', fontFamily: T.fontSans }}>+ Thêm tài liệu</span>
+          </div>
         )}
       </div>
     </div>
