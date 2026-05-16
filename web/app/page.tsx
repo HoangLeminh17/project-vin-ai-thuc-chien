@@ -18,15 +18,34 @@ import { getLessonCards } from '@/lib/course-cards'
 
 interface SRSStats { new: number; learning: number; due: number; streak: number }
 
-function useSRSStats() {
+function isAbortError(error: unknown) {
+  return error instanceof DOMException && error.name === 'AbortError'
+}
+
+function useSRSStats(userId: string | null) {
   const [stats, setStats] = useState<SRSStats | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   useEffect(() => {
-    fetch('/api/progress/stats')
-      .then(r => r.json())
-      .then(d => { if (!d.error) setStats(d) })
-      .finally(() => setLoading(false))
-  }, [])
+    if (!userId) {
+      setStats(null)
+      setLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    setLoading(true)
+    fetch('/api/progress/stats', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: controller.signal,
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d && !d.error) setStats(d) })
+      .catch(error => { if (!isAbortError(error)) setStats(null) })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
+
+    return () => controller.abort()
+  }, [userId])
   return { stats, loading }
 }
 
@@ -54,11 +73,22 @@ function buildHeatmap(map: ProgressMap, days = 30): number[] {
 function useProgressMap(userId: string | null) {
   const [map, setMap] = useState<ProgressMap>({})
   useEffect(() => {
-    if (!userId) return
-    fetch('/api/progress/map')
+    if (!userId) {
+      setMap({})
+      return
+    }
+
+    const controller = new AbortController()
+    fetch('/api/progress/map', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: controller.signal,
+    })
       .then(r => r.ok ? r.json() : {})
       .then((m: ProgressMap | { error?: string }) => { if (!('error' in m)) setMap(m as ProgressMap) })
-      .catch(() => {})
+      .catch(error => { if (!isAbortError(error)) setMap({}) })
+
+    return () => controller.abort()
   }, [userId])
   return map
 }
@@ -76,7 +106,12 @@ function useUktMastery(userId: string | null) {
 
     let cancelled = false
     setLoading(true)
-    fetch('/api/ukt/mastery')
+    const controller = new AbortController()
+    fetch('/api/ukt/mastery', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+      signal: controller.signal,
+    })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (cancelled) return
@@ -95,6 +130,7 @@ function useUktMastery(userId: string | null) {
 
     return () => {
       cancelled = true
+      controller.abort()
     }
   }, [userId])
 
@@ -284,7 +320,8 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
   const { user, loading: authLoading, login, logout } = useAuth()
-  const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses, error: deleteError } = useCourses(user?.uid ?? null)
+  const stableUserId = authLoading ? null : user?.uid ?? null
+  const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses, error: deleteError } = useCourses(stableUserId)
 
   const prevStatus = useRef(status)
   useEffect(() => {
@@ -310,9 +347,9 @@ export default function Home() {
     })
   }, [courses])
 
-  const { stats: srsStats, loading: srsLoading } = useSRSStats()
-  const progressMap = useProgressMap(user?.uid ?? null)
-  const { points: moduleMastery, loading: uktMasteryLoading } = useUktMastery(user?.uid ?? null)
+  const { stats: srsStats, loading: srsLoading } = useSRSStats(stableUserId)
+  const progressMap = useProgressMap(stableUserId)
+  const { points: moduleMastery, loading: uktMasteryLoading } = useUktMastery(stableUserId)
 
   const reset = useCallback(() => {
     setFile(null)
