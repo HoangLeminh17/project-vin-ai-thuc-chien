@@ -18,6 +18,7 @@ describe('GenerateDiagnosticQuizUseCase', () => {
 
     const mockAiService = {
       generateCourse: vi.fn(),
+      generateChapterContent: vi.fn(),
       generateDiagnosticQuiz: vi.fn().mockResolvedValue({ quiz: mockQuiz, tokens: null })
     };
 
@@ -52,6 +53,7 @@ describe('GenerateDiagnosticQuizUseCase', () => {
 
     const mockAiService = {
       generateCourse: vi.fn(),
+      generateChapterContent: vi.fn(),
       generateDiagnosticQuiz: vi.fn().mockResolvedValue({ quiz: mockQuiz, tokens: null })
     };
 
@@ -86,6 +88,7 @@ describe('GenerateDiagnosticQuizUseCase', () => {
 
     const mockAiService = {
       generateCourse: vi.fn(),
+      generateChapterContent: vi.fn(),
       generateDiagnosticQuiz: vi.fn().mockResolvedValue({ quiz: mockQuiz, tokens: null })
     };
 
@@ -113,6 +116,7 @@ describe('GenerateDiagnosticQuizUseCase', () => {
 
     const mockAiService = {
       generateCourse: vi.fn(),
+      generateChapterContent: vi.fn(),
       generateDiagnosticQuiz: vi.fn().mockResolvedValue({ quiz: mockQuiz, tokens: null })
     };
 
