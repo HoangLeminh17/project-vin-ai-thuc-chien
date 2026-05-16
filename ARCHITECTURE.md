@@ -20,7 +20,8 @@ graph TD
 
     subgraph "2. Core Layer (Domain & Use Cases)"
         UC_Parse["ParseDocument UseCase"]
-        UC_GenCourse["GenerateCourse UseCase"]
+        UC_GenCourse["GenerateCourse UseCase (Stage 1)"]
+        UC_GenContent["GenerateContent UseCase (Stage 2)"]
         UC_Diag["Diagnostic UseCase"]
         UC_SRS["SRS (Spaced Repetition)"]
         Ports["Interfaces (Ports)"]
@@ -66,10 +67,12 @@ graph TD
     Middleware --> API
     API --> UC_Parse
     API --> UC_GenCourse
+    API --> UC_GenContent
     API --> UC_Diag
     
     UC_Parse -.-> Ports
     UC_GenCourse -.-> Ports
+    UC_GenContent -.-> Ports
     UC_Diag -.-> Ports
 
     %% Implementation
@@ -124,13 +127,17 @@ graph TD
    - `ParseDocumentUseCase` gọi `MinerUAdapter` để chuyển PDF thành Markdown.
    - Kết quả được lưu vào `Firebase Storage`.
 
-2. **Chẩn đoán kiến thức (Diagnostic) & Mastery**:
-   - `DiagnosticUseCase` sử dụng `FallbackAIAdapter` để sinh câu hỏi gắn với **Knowledge Components (KC)**.
+2. **Tạo Khóa Học (Course Generation)**:
+   - **Stage 1 (Planner)**: `GenerateCourseUseCase` nhận Markdown, phân tích và trả về bộ khung khóa học (Outline/Chapters/Lessons).
+   - **Stage 2 (Generator)**: `GenerateContentUseCase` sinh chi tiết thẻ ghi nhớ (ConceptCards) và Quiz cho tất cả các bài học **song song** (`Promise.all` kết hợp semaphore concurrency). Hỗ trợ trả về nhiều thẻ (`cards[]`) trên mỗi bài học để tách nhỏ kiến thức.
+
+3. **Chẩn đoán kiến thức (Diagnostic) & Mastery**:
+   - `DiagnosticUseCase` sử dụng `FallbackAIAdapter` để sinh câu hỏi chẩn đoán gắn với **Knowledge Components (KC)**.
    - Kết quả làm bài được gửi sang `UKT Microservice` để tính toán trạng thái kiến thức theo 8 module y khoa (Giải phẫu, Sinh lý...).
    - Dashboard gọi `/api/ukt/mastery` để lấy dữ liệu aggregated hiển thị **Spider Chart**.
    - Redis AOF đảm bảo UKT state không bị mất khi restart container.
 
-3. **Giám sát & Tracing**:
+4. **Giám sát & Tracing**:
    - Mọi request qua Web App và UKT Service đều được instrument bằng **OpenTelemetry**.
    - Trace và Metrics được gửi về **OTel Collector**, sau đó phân phối sang **Jaeger** (tracing) và **Prometheus** (metrics).
    - Nếu có lỗi nghiêm trọng, **Alertmanager** gửi thông báo về Discord qua **Discord Bridge**.
