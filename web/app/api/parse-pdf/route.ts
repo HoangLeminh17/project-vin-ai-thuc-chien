@@ -9,7 +9,13 @@ const MINERU_OUTPUT_ERROR =
   'MinerU đã xử lý PDF nhưng không trả về nội dung đọc được. Hãy thử export PDF lại dạng text/searchable hoặc dùng file PDF khác.'
 
 const handler = async (req: NextRequest) => {
-  const { parseDocumentUseCase } = await import('@/infrastructure/registry')
+  const { parseDocumentUseCase, verifySessionUseCase } = await import('@/infrastructure/registry')
+  const session = req.cookies.get('session')?.value
+  const user = await verifySessionUseCase.execute(session)
+  if (!user) {
+    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+  }
+
   const formData = await req.formData()
   const file = formData.get('file')
 
@@ -28,7 +34,7 @@ const handler = async (req: NextRequest) => {
   const buffer = Buffer.from(await file.arrayBuffer())
   let result: Awaited<ReturnType<typeof parseDocumentUseCase.execute>>
   try {
-    result = await parseDocumentUseCase.execute(buffer, file.name)
+    result = await parseDocumentUseCase.execute(buffer, file.name, user.id)
   } catch (error) {
     if (
       error instanceof InfrastructureError &&

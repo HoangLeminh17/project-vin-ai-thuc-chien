@@ -169,6 +169,9 @@ const authAdapter = new FirebaseAuthAdapter(getFirebaseAdminAuth());
 const progressRepository = new FirebaseProgressRepository();
 export const courseRepository = new FirestoreCourseAdapter(getDb());
 export const usageRepository = new FirestoreUsageAdapter(getDb());
+if (!process.env.UKT_SERVICE_URL) {
+  console.warn('[DI] ⚠️  UKT_SERVICE_URL is not set — falling back to http://localhost:8000. UKT routes will fail in production.');
+}
 export const uktService = new UKTServiceAdapter(normalizeBaseUrl(process.env.UKT_SERVICE_URL || 'http://localhost:8000'));
 
 // Instantiate Use Cases

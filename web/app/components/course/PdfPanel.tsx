@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
 import { T } from '@/app/components/synapsy'
 
 interface ContentItem {
@@ -8,6 +9,10 @@ interface ContentItem {
   text?: string
   text_level?: number
   img_path?: string
+  img_storage_path?: string
+  img_url?: string
+  image_mime_type?: string
+  image_caption?: string[]
   table_body?: string
   page_idx?: number
   sourceChunkIndex?: number
@@ -215,6 +220,9 @@ function DocBody({ items, chunkStart, chunkEnd }: {
         }
 
         if (item.type === 'image') {
+          const imageSrc = resolveImageSrc(item)
+          const caption = item.image_caption?.filter(Boolean).join(' ').trim()
+
           return (
             <span key={index}>
               {showPageBreak && <PageBreak page={pageIdx} />}
@@ -228,7 +236,16 @@ function DocBody({ items, chunkStart, chunkEnd }: {
                   fontSize: 11, color: T.ink40, fontFamily: T.fontSans,
                 }}
               >
-                [Hình ảnh]
+                {imageSrc ? (
+                  <SourceImage src={imageSrc} alt={caption || item.img_path || 'Hinh anh tu tai lieu nguon'} />
+                ) : (
+                  <ImagePlaceholder />
+                )}
+                {caption && (
+                  <div className="sy-serif" style={{ marginTop: 6, fontSize: 12, color: T.ink60, lineHeight: 1.45 }}>
+                    {caption}
+                  </div>
+                )}
               </div>
             </span>
           )
@@ -238,6 +255,43 @@ function DocBody({ items, chunkStart, chunkEnd }: {
       })}
     </>
   )
+}
+
+function resolveImageSrc(item: ContentItem): string | null {
+  if (item.img_url) return item.img_url
+  if (item.img_storage_path) return `/api/layout-image?path=${encodeURIComponent(item.img_storage_path)}`
+  return null
+}
+
+function SourceImage({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false)
+
+  if (failed) return <ImagePlaceholder />
+
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={760}
+      height={420}
+      unoptimized
+      onError={() => setFailed(true)}
+      style={{
+        display: 'block',
+        width: '100%',
+        height: 'auto',
+        maxHeight: 280,
+        objectFit: 'contain',
+        background: T.bgSolid,
+        border: `1px solid ${T.ink10}`,
+        borderRadius: 4,
+      }}
+    />
+  )
+}
+
+function ImagePlaceholder() {
+  return <span>[Hình ảnh]</span>
 }
 
 function PageBreak({ page }: { page: number }) {

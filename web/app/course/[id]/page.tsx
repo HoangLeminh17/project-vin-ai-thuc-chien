@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, use, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useGeneration } from '@/lib/contexts/generation-context'
 import { SavedCourse } from '@/core/models/saved-course'
@@ -23,6 +23,7 @@ function isAbortError(error: unknown) {
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user, loading: authLoading } = useAuth()
   const { savedCourseId: generatingId, status: genStatus, courseContentMap: genContentMap, course: genCourse } = useGeneration()
 
@@ -142,6 +143,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           onProgressChange={() => refreshProgressMap()}
           onExit={() => router.push('/')}
           layoutStorageUrl={layoutStorageUrl}
+          preferredDetailTab={searchParams.get('tab') === 'study' ? 'study' : undefined}
         />
       </div>
     </div>
