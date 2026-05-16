@@ -288,13 +288,14 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
             </div>
           )}
 
-          <div style={{ marginBottom: 22, fontSize: 11 }}>
-            <span className="sy-mono" style={{ color: T.ink40, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+            <span className="sy-mono" style={{ fontSize: 9.5, fontWeight: 700, color: T.ink40, letterSpacing: '0.1em', textTransform: 'uppercase' }}>CÂU HỎI</span>
+            <span className="sy-mono" style={{ color: T.ink40, fontSize: 10, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 240 }}>
               {lessonIndexLabel} {chapterTitle || `Chương ${chapterIndexLabel}`} · {card.lessonTitle}
             </span>
           </div>
 
-          <h2 className="sy-serif" style={{ fontSize: 24, fontWeight: 500, lineHeight: 1.35, margin: '0 0 26px', letterSpacing: '-0.015em', color: T.ink }}>
+          <h2 className="sy-serif" style={{ fontSize: 22, fontWeight: 500, lineHeight: 1.45, margin: '0 0 26px', letterSpacing: '-0.015em', color: T.ink }}>
             {card.concept.question}
           </h2>
 
@@ -387,9 +388,11 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
                 </div>
               )}
 
-              <div style={{ padding: '16px 18px', background: T.accentSoft, borderRadius: 10, marginBottom: 14, borderLeft: `3px solid ${T.accent}` }}>
-                <p style={{ fontSize: 10, fontWeight: 700, color: T.accent, textTransform: 'uppercase', letterSpacing: '0.1em', margin: '0 0 5px' }}>Câu trả lời chính xác</p>
-                <p className="sy-serif" style={{ fontSize: 16, fontWeight: 500, margin: 0, lineHeight: 1.45, color: T.ink }}>
+              <div style={{ padding: '16px 18px', background: T.bgSolid, borderRadius: 10, marginBottom: 14, border: `1px solid ${T.ink10}` }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span className="sy-mono" style={{ fontSize: 9.5, fontWeight: 700, color: T.ink40, letterSpacing: '0.1em', textTransform: 'uppercase' }}>CÂU TRẢ LỜI</span>
+                </div>
+                <p className="sy-serif" style={{ fontSize: 15, fontWeight: 400, margin: 0, lineHeight: 1.7, color: T.ink }}>
                   <CitedText text={card.concept.answer} />
                 </p>
               </div>
