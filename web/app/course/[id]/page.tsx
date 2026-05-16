@@ -1,9 +1,7 @@
 'use client'
 
-import { useState, useEffect, use, useMemo } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import { useState, useEffect, use, useMemo, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { useGeneration } from '@/lib/contexts/generation-context'
 import { SavedCourse } from '@/core/models/saved-course'

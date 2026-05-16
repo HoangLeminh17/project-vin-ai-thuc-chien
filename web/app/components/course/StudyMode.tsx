@@ -25,7 +25,6 @@ function getAnswerComplexity(answer: string) {
   return { cleaned, shouldEvaluate }
 }
 
-export function StudyMode({ cards, initialCardId, onExit, onCardChange }: Props) {
 export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated }: Props) {
   const [idx, setIdx] = useState(() => {
     if (!initialCardId) return 0
@@ -163,7 +162,6 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
   const hideAnswer = useCallback(() => {
     setRevealed(false)
   }, [])
-  }, [card, idx, total, onExit, onRated])
 
   const lastInitialCardId = useRef(initialCardId)
   useEffect(() => {
