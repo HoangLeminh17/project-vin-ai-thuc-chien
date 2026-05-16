@@ -492,20 +492,20 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
           ) : (
             <>
               {/* Tab bar */}
-              <div style={{ padding: '10px 22px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                <div style={{ display: 'flex', gap: 2, background: T.bgSunken, borderRadius: 8, padding: 3, flexShrink: 0 }}>
+              <div style={{ padding: '10px 20px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 8, padding: 2, gap: 2, flexShrink: 0 }}>
                   {(['edit', 'study'] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setDetailTab(tab)}
                       style={{
-                        padding: '6px 16px', borderRadius: 6, fontSize: 12,
-                        fontWeight: detailTab === tab ? 700 : 500,
+                        padding: '5px 16px', borderRadius: 6, fontSize: 13,
+                        fontWeight: 600,
                         color: detailTab === tab ? T.ink : T.ink60,
-                        background: detailTab === tab ? T.bgSolid : 'transparent',
+                        background: detailTab === tab ? '#fff' : 'transparent',
                         border: 'none', cursor: 'pointer',
-                        boxShadow: detailTab === tab ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                        transition: 'all 0.15s',
+                        boxShadow: detailTab === tab ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        fontFamily: T.fontSans, transition: 'all 0.15s',
                       }}
                     >
                       {tab === 'edit' ? 'Sửa' : 'Học'}
