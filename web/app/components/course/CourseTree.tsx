@@ -122,18 +122,33 @@ export interface Props {
   diagnosticState: Record<string, number>
   onExit: () => void
   layoutStorageUrl?: string | null
+  preferredDetailTab?: 'study'
 }
 
 // ── CourseTree ─────────────────────────────────────────────────────────────────
 
-export function CourseTree({ course, progressMap, diagnosticState, onExit, layoutStorageUrl }: Props) {
+export function CourseTree({ course, progressMap, diagnosticState, onExit, layoutStorageUrl, preferredDetailTab }: Props) {
   const chapters = course.course.chapters
   const allCards = useMemo(() => flattenCards(course), [course])
+  const shouldOpenStudyInitially = preferredDetailTab === 'study' && allCards.length > 0
+  const initialStudyCard = shouldOpenStudyInitially ? allCards[0] : null
 
-  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>({})
-  const [activeCard, setActiveCard] = useState<FlatCard | null>(null)
-  const [detailTab, setDetailTab] = useState<'edit' | 'study'>('edit')
+  const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>(
+    () => (initialStudyCard ? { [initialStudyCard.ci]: true } : {})
+  )
+  const [activeCard, setActiveCard] = useState<FlatCard | null>(initialStudyCard)
+  const [detailTab, setDetailTab] = useState<'edit' | 'study'>(shouldOpenStudyInitially ? 'study' : 'edit')
   const [studyOverlay, setStudyOverlay] = useState(false)
+
+  useEffect(() => {
+    if (preferredDetailTab !== 'study' || allCards.length === 0) return
+    if (detailTab === 'study' && activeCard) return
+
+    const firstCard = allCards[0]
+    setActiveCard(firstCard)
+    setExpandedChapters(p => ({ ...p, [firstCard.ci]: true }))
+    setDetailTab('study')
+  }, [allCards, preferredDetailTab, detailTab, activeCard])
 
   const toggleChapter = (i: number) =>
     setExpandedChapters(p => ({ ...p, [i]: !p[i] }))
@@ -187,11 +202,13 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
           const last = allCards[allCards.length - 1]
           setActiveCard(last)
           setExpandedChapters(p => ({ ...p, [last.ci]: true }))
+          setDetailTab('study')
         } else if (idx > 0) {
           e.preventDefault()
           const prev = allCards[idx - 1]
           setActiveCard(prev)
           setExpandedChapters(p => ({ ...p, [prev.ci]: true }))
+          setDetailTab('study')
         }
       } else if (e.key === 'ArrowRight') {
         if (idx === -1 && allCards.length > 0) {
@@ -199,11 +216,13 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
           const first = allCards[0]
           setActiveCard(first)
           setExpandedChapters(p => ({ ...p, [first.ci]: true }))
+          setDetailTab('study')
         } else if (idx >= 0 && idx < allCards.length - 1) {
           e.preventDefault()
           const next = allCards[idx + 1]
           setActiveCard(next)
           setExpandedChapters(p => ({ ...p, [next.ci]: true }))
+          setDetailTab('study')
         }
       }
     }
@@ -411,7 +430,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onExit, layou
                             <button
                               key={card.id}
                               id={`tree-card-${card.id}`}
-                              onClick={() => { setActiveCard(card); setDetailTab('edit') }}
+                              onClick={() => { setActiveCard(card); setDetailTab('study') }}
                               style={{
                                 width: '100%', textAlign: 'left',
                                 padding: '8px 20px 8px 46px',

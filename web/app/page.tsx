@@ -178,7 +178,7 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
     if (!savedCourseId) return
     localStorage.removeItem(`justGenerated_${savedCourseId}`)
     localStorage.setItem(`diagnosticDone_${savedCourseId}`, 'true')
-    router.push(`/course/${savedCourseId}`)
+    router.push(`/course/${savedCourseId}?tab=study`)
     onReset()
   }
 
