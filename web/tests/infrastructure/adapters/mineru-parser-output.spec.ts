@@ -6,10 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MineruParserAdapter } from '@/infrastructure/adapters/mineru-parser.adapter'
 import type { ParseResult } from '@/core/ports/parser.port'
 
-type TestableMineruParser = MineruParserAdapter & {
-  downloadAndSave(zipUrl: string, safeName: string): Promise<ParseResult>
-  submitExtractTask(fileUrl: string): Promise<string>
-}
+// No specialized type needed, we'll cast to any for private access
 
 async function buildZipResponse(files: Record<string, string | Uint8Array>): Promise<Response> {
   const zip = new JSZip()
@@ -18,16 +15,16 @@ async function buildZipResponse(files: Record<string, string | Uint8Array>): Pro
   }
 
   const bytes = await zip.generateAsync({ type: 'uint8array' })
-  return new Response(bytes, { status: 200 })
+  return new Response(bytes as any, { status: 200 })
 }
 
-async function withAdapter<T>(run: (adapter: TestableMineruParser) => Promise<T>): Promise<T> {
+async function withAdapter<T = any>(run: (adapter: any) => Promise<T>): Promise<T> {
   const outputDir = await mkdtemp(join(tmpdir(), 'mineru-output-'))
   const adapter = new MineruParserAdapter({
     baseUrl: 'https://mineru.example',
     apiKey: 'test',
     outputDir,
-  }) as TestableMineruParser
+  }) as any
 
   try {
     return await run(adapter)
@@ -48,7 +45,7 @@ describe('MineruParserAdapter output zip extraction', () => {
       ]),
     })))
 
-    const result = await withAdapter(adapter => adapter.downloadAndSave('https://zip.example/result.zip', 'course.pdf'))
+    const result = await withAdapter<ParseResult>(adapter => (adapter as any).downloadAndSave('https://zip.example/result.zip', 'course.pdf'))
 
     expect(result.markdown).toContain('Course overview')
     expect(result.contentList).toHaveLength(1)
@@ -61,14 +58,14 @@ describe('MineruParserAdapter output zip extraction', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await withAdapter(async adapter => {
-      const taskId = await adapter.submitExtractTask('https://storage.example/input.pdf')
+      const taskId = await (adapter as any).submitExtractTask('https://storage.example/input.pdf')
       expect(taskId).toBe('task-123')
     })
 
     expect(fetchMock).toHaveBeenCalledWith('https://mineru.example/extract/task', expect.objectContaining({
       method: 'POST',
     }))
-    const requestInit = fetchMock.mock.calls[0][1] as RequestInit
+    const requestInit = (fetchMock.mock.calls[0] as any[])[1] as RequestInit
     expect(JSON.parse(String(requestInit.body))).toMatchObject({
       url: 'https://storage.example/input.pdf',
       model_version: 'vlm',
@@ -84,7 +81,7 @@ describe('MineruParserAdapter output zip extraction', () => {
       'full.md': '# Parsed Course\n\nThis text came from MinerU markdown output.',
     })))
 
-    const result = await withAdapter(adapter => adapter.downloadAndSave('https://zip.example/result.zip', 'course.pdf'))
+    const result = await withAdapter<ParseResult>(adapter => (adapter as any).downloadAndSave('https://zip.example/result.zip', 'course.pdf'))
 
     expect(result.markdown).toContain('Parsed Course')
     expect(result.markdown).toContain('MinerU markdown output')
@@ -97,7 +94,7 @@ describe('MineruParserAdapter output zip extraction', () => {
       'nested/content_list_parsed.md': 'Preferred parsed markdown',
     })))
 
-    const result = await withAdapter(adapter => adapter.downloadAndSave('https://zip.example/result.zip', 'course.pdf'))
+    const result = await withAdapter<ParseResult>(adapter => (adapter as any).downloadAndSave('https://zip.example/result.zip', 'course.pdf'))
 
     expect(result.markdown).toBe('Preferred parsed markdown')
   })
@@ -127,7 +124,7 @@ describe('MineruParserAdapter output zip extraction', () => {
       ]),
     })))
 
-    const result = await withAdapter(adapter => adapter.downloadAndSave('https://zip.example/result.zip', 'course.pdf'))
+    const result = await withAdapter<ParseResult>(adapter => (adapter as any).downloadAndSave('https://zip.example/result.zip', 'course.pdf'))
 
     expect(result.markdown).toContain('1 Introduction')
     expect(result.markdown).toContain('VLM paragraph')
@@ -146,7 +143,7 @@ describe('MineruParserAdapter output zip extraction', () => {
     })))
 
     await expect(
-      withAdapter(adapter => adapter.downloadAndSave('https://zip.example/result.zip', 'course.pdf')),
+      withAdapter<ParseResult>(adapter => (adapter as any).downloadAndSave('https://zip.example/result.zip', 'course.pdf')),
     ).rejects.toThrow('Entries: layout.json, images/page-1.png')
   })
 })
