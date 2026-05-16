@@ -45,6 +45,31 @@ class StateStore:
         with self._mem_lock:
             return self._mem.get(key)
 
+    def get_many(self, student_ids: list[str]) -> dict[str, dict]:
+        """Fetch multiple states efficiently (uses Redis pipeline when available)."""
+        if not student_ids:
+            return {}
+
+        keys = [f"ukt:state:{student_id}" for student_id in student_ids]
+
+        if self._redis:
+            pipe = self._redis.pipeline(transaction=False)
+            for k in keys:
+                pipe.get(k)
+            raws = pipe.execute()
+            out: dict[str, dict] = {}
+            for student_id, raw in zip(student_ids, raws):
+                if raw:
+                    try:
+                        out[student_id] = json.loads(raw)
+                    except Exception:
+                        # Corrupt payload shouldn't crash the whole batch.
+                        continue
+            return out
+
+        with self._mem_lock:
+            return {student_id: self._mem.get(f"ukt:state:{student_id}") for student_id in student_ids if self._mem.get(f"ukt:state:{student_id}") is not None}
+
     def _jsonable_state(self, state: dict) -> dict:
         normalized = {}
         for kc_id, value in state.items():

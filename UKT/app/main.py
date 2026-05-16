@@ -19,7 +19,15 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from app.schemas import PredictRequest, PredictResponse, StateResponse, UpdateRequest, UpdateResponse
+from app.schemas import (
+    PredictRequest,
+    PredictResponse,
+    StateResponse,
+    BatchStateRequest,
+    BatchStateResponse,
+    UpdateRequest,
+    UpdateResponse,
+)
 from app.ukt_engine import UKTEngine
 from app.state_store import StateStore
 from app.notifications import notify_model_loaded, notify_error
@@ -110,6 +118,12 @@ async def state(student_id: str, store: StateStore = Depends(get_store)):
         student_id=student_id,
         knowledge_state=store.get(student_id) or {},
     )
+
+
+@app.post("/state/batch", response_model=BatchStateResponse)
+async def state_batch(req: BatchStateRequest, store: StateStore = Depends(get_store)):
+    states = store.get_many(req.student_ids)
+    return BatchStateResponse(states=states)
 
 
 @app.post("/predict", response_model=PredictResponse)
