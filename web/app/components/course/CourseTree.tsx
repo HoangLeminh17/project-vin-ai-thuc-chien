@@ -43,21 +43,21 @@ function flatCardId(ci: number, li: number, cardIndex: number, hasGeneratedCards
   return hasGeneratedCards ? `${ci}-${li}-${cardIndex}` : `${ci}-${li}`
 }
 
-const SRS_CHIP: Record<SrsState, { label: string; bg: string; color: string; border: string }> = {
-  due:      { label: 'ÔN',     bg: '#fff1f1', color: '#c0392b', border: '#fecdcd' },
-  learning: { label: 'HỌC',   bg: '#fffbf0', color: '#92580a', border: '#f5d78a' },
-  new:      { label: 'MỚI',   bg: '#f0f4ff', color: '#2c4fb3', border: '#c7d4f8' },
-  mature:   { label: 'ĐÃ NHỚ', bg: '#f0faf5', color: '#0f5132', border: '#b7e6cc' },
+const SRS_CHIP: Record<SrsState, { label: string; color: string }> = {
+  due:      { label: 'ÔN',    color: '#dc2626' },
+  learning: { label: 'HỌC',  color: '#d97706' },
+  new:      { label: 'MỚI',  color: '#2563eb' },
+  mature:   { label: '✓',    color: '#16a34a' },
 }
 
 function MiniChip({ state }: { state: SrsState }) {
   const s = SRS_CHIP[state]
   return (
     <span style={{
-      fontSize: 8, fontWeight: 800, letterSpacing: '0.06em',
-      padding: '1px 6px', borderRadius: 10,
-      background: s.bg, border: `1px solid ${s.border}`, color: s.color,
-      flexShrink: 0, whiteSpace: 'nowrap',
+      fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+      padding: '2px 5px', borderRadius: 4,
+      background: s.color + '18', color: s.color,
+      flexShrink: 0, whiteSpace: 'nowrap', fontFamily: 'inherit',
     }}>{s.label}</span>
   )
 }
