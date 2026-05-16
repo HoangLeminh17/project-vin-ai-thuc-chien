@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth, signInWithGoogle, signOut } from '../firebase-client';
 
@@ -20,6 +20,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [role, setRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const authTransitionRef = useRef(0);
 
   useEffect(() => {
     if (!auth?.app) {
@@ -28,39 +29,77 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
-      setUser(firebaseUser);
-      
+      const transitionId = authTransitionRef.current + 1;
+      authTransitionRef.current = transitionId;
+      const isStale = () => authTransitionRef.current !== transitionId;
+
+      setLoading(true);
+      setUser(null);
+      setRole(null);
+
       if (firebaseUser) {
         try {
           const idTokenResult = await firebaseUser.getIdTokenResult();
-          setRole((idTokenResult.claims.role as UserRole) || 'user');
-          
-          const idToken = idTokenResult.token;
-          await fetch('/api/auth/login', {
+          const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
+            body: JSON.stringify({ idToken: idTokenResult.token }),
+            cache: 'no-store',
+            credentials: 'same-origin',
           });
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => null);
+            throw new Error(data?.error || 'Failed to sync server session');
+          }
+
+          if (isStale()) return;
+          setUser(firebaseUser);
+          setRole((idTokenResult.claims.role as UserRole) || 'user');
         } catch (error) {
           console.error('Failed to sync session or fetch role:', error);
-          setRole('user');
+          await fetch('/api/auth/logout', {
+            method: 'POST',
+            cache: 'no-store',
+            credentials: 'same-origin',
+          }).catch(() => {});
+
+          if (isStale()) return;
+          setUser(null);
+          setRole(null);
         }
       } else {
-        setRole(null);
-        await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          cache: 'no-store',
+          credentials: 'same-origin',
+        }).catch(() => {});
       }
-      setLoading(false);
+
+      if (!isStale()) setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
   const login = async () => {
-    await signInWithGoogle();
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (error) {
+      setLoading(false);
+      throw error;
+    }
   };
 
   const logout = async () => {
-    await signOut();
+    setLoading(true);
+    try {
+      await signOut();
+    } catch (error) {
+      setLoading(false);
+      throw error;
+    }
   };
 
   return (
