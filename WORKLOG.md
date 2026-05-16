@@ -124,6 +124,28 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+### [ADR-47] Study-first short-answer self-check flow - 16/05/2026
+
+**Người làm:** Minh Hoang | **Ref:** branch `feat/input-short-answer-and-check`, commits `eb4d20e`, `9341569`
+
+**Bối cảnh:** `StudyMode` trước đây chỉ cho reveal đáp án và đánh giá SRS, chưa có luồng active recall nhập câu trả lời ngắn. Flow vào khóa học sau khi generate cũng còn đi vào tab Sửa trước, còn card hành động "Khóa học đã sẵn sàng" nằm xa khu Pipeline nên không gần ngữ cảnh.
+
+**Quyết định:**
+- Thêm `web/app/api/answer-evaluation/route.ts` để chấm câu trả lời qua provider AI đang cấu hình (`AI_PROVIDER`) theo 3 nhãn `correct`/`partial`/`incorrect`, có timeout, cache server-side, và fallback về heuristic local trong `web/lib/answer-similarity.ts` khi provider fail.
+- `StudyMode` thêm textbox active recall, cache client-side cho cùng câu trả lời, phân biệt 2 hành vi: `Enter` = nút chính (`Xem đáp án` hoặc `Nộp & xem đáp án`), `Space` = chỉ xem nhanh đáp án, `Esc` = blur khỏi textbox.
+- Chỉ chạy luồng chấm điểm khi canonical answer đủ dài (`> 30` từ hoặc `> 100` ký tự); card có đáp án ngắn sẽ reveal thẳng, không chấm.
+- UI reveal hiển thị `Câu trả lời của bạn` + `Câu trả lời chính xác`; trạng thái `Không chính xác` / `Không chính xác hoàn toàn` dùng tông màu nhẹ, bỏ hiển thị điểm số để giảm cảm giác bị "chấm phạt".
+- Luồng `Vào học luôn` chuyển sang `/course/[id]?tab=study`; `CourseFlow`, `CourseTree`, `web/app/course/[id]/page.tsx` nhận `preferredDetailTab='study'` để mở ngay tab Học, auto chọn card đầu tiên, và click/arrow navigation trong tree cũng đi thẳng vào study.
+- Card hành động "Khóa học đã sẵn sàng" trên `web/app/page.tsx` chuyển sang rail bên phải, đặt ngay dưới Pipeline để hợp ngữ cảnh hơn.
+
+**Hệ quả:**
+- (+) `StudyMode` có active recall flow rõ ràng: người học có thể gõ nháp, xem nhanh, hoặc nộp để so đáp án theo ngữ nghĩa.
+- (+) Các card định nghĩa / notation ngắn không bị over-grade; các card dài vẫn có AI evaluation khi cần.
+- (+) Luồng sau-generate và vào course từ library bám sát mục tiêu "học ngay", không còn rớt vào tab Sửa trừ khi user chủ động chuyển.
+- (-) Tăng thêm một server route phụ thuộc env/provider AI; khi provider chưa set đúng hoặc timeout, UI vẫn phải fallback sang local heuristic.
+
+---
+
 ### [ADR-46] Tránh Vitest CJS config startup path trên Linux CI - 15/05/2026
 
 **Người làm:** Nguyen Binh Thanh | **Ref:** PR #116 (`fix/vitest-config-esm`)
