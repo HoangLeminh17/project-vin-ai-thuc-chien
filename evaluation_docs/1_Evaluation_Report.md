@@ -18,11 +18,11 @@ Các chỉ số (Metrics) được ghi nhận trong quá trình kiểm thử n�
 
 | Metric | Giá trị / Kết quả đo lường | Đánh giá |
 |--------|-----------------------------|----------|
-| **Accuracy (Độ chính xác của thẻ)** | ~88-92% thẻ sinh ra mang tính giáo dục, đúng trọng tâm và không bị ảo giác (hallucination). | Đạt - Provider fallback hoạt động hiệu quả. |
-| **JSON Format Adherence** | 99% API trả về đúng schema được định nghĩa. | Rất tốt - Nhờ cơ chế Structured Output. |
-| **Response Time (MinerU)** | 10 - 45 giây (tùy dung lượng file 1MB - 10MB). | Chấp nhận được đối với xử lý batch. |
-| **Response Time (Stage 1 - Planner)** | 8 - 15 giây. | Tốt - Đủ nhanh để khởi tạo khung khóa học. |
-| **Response Time (Stage 2 - Generator)**| 15 - 35 giây (cho mỗi batch 10-15 thẻ). | Đạt - Sử dụng background job/UKT state để không block UI. |
+| **Web API Latency (Average)** | ~500ms - 2.5s (Trích xuất từ Grafana Dashboard). | Tốc độ phản hồi UI và tải dữ liệu tương đối ổn định. |
+| **Web API Latency (p95)** | ~2s - 5s cho các API nặng (như `/api/courses`, `/api/progress/stats`). | Đạt mức chấp nhận được, có thể tối ưu thêm cache để giảm thời gian load. |
+| **Accuracy (Độ chính xác của thẻ)** | ~88-92% thẻ sinh ra đúng trọng tâm và không bị ảo giác. | Đạt - Nhờ cấu hình prompt chặt chẽ và fallback model. |
+| **JSON Format Adherence** | 99% API trả về đúng schema được định nghĩa. | Rất tốt - Nhờ cơ chế Structured Output của AI. |
+| **Response Time (AI Generation)** | MinerU: 10-45s <br> Stage 1 (Planner): 8-15s <br> Stage 2 (Generator): 15-35s | Đạt - Xử lý nặng được đưa vào background / batching không làm block UI. |
 | **System Uptime (Railway)** | 99.8% trong thời gian kiểm thử. | Ổn định nhờ Docker container & healthcheck. |
 
 ## 4. Điểm cần cải thiện (Hạn chế)
