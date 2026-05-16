@@ -243,25 +243,6 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
               )
             })}
           </div>
-          {allDone && savedCourseId && (diagnosticStatus === 'done' || diagnosticStatus === 'error') && (
-            <div style={{ marginTop: 28, paddingTop: 20, borderTop: `1px solid ${T.ink10}` }}>
-              <p style={{ fontSize: 16, fontWeight: 700, color: T.ink, margin: '0 0 4px' }}>🎉 Khóa học đã sẵn sàng!</p>
-              <p style={{ fontSize: 12, color: T.ink60, margin: '0 0 16px' }}>
-                {diagnosticStatus === 'done' ? 'Bài test chẩn đoán đã được chuẩn bị sẵn.' : 'Không tạo được bài test — bạn có thể bỏ qua trong khóa học.'}
-              </p>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: '1px solid transparent' }}>
-                  Vào bài test trình độ
-                </button>
-                <button onClick={handleSkipDiagnosticAndStudy} style={{ background: T.bgSolid, color: T.ink, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: `1px solid ${T.ink}` }}>
-                  Vào học luôn
-                </button>
-                <button onClick={handleGoBack} style={{ background: T.bgSolid, color: T.ink60, padding: '11px 22px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: `1px solid ${T.ink10}` }}>
-                 Quay về thư viện
-                </button>
-              </div>
-            </div>
-          )}
         </div>
         <div style={{ padding: '28px', background: T.bgSoft, display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
@@ -269,6 +250,29 @@ function GenerationScreen({ course, stage2Loading, courseContentMap, rawMarkdown
             <FlashFactGallery markdown={rawMarkdown} />
           </div>
           <PipelineTracker parsed={Boolean(rawMarkdown)} outlined={true} chaptersDone={doneCount} chaptersTotal={course.chapters.length} allDone={allDone} diagnosticStatus={diagnosticStatus} />
+          {allDone && savedCourseId && (diagnosticStatus === 'done' || diagnosticStatus === 'error') && (
+            <div style={{ padding: '18px 18px 20px', background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12 }}>
+              <p style={{ fontSize: 16, fontWeight: 700, color: T.ink, margin: '0 0 4px' }}>{'Kh\u00f3a h\u1ecdc \u0111\u00e3 s\u1eb5n s\u00e0ng!'}</p>
+              <p style={{ fontSize: 12, color: T.ink60, margin: '0 0 16px', lineHeight: 1.55 }}>
+                {diagnosticStatus === 'done'
+                  ? 'B\u00e0i test ch\u1ea9n \u0111o\u00e1n \u0111\u00e3 \u0111\u01b0\u1ee3c chu\u1ea9n b\u1ecb s\u1eb5n. B\u1ea1n c\u00f3 th\u1ec3 v\u00e0o test ngay ho\u1eb7c v\u00e0o h\u1ecdc lu\u00f4n.'
+                  : 'Kh\u00f4ng t\u1ea1o \u0111\u01b0\u1ee3c b\u00e0i test, nh\u01b0ng b\u1ea1n v\u1eabn c\u00f3 th\u1ec3 v\u00e0o h\u1ecdc ngay b\u00e2y gi\u1edd.'}
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {diagnosticStatus === 'done' && (
+                  <button onClick={handleStudyNow} style={{ background: T.ink, color: T.bgSolid, padding: '11px 16px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: '1px solid transparent', textAlign: 'left' }}>
+                    {'V\u00e0o b\u00e0i test tr\u00ecnh \u0111\u1ed9'}
+                  </button>
+                )}
+                <button onClick={handleSkipDiagnosticAndStudy} style={{ background: T.bgSolid, color: T.ink, padding: '11px 16px', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer', border: `1px solid ${T.ink}`, textAlign: 'left' }}>
+                  {'V\u00e0o h\u1ecdc lu\u00f4n'}
+                </button>
+                <button onClick={handleGoBack} style={{ background: T.bgSolid, color: T.ink60, padding: '11px 16px', borderRadius: 10, fontSize: 14, fontWeight: 500, cursor: 'pointer', border: `1px solid ${T.ink10}`, textAlign: 'left' }}>
+                  {'V\u1ec1 th\u01b0 vi\u1ec7n'}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </main>
