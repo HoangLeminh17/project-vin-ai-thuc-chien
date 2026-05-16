@@ -60,13 +60,13 @@ export function layoutImageUrl(storagePath: string): string {
 export function attachImageSourcesToContentList<T extends MineruImageContentItem>(
   contentList: T[],
   imagesByPath: Map<string, UploadedMineruImage>
-): T[] {
-  return contentList.map((item) => {
-    if (item.type !== 'image') return item
+): (T & MineruImageContentItem)[] {
+  return contentList.map((item): T & MineruImageContentItem => {
+    if (item.type !== 'image') return item as T & MineruImageContentItem
 
     const imagePath = normalizeMineruAssetPath(item.img_path)
     const image = imagesByPath.get(imagePath)
-    if (!image) return item
+    if (!image) return item as T & MineruImageContentItem
 
     return {
       ...item,
