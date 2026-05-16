@@ -133,13 +133,22 @@ Tất cả đều có `cache: 'no-store'` — không tận dụng bất kỳ cac
     - Hàm `getStats()` ưu tiên lấy streak từ summary (O(1)). Nếu chưa có summary, nó sẽ tính toán lại một lần (optimized với `select()`) và khởi tạo summary cho lần sau.
 - **Lợi ích:** Giảm chi phí đọc Firebase đáng kể (từ hàng ngàn documents xuống còn 4-5 requests aggregation/document duy nhất) và cải thiện tốc độ phản hồi dashboard.
 
-### 3.2 `getAllForUser()` dùng cho progress map cũng load hết (Medium)
+### 3.2 getAllForUser() dùng cho progress map cũng load hết (Medium)
 
-Tương tự vấn đề trên. [firebase-progress-repository.adapter.ts:L63-L69](file:///d:/AI%20In%20Action/A20-App-046/web/infrastructure/adapters/firebase-progress-repository.adapter.ts#L63-L69) load toàn bộ user_progress chỉ để build một map status.
+[firebase-progress-repository.adapter.ts:L63](file:///d:/AI%20In%20Action/A20-App-046/web/infrastructure/adapters/firebase-progress-repository.adapter.ts#L63): Hàm `getAllForUser` fetch toàn bộ các field của thẻ, bao gồm cả nội dung nặng (`question`, `answer`), mặc dù `ProgressMap` chỉ cần các meta-data để tính toán mastery và render heatmap.
 
-### 3.3 `course_cache` không có TTL / cleanup (Medium)
+**✅ Đã giải quyết:**
+- Sử dụng `.select()` trong `getAllForUser()` để chỉ lấy các trường cần thiết (`status`, `nextReviewDate`, `lastReviewedAt`, và các metadata định danh).
+- Loại bỏ việc truyền tải nội dung text (`question`, `answer`) qua mạng khi load dashboard, giúp giảm băng thông và tăng tốc độ xử lý map phía client.
+
+### 3.3 course_cache không có TTL / cleanup (Medium)
 
 [firestore-course.adapter.ts:L132-L158](file:///d:/AI%20In%20Action/A20-App-046/web/infrastructure/adapters/firestore-course.adapter.ts#L132-L158): Course cache ghi vào Firestore vĩnh viễn, không có logic xóa cache cũ. Theo thời gian sẽ tích lũy data thừa.
+
+**✅ Đã giải quyết:**
+- Thêm thuộc tính `expiresAt` (mặc định 7 ngày kể từ khi tạo) cho mỗi entry trong `course_cache` và các sub-collection `chapters`.
+- Cập nhật `getCourse()` và `getChapter()` để kiểm tra thời hạn cache trước khi trả về kết quả. Nếu cache hết hạn, adapter sẽ trả về `null` để trigger việc generation mới.
+- Cấu trúc `expiresAt` cũng cho phép kích hoạt tính năng tự động xóa (TTL Policy) của Firestore trong tương lai mà không cần thay đổi code.
 
 ---
 

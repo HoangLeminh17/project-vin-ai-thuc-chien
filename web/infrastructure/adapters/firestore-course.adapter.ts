@@ -128,18 +128,30 @@ export class FirestoreCourseAdapter implements ICourseRepository {
   }
 
   // --- Caching Methods (Stage 1 & 2) ---
+  private readonly CACHE_TTL_DAYS = 7;
+
+  private getExpirationDate(): Date {
+    const d = new Date();
+    d.setDate(d.getDate() + this.CACHE_TTL_DAYS);
+    return d;
+  }
 
   async saveCourse(hash: string, course: Course): Promise<void> {
     await this.db.collection('course_cache').doc(hash).set({
       ...course,
       cachedAt: new Date().toISOString(),
+      expiresAt: this.getExpirationDate().toISOString(),
     }, { merge: true });
   }
 
   async getCourse(hash: string): Promise<Course | null> {
     const doc = await this.db.collection('course_cache').doc(hash).get();
     if (!doc.exists) return null;
-    return doc.data() as Course;
+    const data = doc.data()!;
+    if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+      return null;
+    }
+    return data as Course;
   }
 
   async saveChapter(hash: string, chapterIndex: number, content: ChapterContent): Promise<void> {
@@ -148,6 +160,7 @@ export class FirestoreCourseAdapter implements ICourseRepository {
       .set({
         ...content,
         cachedAt: new Date().toISOString(),
+        expiresAt: this.getExpirationDate().toISOString(),
       });
   }
 
@@ -155,7 +168,11 @@ export class FirestoreCourseAdapter implements ICourseRepository {
     const doc = await this.db.collection('course_cache').doc(hash)
       .collection('chapters').doc(chapterIndex.toString()).get();
     if (!doc.exists) return null;
-    return doc.data() as ChapterContent;
+    const data = doc.data()!;
+    if (data.expiresAt && new Date(data.expiresAt) < new Date()) {
+      return null;
+    }
+    return data as ChapterContent;
   }
 
   async getFullCachedCourse(hash: string): Promise<{ course: Course; content: CourseContent } | null> {

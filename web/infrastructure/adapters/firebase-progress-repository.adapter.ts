@@ -96,6 +96,7 @@ export class FirebaseProgressRepository implements IProgressRepository {
     const snapshot = await getDb()
       .collection(this.collectionName)
       .where('userId', '==', userId)
+      .select('status', 'nextReviewDate', 'lastReviewedAt', 'cardId', 'userId', 'interval', 'easeFactor', 'repetitions', 'topic', 'kcId', 'moduleId')
       .get();
     return snapshot.docs.map((doc: any) => this.mapToEntity(doc.id, doc.data()));
   }
