@@ -10,13 +10,13 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| IP-11 hardening: shared API handlers, dashboard sync, UKT retry cap, test coverage | Codex | local |
+| IP-11 hardening: shared API handlers, dashboard sync, UKT retry cap, test coverage | Nhóm | N/A |
 | Synapsy v2 shell: TopBar + NavRail + DocDrawer folder tree | Nguyen Binh Thanh | #132 |
 | CourseTree + StudyMode v2 visual reskin + tab routing (edit/study) | Nguyen Binh Thanh | #133 |
 
 ### [ADR-53] IP-11 Hardening & Coverage — 17/05/2026
 
-**Người làm:** Codex | **Ref:** local refactor
+**Người làm:** Nhóm | **Ref:** cập nhật nội bộ
 
 **Bối cảnh:** Rà soát IP-11 cho thấy vẫn còn 3 điểm cần siết lại: dashboard refresh chưa đồng bộ sau save generation, UKT retry Redis có nguy cơ loop vô hạn, và một số nhánh cache-hit/state flag vẫn thiếu regression coverage.
 
