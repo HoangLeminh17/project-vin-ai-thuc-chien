@@ -10,4 +10,5 @@ export type SavedCourse = {
   contentHash?: string;
   pdfStorageUrl?: string;
   layoutStorageUrl?: string;
+  totalCardCount?: number;
 };
