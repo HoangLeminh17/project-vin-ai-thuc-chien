@@ -11,6 +11,7 @@ import math
 import os
 import logging
 from typing import Optional
+import hashlib
 
 logger = logging.getLogger(__name__)
 
@@ -202,7 +203,14 @@ def _is_aleatory(interactions: list, kc_id: str) -> bool:
 def _build_sequence_tensor(interactions):
     """Convert interaction list → PyTorch tensor cho UKT model."""
     import torch
-    seq = [[i.question_id, hash(i.kc_id) % 1000, i.response] for i in interactions]
+
+    # NOTE: Python's built-in hash() is randomized per process (PYTHONHASHSEED),
+    # which makes this mapping non-reproducible across restarts.
+    def stable_kc_int(kc_id: str) -> int:
+        digest = hashlib.sha1(kc_id.encode('utf-8')).digest()
+        return int.from_bytes(digest[:4], 'big') % 1000
+
+    seq = [[i.question_id, stable_kc_int(i.kc_id), i.response] for i in interactions]
     return torch.tensor(seq, dtype=torch.float32).unsqueeze(0)  # (1, T, 3)
 
 

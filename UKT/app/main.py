@@ -5,7 +5,7 @@ POST /update   → cập nhật state sau study session
 GET  /health   → kiểm tra server
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
@@ -19,25 +19,45 @@ from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
-from app.schemas import PredictRequest, PredictResponse, StateResponse, UpdateRequest, UpdateResponse
+from app.schemas import (
+    PredictRequest,
+    PredictResponse,
+    StateResponse,
+    BatchStateRequest,
+    BatchStateResponse,
+    UpdateRequest,
+    UpdateResponse,
+)
 from app.ukt_engine import UKTEngine
 from app.state_store import StateStore
 from app.notifications import notify_model_loaded, notify_error
 
-logging.basicConfig(level=logging.INFO)
+from app.logging_config import configure_logging
+
+# Configure structured logging early.
+configure_logging()
 logger = logging.getLogger(__name__)
 
-# ── Khởi động model 1 lần duy nhất khi server start ──────────────────────────
-engine: UKTEngine = None
-store: StateStore = None
+def get_engine(req: Request) -> UKTEngine:
+    engine = getattr(req.app.state, 'engine', None)
+    if engine is None:
+        raise HTTPException(status_code=503, detail='UKT engine not initialized')
+    return engine
+
+
+def get_store(req: Request) -> StateStore:
+    store = getattr(req.app.state, 'store', None)
+    if store is None:
+        raise HTTPException(status_code=503, detail='UKT state store not initialized')
+    return store
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global engine, store
     logger.info("Loading UKT model...")
     try:
-        engine = UKTEngine()
-        store = StateStore()
+        # Attach long-lived objects to app.state instead of module-level globals.
+        app.state.engine = UKTEngine()
+        app.state.store = StateStore()
         logger.info("UKT model ready.")
         await notify_model_loaded()
     except Exception as e:
@@ -52,9 +72,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # production: chỉ định domain frontend
+    allow_origins=allowed_origins,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -88,20 +111,30 @@ else:
 # ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.get("/health")
-def health():
-    return {"status": "ok", "model_loaded": engine is not None}
+async def health(req: Request):
+    return {"status": "ok", "model_loaded": getattr(req.app.state, 'engine', None) is not None}
 
 
 @app.get("/state/{student_id}", response_model=StateResponse)
-def state(student_id: str):
+async def state(student_id: str, store: StateStore = Depends(get_store)):
     return StateResponse(
         student_id=student_id,
         knowledge_state=store.get(student_id) or {},
     )
 
 
+@app.post("/state/batch", response_model=BatchStateResponse)
+async def state_batch(req: BatchStateRequest, store: StateStore = Depends(get_store)):
+    states = store.get_many(req.student_ids)
+    return BatchStateResponse(states=states)
+
+
 @app.post("/predict", response_model=PredictResponse)
-def predict(req: PredictRequest):
+async def predict(
+    req: PredictRequest,
+    engine: UKTEngine = Depends(get_engine),
+    store: StateStore = Depends(get_store),
+):
     """
     Nhận lịch sử tương tác của 1 học sinh,
     trả về knowledge state (µ, σ) cho từng KC
@@ -128,7 +161,11 @@ def predict(req: PredictRequest):
 
 
 @app.post("/update", response_model=UpdateResponse)
-def update(req: UpdateRequest):
+async def update(
+    req: UpdateRequest,
+    engine: UKTEngine = Depends(get_engine),
+    store: StateStore = Depends(get_store),
+):
     """
     Cập nhật knowledge state sau khi học sinh đánh giá
     thẻ học (hard / ok / easy).

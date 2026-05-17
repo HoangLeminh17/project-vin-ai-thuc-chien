@@ -1,9 +1,10 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
-import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
+import { PLANNER_PROMPT, STAGE2_CHAPTER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
 import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
-import type { Course, DiagnosticQuiz, DiagnosticQuestion } from '@/core/models/learning-model'
+import type { Course, ChapterContent, DiagnosticQuiz, DiagnosticQuestion } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
 import { withRetry } from '@/lib/retry'
+import { logger } from '@/infrastructure/di/logger.di'
 
 const QUIZ_CONCURRENCY = 4
 
@@ -83,7 +84,7 @@ export class OpenAiAdapter implements IAiService {
       : null
 
     if (tokens) {
-      console.log(`[openai-adapter] Tokens — prompt: ${tokens.promptTokens}, completion: ${tokens.completionTokens}, total: ${tokens.totalTokens}`)
+      logger.info('[openai-adapter] token usage', tokens)
     }
 
     const text = data.choices?.[0]?.message?.content
@@ -117,6 +118,50 @@ export class OpenAiAdapter implements IAiService {
     }))
 
     return { course, tokens }
+  }
+
+  async generateChapterContent(input: string): Promise<ChapterContent> {
+    if (!this.apiKey) {
+      throw new InfrastructureError('Missing OPENAI_API_KEY')
+    }
+
+    let res: Response
+    try {
+      res = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          model: this.model,
+          temperature: 0.3,
+          response_format: { type: 'json_object' },
+          messages: [
+            { role: 'system', content: STAGE2_CHAPTER_PROMPT },
+            { role: 'user', content: input },
+          ],
+        }),
+      })
+    } catch (e) {
+      throw new InfrastructureError('Failed to connect to OpenAI API for chapter content', e)
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
+      throw new InfrastructureError(`OpenAI-compatible API error (${this.baseUrl}) returned ${res.status}: ${msg}`)
+    }
+
+    const data = await res.json()
+    const text = data.choices?.[0]?.message?.content
+    if (!text) throw new InfrastructureError('OpenAI returned no content for chapter generation')
+
+    const raw: ChapterContent = JSON.parse(text)
+    if (!Array.isArray(raw.lessons) || !raw.quiz) {
+      throw new InfrastructureError('Invalid chapter content structure from OpenAI')
+    }
+    return raw
   }
 
   private async generateSingleChunkQuestion(chunk: ContentChunk): Promise<{ question: DiagnosticQuestion; tokens: TokenUsage | null }> {

@@ -1,8 +1,9 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
-import { PLANNER_PROMPT_LIGHTWEIGHT, DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT } from '@/lib/prompts'
+import { PLANNER_PROMPT_LIGHTWEIGHT, STAGE2_CHAPTER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT } from '@/lib/prompts'
 import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
-import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
+import type { Course, ChapterContent, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
+import { logger } from '@/infrastructure/di/logger.di'
 
 export interface HuggingFaceConfig {
   apiKey: string
@@ -33,7 +34,7 @@ export class HuggingFaceAdapter implements IAiService {
    */
   private async safeFetch(systemPrompt: string, userContent: string): Promise<{ text: string; tokens: TokenUsage | null }> {
     const url = this.baseUrl
-    console.log(`[HuggingFace] Calling Router API for model: ${this.model}`)
+    logger.info('[HuggingFace] calling router API', { model: this.model })
 
     try {
       const response = await fetch(url, {
@@ -129,6 +130,19 @@ export class HuggingFaceAdapter implements IAiService {
     }))
 
     return { course, tokens }
+  }
+
+  async generateChapterContent(input: string): Promise<ChapterContent> {
+    // Truncate to stay within HuggingFace context limits
+    const MAX_CHARS = 24000
+    const truncatedInput = input.length > MAX_CHARS ? input.slice(0, MAX_CHARS) : input
+
+    const { text } = await this.safeFetch(STAGE2_CHAPTER_PROMPT, truncatedInput)
+    const raw = this.parseSecureJson<ChapterContent>(text)
+    if (!Array.isArray(raw.lessons) || !raw.quiz) {
+      throw new InfrastructureError('Invalid chapter content structure from HuggingFace')
+    }
+    return raw
   }
 
   async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {

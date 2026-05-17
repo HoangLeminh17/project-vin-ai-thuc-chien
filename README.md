@@ -169,6 +169,8 @@ npm install
 docker-compose up --build
 ```
 
+Lưu ý: thư mục output của MinerU được ghi vào `web/.mineru-output` trong container. Khi deploy/chạy Docker, cần mount volume vào `/app/.mineru-output` để tránh mất dữ liệu sau restart (đã cấu hình sẵn trong `docker-compose.yml`).
+
 - **Web App**: http://localhost:3002 (trong Docker) hoặc http://localhost:3000 (npm run dev)
 - **UKT API**: http://localhost:8000
 - **Admin Monitor**: http://localhost:3002/admin/monitor (Yêu cầu quyền Admin)

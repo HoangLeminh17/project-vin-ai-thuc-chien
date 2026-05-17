@@ -9,6 +9,7 @@ export async function trackEvent(eventName: string, properties?: Record<string, 
       body: JSON.stringify({ eventName, properties }),
     });
   } catch (e) {
-    console.error('[metrics] Failed to track event:', eventName, e);
+    devError('[metrics] Failed to track event:', eventName, e)
   }
 }
+import { devError } from '@/lib/devlog'

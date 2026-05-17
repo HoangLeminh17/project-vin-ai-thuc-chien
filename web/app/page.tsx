@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo, type DragEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
-import { FlashFactGallery, Spinner } from '@/app/components'
+import { Spinner } from '@/app/components'
 import { useCourses } from '@/lib/hooks/use-courses'
 import { SavedCourse } from '@/core/models/saved-course'
 import { Course, ChapterContent } from '@/core/models/learning-model'
@@ -14,9 +14,9 @@ import { aggregateModuleMastery, type ModuleMasteryPoint } from '@/lib/ukt-modul
 import { getLessonCards } from '@/lib/course-cards'
 import { NavRail, DocDrawer, type NavTab, type CourseRow } from '@/app/components/shell'
 
-// ── SRS stats ─────────────────────────────────────────────────────────────────
-
-interface SRSStats { new: number; learning: number; due: number; streak: number }
+import { FlashFactGallery } from '@/app/components'
+import { type SRSStats } from '@/lib/hooks/use-srs-stats'
+import { ErrorScreen } from './components/dashboard/ErrorScreen'
 
 function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === 'AbortError'
@@ -510,11 +510,16 @@ function TopBar({ activeTab, displayName, initials, onLogout }: {
 // ── Main home ─────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { status, course, courseContentMap, stage2Loading, stage2Errors, error, rawMarkdown, savedCourseId, diagnosticStatus, parseProgress, startGeneration, resetGeneration, fetchChapter } = useGeneration()
+  const {
+    status, course, courseContentMap, stage2Loading, stage2Errors,
+    error, rawMarkdown, savedCourseId, diagnosticStatus,
+    parseProgress, startGeneration, resetGeneration, fetchChapter,
+  } = useGeneration()
+
+  const router = useRouter()
   const [file, setFile] = useState<File | null>(null)
   const [dragOver, setDragOver] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
-  const router = useRouter()
   const { user, loading: authLoading, login, logout } = useAuth()
   const stableUserId = authLoading ? null : user?.uid ?? null
   const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses, error: deleteError } = useCourses(stableUserId)
@@ -617,7 +622,13 @@ export default function Home() {
     )
   }
 
+  // 3. Error screen
   if (error && !course) {
+    return <ErrorScreen file={file} onReset={reset} />
+  }
+
+  // 4. Default: Dashboard screen
+  if (authLoading) {
     return (
       <main className="min-h-screen flex items-center justify-center p-6" style={{ background: T.bg, fontFamily: T.fontSans }}>
         <div className="w-full max-w-2xl" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 24 }}>

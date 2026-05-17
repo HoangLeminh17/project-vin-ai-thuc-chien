@@ -4,6 +4,7 @@ import type { ParsePDF, ParsePDFResult } from './index'
 import fs from 'fs/promises'
 import path from 'path'
 import { contentListToMarkdown } from '@/infrastructure/adapters/content-list-converter'
+import { logger } from '@/infrastructure/di/logger.di'
 
 const BASE_URL = process.env.PDF_MINERU_BASE_URL!
 const API_KEY = process.env.PDF_MINERU_API_KEY!
@@ -122,13 +123,13 @@ async function downloadAndSave(zipUrl: string, safeName: string): Promise<ParseP
         contentList = JSON.parse(data as string)
         markdown = contentListToMarkdown(contentList ?? [])
       } catch {
-        console.warn(`[parse-pdf] Failed to parse content_list JSON from ${zipPath}`)
+        logger.warn('[parse-pdf] Failed to parse content_list JSON', { zipPath })
       }
     }
   }
 
   if (!markdown) throw new Error('content_list.json not found or empty in zip archive')
-  console.log(`[parse-pdf] Saved to ${outDir}`)
+  logger.info('[parse-pdf] Saved output', { outDir })
   return { markdown, contentList }
 }
 
@@ -151,7 +152,7 @@ export const parsePDF: ParsePDF = async (file, filename) => {
 
   const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_')
   const { publicUrl, filePath } = await uploadToFirebase(file, safeName)
-  console.log('[parse-pdf] Firebase URL:', publicUrl)
+  logger.info('[parse-pdf] Firebase URL', { publicUrl })
 
   try {
     const taskId = await submitExtractTask(publicUrl)

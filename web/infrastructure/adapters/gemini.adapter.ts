@@ -1,8 +1,9 @@
 import { IAiService, TokenUsage, ContentChunk } from '@/core/ports/ai.port'
-import { PLANNER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
+import { PLANNER_PROMPT, STAGE2_CHAPTER_PROMPT, DIAGNOSTIC_QUIZ_PROMPT } from '@/lib/prompts'
 import { formatDiagnosticChunk } from '@/lib/diagnostic-format'
-import type { Course, DiagnosticQuiz } from '@/core/models/learning-model'
+import type { Course, ChapterContent, DiagnosticQuiz } from '@/core/models/learning-model'
 import { InfrastructureError } from '@/core/errors/domain-error'
+import { logger } from '@/infrastructure/di/logger.di'
 
 export interface GeminiConfig {
   apiKey: string
@@ -72,7 +73,7 @@ export class GeminiAdapter implements IAiService {
       : null
 
     if (tokens) {
-      console.log(`[gemini-adapter] Tokens - prompt: ${tokens.promptTokens}, completion: ${tokens.completionTokens}, total: ${tokens.totalTokens}`)
+      logger.info('[gemini-adapter] token usage', tokens)
     }
 
     const text = data.candidates?.[0]?.content?.parts
@@ -86,9 +87,10 @@ export class GeminiAdapter implements IAiService {
 
     let course: Course
     try {
-      course = JSON.parse(text)
+      course = JSON.parse(text);
     } catch (e) {
-      throw new InfrastructureError(`Failed to parse Gemini JSON response: ${text.slice(0, 500)}`, e)
+      logger.warn('[GeminiAdapter] JSON parse error', { textPreview: text.slice(0, 2000) })
+      throw new InfrastructureError('Failed to process AI service response', e);
     }
 
     if (!course.chapters || !Array.isArray(course.chapters)) {
@@ -109,6 +111,48 @@ export class GeminiAdapter implements IAiService {
     }))
 
     return { course, tokens }
+  }
+
+  async generateChapterContent(input: string): Promise<ChapterContent> {
+    if (!this.apiKey) {
+      throw new InfrastructureError('Missing GEMINI_API_KEY')
+    }
+
+    const url = `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`
+
+    let res: Response
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: STAGE2_CHAPTER_PROMPT }] },
+          generationConfig: { temperature: 0.3, responseMimeType: 'application/json' },
+          contents: [{ role: 'user', parts: [{ text: input }] }],
+        }),
+      })
+    } catch (e) {
+      throw new InfrastructureError('Failed to connect to Gemini API for chapter content', e)
+    }
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
+      throw new InfrastructureError(`Gemini API error (${res.status}): ${msg}`)
+    }
+
+    const data = await res.json()
+    const text = data.candidates?.[0]?.content?.parts
+      ?.map((part: { text?: string }) => part.text ?? '')
+      .join('')
+      .trim()
+    if (!text) throw new InfrastructureError('Gemini returned no content for chapter generation')
+
+    const raw: ChapterContent = JSON.parse(text)
+    if (!Array.isArray(raw.lessons) || !raw.quiz) {
+      throw new InfrastructureError('Invalid chapter content structure from Gemini')
+    }
+    return raw
   }
 
   async generateDiagnosticQuiz(chunks: ContentChunk[]): Promise<{ quiz: DiagnosticQuiz; tokens: TokenUsage | null }> {

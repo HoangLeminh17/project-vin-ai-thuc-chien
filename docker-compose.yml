@@ -7,6 +7,11 @@ services:
       - "6379:6379"
     volumes:
       - redis-data:/data
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
 
   # UKT Knowledge Tracing Microservice (Python)
   ukt-service:
@@ -27,6 +32,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 2G
 
   # Synapsy Web App (Next.js)
   web:
@@ -60,11 +70,19 @@ services:
       - DISCORD_WEBHOOK_URL=${DISCORD_WEBHOOK_URL}
     ports:
       - "3002:3000"
+    volumes:
+      # Persist MinerU parsed outputs across container restarts.
+      - mineru-output:/app/.mineru-output
     depends_on:
       ukt-service:
         condition: service_healthy
       redis:
         condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: '1.00'
+          memory: 2G
 
   # Prometheus for metrics collection
   prometheus:
@@ -80,6 +98,11 @@ services:
 
     depends_on:
       - web
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   # Grafana for visualization
   grafana:
@@ -87,11 +110,18 @@ services:
     ports:
       - "3001:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      # Fail fast if not set to avoid shipping a known/default password.
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD?GF_SECURITY_ADMIN_PASSWORD is required}
     depends_on:
       - prometheus
       - loki
       - jaeger
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   # OpenTelemetry Collector
   otel-collector:
@@ -109,6 +139,11 @@ services:
     depends_on:
       - jaeger
       - loki
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 256M
 
   # Jaeger for distributed tracing
   jaeger:
@@ -119,6 +154,11 @@ services:
       default:
         aliases:
           - jaeger.railway.internal
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   # Loki for centralized logging
   loki:
@@ -130,6 +170,11 @@ services:
       default:
         aliases:
           - loki.railway.internal
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
 
   # Alertmanager
   alertmanager:
@@ -144,6 +189,11 @@ services:
       default:
         aliases:
           - alertmanager.railway.internal
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
 
   # Discord bridge for Alertmanager webhooks
   discord-bridge:
@@ -159,6 +209,12 @@ services:
       default:
         aliases:
           - discord-bridge.railway.internal
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
 
 volumes:
   redis-data:
+  mineru-output:

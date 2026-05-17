@@ -48,6 +48,14 @@ class StateResponse(BaseModel):
     knowledge_state: dict[str, KCState] = Field(default_factory=dict)
 
 
+class BatchStateRequest(BaseModel):
+    student_ids: list[str] = Field(..., min_length=1)
+
+
+class BatchStateResponse(BaseModel):
+    states: dict[str, dict[str, KCState]] = Field(default_factory=dict)
+
+
 class UpdateRequest(BaseModel):
     student_id: str
     kc_id: str

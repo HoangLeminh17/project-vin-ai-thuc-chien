@@ -1,441 +1,37 @@
-import { PLANNER_PROMPT, STAGE2_CHAPTER_PROMPT } from './prompts'
-import type { Chapter, ChapterContent, ConceptCard, Course, LessonContent } from './types'
-import { resolveAiProvider, type AiProvider } from './ai-provider'
-import { buildStage2ChapterInput, DEFAULT_STAGE2_MAX_INPUT_CHARS, mergeStage2ChapterOutputs, splitStage2ChapterInput } from './stage2-chunking'
+/**
+ * lib/ai.ts
+ *
+ * Thin utility for one-off AI calls that don't go through the DI system.
+ *
+ * NOTE: Stage 1 (generateCourse) and Stage 2 (generateChapterContent) both
+ * route through the DI ChainAiAdapter — see infrastructure/di.ts.
+ * Only extractFacts lives here because it is a lightweight, stateless helper
+ * that doesn't need the full adapter/port abstraction.
+ */
 
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
-const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
 
-export type TokenUsage = { promptTokens: number; completionTokens: number; totalTokens: number }
+// Server-only helper; keep logs structured.
+import { logger } from '@/infrastructure/di/logger.di'
 
-function getOpenAiConfig() {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('Missing OPENAI_API_KEY')
-  }
-
-  return {
-    apiKey: process.env.OPENAI_API_KEY!,
-    model: process.env.OPENAI_GENERATOR_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
-  }
-}
-
-function getGeminiConfig() {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error('Missing GEMINI_API_KEY')
-  }
-
-  return {
-    apiKey: process.env.GEMINI_API_KEY!,
-    model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
-  }
-}
-
-function getDeepSeekConfig() {
-  if (!process.env.DEEPSEEK_API_KEY) {
-    throw new Error('Missing DEEPSEEK_API_KEY')
-  }
-
-  return {
-    apiKey: process.env.DEEPSEEK_API_KEY!,
-    baseUrl: process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1/chat/completions',
-    model: process.env.DEEPSEEK_GENERATOR_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
-  }
-}
-
-export async function generateCourse_UNUSED(
-  parsedContent: string,
-  provider?: AiProvider,
-): Promise<{ course: Course; tokens: TokenUsage | null }> {
-  const resolvedProvider = resolveAiProvider(provider)
-
-  if (resolvedProvider === 'gemini') {
-    const { apiKey, model } = getGeminiConfig()
-    const res = await fetch(`${GEMINI_BASE_URL}/models/${model}:generateContent?key=${apiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: PLANNER_PROMPT }],
-        },
-        generationConfig: {
-          temperature: 0.2,
-          responseMimeType: 'application/json',
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: parsedContent }],
-          },
-        ],
-      }),
-    })
-
-    if (!res.ok) {
-      const body = await res.json().catch(() => null)
-      const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
-      throw new Error(`Gemini API error (${res.status}): ${msg}`)
-    }
-
-    const data = await res.json()
-    const usage = data.usageMetadata
-    const tokens: TokenUsage | null = usage
-      ? {
-          promptTokens: usage.promptTokenCount ?? 0,
-          completionTokens: usage.candidatesTokenCount ?? 0,
-          totalTokens: usage.totalTokenCount ?? 0,
-        }
-      : null
-    if (tokens) {
-      console.log(`[generate-course] Tokens - prompt: ${tokens.promptTokens}, completion: ${tokens.completionTokens}, total: ${tokens.totalTokens}`)
-    }
-
-    const text = data.candidates?.[0]?.content?.parts?.map((part: { text?: string }) => part.text ?? '').join('').trim()
-    if (!text) {
-      throw new Error(`Gemini returned no content: ${JSON.stringify(data)}`)
-    }
-
-    let course: Course
-    try {
-      course = JSON.parse(text)
-    } catch {
-      throw new Error(`Failed to parse Gemini JSON response: ${text.slice(0, 500)}`)
-    }
-
-    if (!course.chapters || !Array.isArray(course.chapters)) {
-      throw new Error('Invalid course structure: missing chapters array')
-    }
-
-    // Stricter validation
-    course.chapters = course.chapters.map(ch => ({
-      ...ch,
-      lessons: Array.isArray(ch.lessons) ? ch.lessons : []
-    }))
-
-    return { course, tokens }
-  }
-
-  const { apiKey, model } = getOpenAiConfig()
-  const res = await fetch(OPENAI_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      max_tokens: 16000,
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: PLANNER_PROMPT },
-        { role: 'user', content: parsedContent },
-      ],
-    }),
-  })
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => null)
-    const msg = body?.error?.message?.split('\n')[0] || `HTTP ${res.status}`
-    throw new Error(`OpenAI API error (${res.status}): ${msg}`)
-  }
-
-  const data = await res.json()
-
-  const usage = data.usage
-  const tokens: TokenUsage | null = usage
-    ? { promptTokens: usage.prompt_tokens, completionTokens: usage.completion_tokens, totalTokens: usage.total_tokens }
-    : null
-  if (tokens) {
-    console.log(`[generate-course] Tokens — prompt: ${tokens.promptTokens}, completion: ${tokens.completionTokens}, total: ${tokens.totalTokens}`)
-  }
-
-  const text = data.choices?.[0]?.message?.content
-  if (!text) {
-    throw new Error(`OpenAI returned no content: ${JSON.stringify(data)}`)
-  }
-
-  let course: Course
-  try {
-    course = JSON.parse(text)
-  } catch {
-    throw new Error(`Failed to parse OpenAI JSON response: ${text.slice(0, 500)}`)
-  }
-
-  if (!course.chapters || !Array.isArray(course.chapters)) {
-    throw new Error(`Invalid course structure: missing chapters array`)
-  }
-
-  // Stricter validation
-  course.chapters = course.chapters.map(ch => ({
-    ...ch,
-    lessons: Array.isArray(ch.lessons) ? ch.lessons : []
-  }))
-
-  return { course, tokens }
-}
-
-
-// ── Shared post-processing ────────────────────────────────────────────────────
-
-function buildFallbackCard(src: Chapter['lessons'][number] | undefined, lessonTitle: string): ConceptCard {
-  return {
-    question: `${src?.title ?? lessonTitle} là gì?`,
-    answer: src?.outline.slice(0, 2).map(point => point.point).join('. ') ?? '',
-    followUps: [],
-  }
-}
-
-function normalizeCard(card: ConceptCard, src: Chapter['lessons'][number] | undefined): ConceptCard {
-  const knowledge = src?.knowledge
-  return {
-    ...card,
-    followUps: Array.isArray(card.followUps) ? card.followUps : [],
-    kc_id: knowledge?.kc_id,
-    kc_name: knowledge?.kc_name,
-    module_id: knowledge?.module_id,
-    module_name: knowledge?.module_name,
-    source_chunk_start: src?.source_chunk_start,
-    source_chunk_end: src?.source_chunk_end,
-  }
-}
-
-function normalizeLessonCards(lesson: LessonContent, src: Chapter['lessons'][number] | undefined): ConceptCard[] {
-  const generatedCards = Array.isArray(lesson.cards) && lesson.cards.length > 0
-    ? lesson.cards
-    : lesson.concept
-      ? [lesson.concept]
-      : [buildFallbackCard(src, lesson.lesson_title)]
-
-  const usableCards = generatedCards.filter(card => Boolean(card?.question?.trim() || card?.answer?.trim()))
-  return (usableCards.length > 0 ? usableCards : [buildFallbackCard(src, lesson.lesson_title)])
-    .map(card => normalizeCard(card, src))
-}
-
-function attachChunkRange(raw: ChapterContent, chapter: Chapter): ChapterContent {
-  const lessons = raw.lessons.map((l, i) => {
-    const src = chapter.lessons[i]
-    const cards = normalizeLessonCards(l, src)
-    return {
-      ...l,
-      concept: cards[0],
-      cards,
-    }
-  })
-  return { ...raw, lessons }
-}
-
-async function generateChapterContentGemini(chapter: Chapter, input: string): Promise<ChapterContent> {
-  const { apiKey, model } = getGeminiConfig()
-  const res = await fetch(`${GEMINI_BASE_URL}/models/${model}:generateContent?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: { parts: [{ text: STAGE2_CHAPTER_PROMPT }] },
-      generationConfig: { temperature: 0.3, responseMimeType: 'application/json' },
-      contents: [{ role: 'user', parts: [{ text: input }] }],
-    }),
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => null)
-    throw new Error(`Gemini API error (${res.status}): ${body?.error?.message?.split('\n')[0] || 'Unknown'}`)
-  }
-  const data = await res.json()
-  const text = data.candidates?.[0]?.content?.parts?.map((part: any) => part.text ?? '').join('').trim()
-  if (!text) throw new Error('Gemini returned no content')
-  const raw: ChapterContent = JSON.parse(text)
-  if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
-  return attachChunkRange(raw, chapter)
-}
-
-async function generateChapterContentOpenAI(chapter: Chapter, input: string): Promise<ChapterContent> {
-  const { apiKey, model } = getOpenAiConfig()
-  const res = await fetch(OPENAI_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model, temperature: 0.3, response_format: { type: 'json_object' },
-      messages: [{ role: 'system', content: STAGE2_CHAPTER_PROMPT }, { role: 'user', content: input }],
-    }),
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => null)
-    throw new Error(`OpenAI API error (${res.status}): ${body?.error?.message?.split('\\n')[0] || 'Unknown'}`)
-  }
-  const data = await res.json()
-  const text = data.choices?.[0]?.message?.content
-  if (!text) throw new Error('OpenAI returned no content')
-  const raw: ChapterContent = JSON.parse(text)
-  if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
-  return attachChunkRange(raw, chapter)
-}
-
-async function generateChapterContentLocal(chapter: Chapter, input: string): Promise<ChapterContent> {
-  const baseUrl = process.env.LOCAL_AI_BASE_URL!
-  const model = process.env.LOCAL_AI_MODEL || 'qwen2.5:0.5b'
-  
-  const res = await fetch(baseUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer local` },
-    body: JSON.stringify({
-      model, temperature: 0.3, response_format: { type: 'json_object' },
-      messages: [{ role: 'system', content: STAGE2_CHAPTER_PROMPT }, { role: 'user', content: input }],
-    }),
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => null)
-    throw new Error(`Local AI error (${res.status}): ${body?.error?.message?.split('\\n')[0] || 'Unknown'}`)
-  }
-  const data = await res.json()
-  const text = data.choices?.[0]?.message?.content
-  if (!text) throw new Error('Local AI returned no content')
-  const raw: ChapterContent = JSON.parse(text)
-  if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
-  return attachChunkRange(raw, chapter)
-}
-
-async function generateChapterContentHuggingFace(chapter: Chapter, input: string): Promise<ChapterContent> {
-  const apiKey = process.env.HUGGINGFACE_API_KEY!
-  const model = process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.1-8B-Instruct'
-  
-  // Truncate to stay within context limits
-  const MAX_CHARS = 24000;
-  const truncatedInput = input.length > MAX_CHARS ? input.slice(0, MAX_CHARS) : input;
-
-  const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model, temperature: 0.3, response_format: { type: 'json_object' },
-      messages: [{ role: 'system', content: STAGE2_CHAPTER_PROMPT }, { role: 'user', content: truncatedInput }],
-    }),
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => null)
-    throw new Error(`Hugging Face error (${res.status}): ${JSON.stringify(body?.error || body?.message || 'Unknown')}`)
-  }
-
-  const data = await res.json()
-  const text = data.choices?.[0]?.message?.content
-  if (!text) throw new Error('Hugging Face returned no content')
-  const raw: ChapterContent = JSON.parse(text)
-  if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
-  return attachChunkRange(raw, chapter)
-}
-
-async function generateChapterContentDeepSeek(chapter: Chapter, input: string): Promise<ChapterContent> {
-  const { apiKey, baseUrl, model } = getDeepSeekConfig()
-  
-  const res = await fetch(baseUrl.includes('/chat/completions') ? baseUrl : `${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model, temperature: 0.3, response_format: { type: 'json_object' },
-      messages: [{ role: 'system', content: STAGE2_CHAPTER_PROMPT }, { role: 'user', content: input }],
-    }),
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => null)
-    throw new Error(`DeepSeek error (${res.status}): ${body?.error?.message?.split('\\n')[0] || 'Unknown'}`)
-  }
-  const data = await res.json()
-  const text = data.choices?.[0]?.message?.content
-  if (!text) throw new Error('DeepSeek returned no content')
-  const raw: ChapterContent = JSON.parse(text)
-  if (!Array.isArray(raw.lessons) || !raw.quiz) throw new Error(`Invalid structure`)
-  return attachChunkRange(raw, chapter)
-}
-
-async function generateChapterContentForInput(chapter: Chapter, input: string): Promise<ChapterContent> {
-  let lastError: unknown
-
-  if (process.env.OPENAI_API_KEY) {
-    try {
-      console.log('[generate-content] Trying OpenAI...')
-      return await generateChapterContentOpenAI(chapter, input)
-    } catch (e) {
-      console.warn('[generate-content] OpenAI failed:', e)
-      lastError = e
-    }
-  }
-
-  if (process.env.DEEPSEEK_API_KEY) {
-    try {
-      console.log('[generate-content] Trying DeepSeek...')
-      return await generateChapterContentDeepSeek(chapter, input)
-    } catch (e) {
-      console.warn('[generate-content] DeepSeek failed:', e)
-      lastError = e
-    }
-  }
-
-  if (process.env.GEMINI_API_KEY) {
-    try {
-      console.log('[generate-content] Trying Gemini...')
-      return await generateChapterContentGemini(chapter, input)
-    } catch (e) {
-      console.warn('[generate-content] Gemini failed:', e)
-      lastError = e
-    }
-  }
-
-  if (process.env.LOCAL_AI_BASE_URL) {
-    try {
-      console.log('[generate-content] Trying Local AI...')
-      return await generateChapterContentLocal(chapter, input)
-    } catch (e) {
-      console.warn('[generate-content] Local AI failed:', e)
-      lastError = e
-    }
-  }
-
-  if (process.env.HUGGINGFACE_API_KEY) {
-    try {
-      console.log('[generate-content] Trying Hugging Face...')
-      return await generateChapterContentHuggingFace(chapter, input)
-    } catch (e) {
-      console.warn('[generate-content] Hugging Face failed:', e)
-      lastError = e
-    }
-  }
-
-  throw new Error(`All chapter generation providers failed. Last error: ${lastError}`)
-}
-
-export async function generateChapterContent(chapter: Chapter, rawContexts?: string[]): Promise<ChapterContent> {
-  const chapterInput = buildStage2ChapterInput(chapter, rawContexts)
-  const inputJson = JSON.stringify(chapterInput)
-
-  if (inputJson.length <= DEFAULT_STAGE2_MAX_INPUT_CHARS) {
-    return generateChapterContentForInput(chapter, inputJson)
-  }
-
-  const batches = splitStage2ChapterInput(chapterInput, DEFAULT_STAGE2_MAX_INPUT_CHARS)
-  const partials: ChapterContent[] = []
-
-  for (const batch of batches) {
-    // Keep the fallback order stable for each batch.
-    // Sequential execution avoids spiking token usage on giant chapters.
-    partials.push(await generateChapterContentForInput(chapter, JSON.stringify(batch)))
-  }
-
-  return attachChunkRange(mergeStage2ChapterOutputs(chapter.title, chapter.quiz.topic, partials), chapter)
-}
 export async function extractFacts(content: string): Promise<string[]> {
   const messages = [
-    { role: 'system', content: 'Extract 5 interesting, short, and surprising facts or key takeaways from the provided text. Return them as a JSON object with a "facts" array of strings. Keep each fact under 15 words and in Vietnamese.' },
-    { role: 'user', content: content.slice(0, 5000) }, 
+    {
+      role: 'system',
+      content:
+        'Extract 5 interesting, short, and surprising facts or key takeaways from the provided text. Return them as a JSON object with a "facts" array of strings. Keep each fact under 15 words and in Vietnamese.',
+    },
+    { role: 'user', content: content.slice(0, 5000) },
   ]
 
   // 1. Try OpenAI
   if (process.env.OPENAI_API_KEY) {
     try {
-      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      const res = await fetch(OPENAI_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
         },
         body: JSON.stringify({
           model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
@@ -444,14 +40,14 @@ export async function extractFacts(content: string): Promise<string[]> {
           response_format: { type: 'json_object' },
         }),
       })
-      
+
       if (res.ok) {
         const data = await res.json()
         const text = data.choices?.[0]?.message?.content
         return JSON.parse(text).facts || []
       }
     } catch (e) {
-      console.error('[extractFacts] OpenAI failed:', e)
+      logger.error('[extractFacts] OpenAI failed', { err: e })
     }
   }
 
@@ -462,7 +58,7 @@ export async function extractFacts(content: string): Promise<string[]> {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
         },
         body: JSON.stringify({
           model: process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.1-8B-Instruct',
@@ -471,24 +67,23 @@ export async function extractFacts(content: string): Promise<string[]> {
           response_format: { type: 'json_object' },
         }),
       })
-      
+
       if (res.ok) {
         const data = await res.json()
         const text = data.choices?.[0]?.message?.content
         return JSON.parse(text).facts || []
       }
     } catch (e) {
-      console.error('[extractFacts] Hugging Face failed:', e)
+      logger.error('[extractFacts] Hugging Face failed', { err: e })
     }
   }
 
-  // Fallback to static facts
+  // Fallback: static Vietnamese facts
   return [
-    "Hệ thống đang chắt lọc những kiến thức tinh túy nhất cho bạn...",
-    "Sắp có một hành trình khám phá tri thức thú vị dành riêng cho bạn!",
-    "Học tập là hạt giống của sự phát triển, hãy cùng kiên nhẫn nhé.",
-    "Mỗi trang sách là một cửa sổ mở ra thế giới mới.",
-    "Kiến thức sẽ giúp bạn đi xa hơn những gì bạn tưởng tượng."
+    'Hệ thống đang chắt lọc những kiến thức tinh túy nhất cho bạn...',
+    'Sắp có một hành trình khám phá tri thức thú vị dành riêng cho bạn!',
+    'Học tập là hạt giống của sự phát triển, hãy cùng kiên nhẫn nhé.',
+    'Mỗi trang sách là một cửa sổ mở ra thế giới mới.',
+    'Kiến thức sẽ giúp bạn đi xa hơn những gì bạn tưởng tượng.',
   ]
 }
-

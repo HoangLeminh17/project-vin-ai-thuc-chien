@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/infrastructure/di/logger.di'
 
 type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<Response | NextResponse>;
 
@@ -35,7 +36,7 @@ export function withAdminAuth(handler: ApiHandler): ApiHandler {
 
       return handler(req, ...args);
     } catch (error) {
-      console.error('[AdminAuth] Error verifying session:', error);
+      logger.error('[AdminAuth] Error verifying session', { err: error })
       return NextResponse.json({ 
         success: false, 
         error: 'Internal Server Error during authentication' 
