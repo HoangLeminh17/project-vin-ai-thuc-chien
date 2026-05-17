@@ -1,4 +1,5 @@
 # Synapsy — Trợ lý ôn tập y khoa bằng AI
+
 ![App demo](Synapsy_Thumbnail.png)
 
 Synapsy biến tài liệu y khoa thành khóa học có cấu trúc, chẩn đoán đúng chỗ yếu, và cá nhân hóa lộ trình ôn tập cho sinh viên y khoa.
@@ -274,7 +275,14 @@ Hệ thống tích hợp sẵn bộ công cụ giám sát:
 
 ## AI logging
 
-Prompt và tool call được tự động log khi dùng AI tool được hỗ trợ (Claude Code, Cursor, Codex, Gemini, Copilot). Sau khi chạy `setup_hooks.sh`, không cần thao tác thủ công thêm. Log nằm ở `.ai-log/session.jsonl` và được submit khi `git push`.
+Prompt và tool call được tự động log khi dùng AI tool được hỗ trợ (Claude Code, Cursor, Codex, Gemini, Copilot). Sau khi chạy `setup_hooks.sh`, không cần thao tác thủ công thêm.
+
+Quy ước tên log theo thành viên:
+- Nguyễn Bình Thành: `.ai-log/NguyenBinhThanh.jsonl`
+- Lê Kim Dũng: `.ai-log/LeKimDung.jsonl`
+- Lê Minh Hoàng: `.ai-log/LeMinhHoang.jsonl`
+
+Các file session tạm như `.ai-log/session.jsonl` hoặc `.ai-log/session*.jsonl` là log sinh tự động trong máy local và đang được ignore để tránh commit nhầm dữ liệu phiên làm việc.
 
 ### 📑 Tài liệu
 
