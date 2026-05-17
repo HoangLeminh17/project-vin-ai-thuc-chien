@@ -1,4 +1,5 @@
 # Synapsy — Trợ lý ôn tập y khoa bằng AI
+![App demo](Synapsy_Thumbnail.png)
 
 Synapsy biến tài liệu y khoa thành khóa học có cấu trúc, chẩn đoán đúng chỗ yếu, và cá nhân hóa lộ trình ôn tập cho sinh viên y khoa.
 
@@ -36,7 +37,6 @@ Synapsy biến tài liệu y khoa thành khóa học có cấu trúc, chẩn đo
 - StudyMode hỗ trợ tự nhập câu trả lời ngắn, so với đáp án chuẩn, rồi mới chọn rating.
 - Giao diện Synapsy v2 dùng TopBar, NavRail, DocDrawer và layout master-detail để chuyển giữa Dashboard, Thư viện và SRS.
 
-![App demo](Synapsy_Thumbnail.png)
 <!-- Replace with a better screenshot or screen recording when available -->
 
 ## Công nghệ
