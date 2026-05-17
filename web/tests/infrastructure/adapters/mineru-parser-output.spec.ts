@@ -136,6 +136,40 @@ describe('MineruParserAdapter output zip extraction', () => {
     ])
   })
 
+  it('normalizes V2 chart items into image type so downstream image rendering works', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => buildZipResponse({
+      'demo_content_list_v2.json': JSON.stringify([
+        [
+          {
+            type: 'chart',
+            content: {
+              img_path: 'images/chart1.png',
+              chart_caption: [{ type: 'text', content: 'Hinh 1: bieu do tuoi' }],
+            },
+            bbox: [83, 121, 917, 456],
+          },
+          {
+            type: 'image',
+            content: {
+              img_path: 'images/photo1.png',
+              image_caption: [{ type: 'text', content: 'Hinh 2: anh chup' }],
+            },
+            bbox: [83, 500, 917, 800],
+          },
+        ],
+      ]),
+    })))
+
+    const result = await withAdapter<ParseResult>(adapter => (adapter as any).downloadAndSave('https://zip.example/result.zip', 'course.pdf'))
+
+    expect(result.contentList).toMatchObject([
+      { type: 'image', sub_type: 'chart', img_path: 'images/chart1.png', page_idx: 0 },
+      { type: 'image', img_path: 'images/photo1.png', page_idx: 0 },
+    ])
+    expect((result.contentList[0] as any).sub_type).toBe('chart')
+    expect((result.contentList[1] as any).sub_type).not.toBe('chart')
+  })
+
   it('reports zip entries when no readable markdown or content list exists', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => buildZipResponse({
       'layout.json': JSON.stringify({ pages: [] }),
