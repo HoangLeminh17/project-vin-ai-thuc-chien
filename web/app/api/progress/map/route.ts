@@ -1,10 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 import { cookies } from 'next/headers';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
-async function handler() {
+async function handler(_req: NextRequest) {
   const { verifySessionUseCase, getProgressMapUseCase } = await import('@/infrastructure/di');
   const cookieStore = await cookies();
   const session = cookieStore.get('session')?.value;
@@ -16,4 +16,4 @@ async function handler() {
   return NextResponse.json(map);
 }
 
-export const GET = withApiLogging('GetProgressMap', withApiMetrics('/api/progress/map', handler as any));
+export const GET = withApiLogging('GetProgressMap', withApiMetrics('/api/progress/map', handler));

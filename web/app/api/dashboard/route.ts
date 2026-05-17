@@ -1,11 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 export const dynamic = 'force-dynamic'
 import { cookies } from 'next/headers'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
 import { aggregateModuleMastery } from '@/lib/ukt-module-mastery'
 
-async function handler() {
+async function handler(_req: NextRequest) {
   const {
     verifySessionUseCase,
     listCoursesUseCase,
@@ -46,4 +46,4 @@ async function handler() {
   })
 }
 
-export const GET = withApiLogging('/api/dashboard', withApiMetrics('/api/dashboard', handler as any))
+export const GET = withApiLogging('/api/dashboard', withApiMetrics('/api/dashboard', handler))

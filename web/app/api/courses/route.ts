@@ -2,17 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { handleApiError } from '@/lib/api-utils';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
+import { isOwnedStoragePath } from '@/lib/storage-paths';
 
 export const dynamic = 'force-dynamic';
-
-export function isOwnedStoragePath(path: unknown, userId: string, root: 'course-pdfs' | 'course-layouts'): path is string {
-  if (typeof path !== 'string') return false;
-  const prefix = `${root}/${userId}/`;
-  if (!path.startsWith(prefix)) return false;
-  const tail = path.slice(prefix.length);
-  if (!tail) return false;
-  return tail.split('/').every(segment => segment !== '' && segment !== '.' && segment !== '..');
-}
 
 async function getHandler(req: NextRequest) {
   const { verifySessionUseCase, listCoursesUseCase } = await import('@/infrastructure/registry');
@@ -63,5 +55,9 @@ async function postHandler(req: NextRequest) {
   return NextResponse.json({ success: true, course: saved });
 }
 
-export const GET = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req) => getHandler(req as any).catch(e => handleApiError(e, 'GET /api/courses')) as any));
-export const POST = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req) => postHandler(req as any).catch(e => handleApiError(e, 'POST /api/courses')) as any));
+export const GET = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req: NextRequest) =>
+  getHandler(req).catch((e: unknown) => handleApiError(e, 'GET /api/courses'))
+));
+export const POST = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req: NextRequest) =>
+  postHandler(req).catch((e: unknown) => handleApiError(e, 'POST /api/courses'))
+));

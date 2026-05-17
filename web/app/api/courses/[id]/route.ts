@@ -40,14 +40,14 @@ async function patchHandler(req: NextRequest, ctx: Context) {
   return NextResponse.json({ success: true });
 }
 
-export const GET = withApiLogging('/api/courses/[id]', withApiMetrics('/api/courses/[id]', (req, ctx) =>
-  getHandler(req as any, ctx).catch((e: unknown) => handleApiError(e, 'GET /api/courses/[id]')) as any
+export const GET = withApiLogging('/api/courses/[id]', withApiMetrics('/api/courses/[id]', (req: NextRequest, ctx: Context) =>
+  getHandler(req, ctx).catch((e: unknown) => handleApiError(e, 'GET /api/courses/[id]'))
 ));
 
-export const PATCH = withApiLogging('/api/courses/[id]', withApiMetrics('/api/courses/[id]', (req, ctx) =>
-  patchHandler(req as any, ctx).catch((e: unknown) => handleApiError(e, 'PATCH /api/courses/[id]')) as any
+export const PATCH = withApiLogging('/api/courses/[id]', withApiMetrics('/api/courses/[id]', (req: NextRequest, ctx: Context) =>
+  patchHandler(req, ctx).catch((e: unknown) => handleApiError(e, 'PATCH /api/courses/[id]'))
 ));
 
-export const DELETE = withApiLogging('/api/courses/[id]', withApiMetrics('/api/courses/[id]', (req, ctx) =>
-  deleteHandler(req as any, ctx).catch((e: unknown) => handleApiError(e, 'DELETE /api/courses/[id]')) as any
+export const DELETE = withApiLogging('/api/courses/[id]', withApiMetrics('/api/courses/[id]', (req: NextRequest, ctx: Context) =>
+  deleteHandler(req, ctx).catch((e: unknown) => handleApiError(e, 'DELETE /api/courses/[id]'))
 ));

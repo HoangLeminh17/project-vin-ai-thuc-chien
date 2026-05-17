@@ -39,4 +39,6 @@ const handler = async (req: NextRequest) => {
   }
 }
 
-export const GET = withApiLogging('/api/layout-image', withApiMetrics('/api/layout-image', (req) => handler(req as any).catch(e => handleApiError(e, 'GET /api/layout-image')) as any))
+export const GET = withApiLogging('/api/layout-image', withApiMetrics('/api/layout-image', (req: NextRequest) =>
+  handler(req).catch((e: unknown) => handleApiError(e, 'GET /api/layout-image'))
+))

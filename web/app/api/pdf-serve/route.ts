@@ -29,4 +29,6 @@ const handler = async (req: NextRequest) => {
   })
 }
 
-export const GET = withApiLogging('/api/pdf-serve', withApiMetrics('/api/pdf-serve', (req) => handler(req as any).catch(e => handleApiError(e, 'GET /api/pdf-serve')) as any))
+export const GET = withApiLogging('/api/pdf-serve', withApiMetrics('/api/pdf-serve', (req: NextRequest) =>
+  handler(req).catch((e: unknown) => handleApiError(e, 'GET /api/pdf-serve'))
+))

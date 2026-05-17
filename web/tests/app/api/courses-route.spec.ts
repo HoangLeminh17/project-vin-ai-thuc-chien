@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isOwnedStoragePath } from '@/app/api/courses/route'
+import { isOwnedStoragePath } from '@/lib/storage-paths'
 
 describe('isOwnedStoragePath', () => {
   it('accepts owned PDF and layout storage paths', () => {
