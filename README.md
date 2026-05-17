@@ -4,7 +4,7 @@ Tải PDF lên, chuyển thành markdown có cấu trúc bằng MinerU API, rồ
 
 Màn hình học dùng layout **master-detail**: cây điều hướng cố định bên trái (chương → bài học → thẻ) và khung chi tiết bên phải với tab chỉnh sửa/học.
 
-![App demo](image.png)
+![App demo](Synapsy_Thumbnail.png)
 <!-- Replace with a better screenshot or screen recording when available -->
 
 ## Công nghệ
