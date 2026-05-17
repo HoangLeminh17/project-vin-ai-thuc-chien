@@ -132,12 +132,13 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
   const chapters = course.course.chapters
   const allCards = useMemo(() => flattenCards(course), [course])
   const shouldOpenStudyInitially = preferredDetailTab === 'study' && allCards.length > 0
-  const initialStudyCard = shouldOpenStudyInitially ? allCards[0] : null
+  const shouldOpenEditInitially  = preferredDetailTab === 'edit'  && allCards.length > 0
+  const initialCard = (shouldOpenStudyInitially || shouldOpenEditInitially) ? allCards[0] : null
 
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>(
-    () => (initialStudyCard ? { [initialStudyCard.ci]: true } : {})
+    () => (initialCard ? { [initialCard.ci]: true } : {})
   )
-  const [activeCard, setActiveCard] = useState<FlatCard | null>(initialStudyCard)
+  const [activeCard, setActiveCard] = useState<FlatCard | null>(initialCard)
   const [detailTab, setDetailTab] = useState<'edit' | 'study'>(shouldOpenStudyInitially ? 'study' : 'edit')
   const [studyOverlay, setStudyOverlay] = useState(false)
 
