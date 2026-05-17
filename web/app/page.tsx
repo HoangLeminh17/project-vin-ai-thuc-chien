@@ -571,6 +571,8 @@ export default function Home() {
   function handleCourseAction(id: string) {
     if (activeTab === 'srs') {
       router.push(`/course/${id}?tab=study`)
+    } else if (activeTab === 'courses') {
+      router.push(`/course/${id}?tab=edit`)
     } else {
       router.push(`/course/${id}`)
     }
