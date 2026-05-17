@@ -10,9 +10,27 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| SRS overlay fallback cho thẻ mới + guard StudyMode deck rỗng | Codex | #142 |
 | Synapsy v2 shell: TopBar + NavRail + DocDrawer folder tree | Nguyen Binh Thanh | #132 |
 | CourseTree + StudyMode v2 visual reskin + tab routing (edit/study) | Nguyen Binh Thanh | #133 |
 | Stage 2 dùng generator model riêng cho DeepSeek/OpenAI | Codex | branch `fix/stage2-generator-model` |
+
+### [ADR-54] SRS overlay mở được deck mới - 17/05/2026
+
+**Người làm:** Codex | **Ref:** PR #142 (`fix/srs-study-mode-flow`)
+
+**Bối cảnh:** PR #126 đã merge short-answer self-check vào `StudyMode`, nhưng nút ôn trong `CourseTree` vẫn bị khóa theo `totalDue === 0`. Với khóa học mới, chưa có progress entry nên `totalDue` bằng 0 dù vẫn có thẻ để học. Overlay bên trong đã có fallback `dueCards.length > 0 ? dueCards : allCards`, nhưng button không cho mở overlay để đi tới flow đó.
+
+**Quyết định:**
+- Tách helper `getStudyDeck`/`hasStudyDeckCards` để dùng cùng một logic ưu tiên due cards rồi fallback all cards.
+- Nút overlay enable khi deck fallback có thẻ; nếu không có due card thì hiển thị `Bắt đầu`.
+- `StudyMode` guard trường hợp deck rỗng hoặc index ngoài phạm vi trước khi đọc `card.concept`.
+- `/review` được xác minh vẫn đọc/ghi cùng nguồn SRS: `GET /api/progress/due` đọc `user_progress`, `POST /api/progress/review` ghi qua `ReviewCardUseCase`. Trang này chỉ hiện thẻ đã được schedule đến hạn, nên khóa học toàn thẻ mới vẫn cần bắt đầu từ course study overlay.
+
+**Hệ quả:**
+- (+) Course mới có thể vào luồng tự viết đáp án → xem đáp án → chọn rating 1-4 ngay cả khi chưa có due card.
+- (+) Tránh crash UI nếu StudyMode nhận deck rỗng do dữ liệu chưa sẵn sàng.
+- (-) `/review` global vẫn không tự tổng hợp thẻ mới từ mọi course vì endpoint due chỉ có progress records; muốn global học thẻ mới cần API ghép course content riêng.
 
 ### [ADR-53] Tách model planner/generator cho Stage 2 - 17/05/2026
 
