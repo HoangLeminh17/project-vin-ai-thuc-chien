@@ -556,9 +556,13 @@ export default function Home() {
     if (inputRef.current) inputRef.current.value = ''
   }, [resetGeneration])
 
-  function handleFile(f: File | null) { if (f && f.type === 'application/pdf') setFile(f) }
+  function handleFile(f: File | null) {
+    if (f && f.type === 'application/pdf') {
+      setFile(f)
+      startGeneration(f)
+    }
+  }
   function handleDrop(e: DragEvent<HTMLDivElement>) { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null) }
-  function handleStart() { if (file) startGeneration(file) }
 
   const heatmap = buildHeatmap(progressMap)
   const totalCards = heatmap.reduce((a, b) => a + b, 0)
