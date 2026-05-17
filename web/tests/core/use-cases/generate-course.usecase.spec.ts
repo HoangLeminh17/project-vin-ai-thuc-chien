@@ -110,6 +110,33 @@ describe('GenerateCourseUseCase', () => {
     }))
   })
 
+  it('starts chunk generation in parallel for large markdown', async () => {
+    const resolvers: Array<(value: any) => void> = []
+    const aiService = {
+      generateCourse: vi.fn().mockImplementation(() => new Promise(resolve => {
+        resolvers.push(resolve)
+      })),
+    }
+
+    const useCase = new GenerateCourseUseCase(aiService as any, undefined, 10)
+    const execution = useCase.execute('x'.repeat(80))
+
+    await Promise.resolve()
+    expect(aiService.generateCourse).toHaveBeenCalledTimes(2)
+
+    resolvers[0]({
+      course: { title: 'Parallel course', chapters: [] },
+      tokens: null,
+    })
+    resolvers[1]({
+      course: { title: 'Parallel course', chapters: [] },
+      tokens: null,
+    })
+
+    const result = await execution
+    expect(result.course.title).toBe('Parallel course')
+  })
+
   it('rejects empty markdown input', async () => {
     const aiService = {
       generateCourse: vi.fn(),

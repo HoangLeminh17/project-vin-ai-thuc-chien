@@ -14,6 +14,7 @@ import { hasReusableCachedCourseContent } from '@/lib/generation-cache';
 import { uploadCourseLayout, uploadCoursePdf } from '@/lib/generation-uploads';
 import { pollParseProgress } from '@/lib/parse-progress-polling';
 import { devError } from '@/lib/devlog'
+import { trackMetric } from '@/lib/metrics-client'
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -203,26 +204,24 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const startGeneration = useCallback(async (file: File) => {
     resetGeneration();
     setStatus('parsing');
+    const startedAt = performance.now()
+    let generationStatus: 'success' | 'error' = 'error'
+    let generationSource: 'cache' | 'fresh' = 'fresh'
 
     // Create blob URL for same-session preview
     const localPath = URL.createObjectURL(file);
     setPreviewPdfUrl(localPath);
 
-    // Upload PDF to Firebase Storage (client-side); get storage path for persistent reference
-    let pdfStorageUrl: string | undefined;
-    if (user?.uid) {
-      try {
-        pdfStorageUrl = await uploadCoursePdf(storage, user.uid, file);
-      } catch {
-        // Upload failed — citation panel won't work for this course, generation continues
-      }
-    }
+    // Start the PDF upload immediately so it can overlap with parsing.
+    const pdfStorageUrlPromise = user?.uid
+      ? uploadCoursePdf(storage, user.uid, file).catch(() => undefined)
+      : Promise.resolve(undefined)
 
     const form = new FormData();
     form.append('file', file);
 
     let markdown = '';
-    let layoutStorageUrl: string | undefined;
+    let layoutStorageUrlPromise: Promise<string | undefined> = Promise.resolve(undefined)
     // Kept in outer scope so fetchChapter calls can build rawContexts and validate markers
     let contentList: Array<{ type?: string; text?: string; table_body?: string; page_idx?: number }> = [];
     let validChunkIds = new Set<string>();
@@ -251,11 +250,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       contentList = data.contentList ?? [];
       validChunkIds = buildValidChunkIds(contentList);
       if (user?.uid && contentList.length > 0) {
-        try {
-          layoutStorageUrl = await uploadCourseLayout(storage, user.uid, contentList);
-        } catch {
-          // Layout upload failed — bbox highlighting won't work, generation continues
-        }
+        layoutStorageUrlPromise = uploadCourseLayout(storage, user.uid, contentList).catch(() => undefined)
       }
     } catch (e) {
       stopParseProgressPolling();
@@ -268,6 +263,12 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     setStatus('generating');
     let resolvedCourse: Course | null = null;
     let hash = '';
+
+    const resolveStorageUrls = async () => ({
+      pdfStorageUrl: await pdfStorageUrlPromise,
+      layoutStorageUrl: await layoutStorageUrlPromise,
+    })
+
     try {
       const res = await fetch('/api/generate-course', {
         method: 'POST',
@@ -278,6 +279,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       if (!data.success) {
         setError(data.error || 'Generation failed');
         setStatus('idle');
+        generationStatus = 'error'
         return;
       }
       resolvedCourse = data.course;
@@ -341,22 +343,26 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         ch.lessons.some(l => isLegacyOutline(l.outline))
       )
       if (hasReusableCachedCourseContent(fromCache, data.courseContent, hasLegacyOutline)) {
+        generationSource = 'cache'
         const cachedChapters = data.courseContent.chapters as ChapterContent[] || [];
         const map: Record<number, ChapterContent> = {};
         cachedChapters.forEach((ch: ChapterContent, i: number) => { map[i] = ch; });
         setCourseContentMap(map);
         if (user && resolvedCourse) {
           const content: CourseContent = { chapters: cachedChapters };
+          const { pdfStorageUrl, layoutStorageUrl } = await resolveStorageUrls()
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl);
-        if (saved) {
-          setSavedCourseId(saved.id);
-          localStorage.setItem(`justGenerated_${saved.id}`, 'true')
-          runDiagnosticPrefetch(saved.id, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, map))
-          onCourseSavedRef.current?.();
+          if (saved) {
+            setSavedCourseId(saved.id);
+            localStorage.setItem(`justGenerated_${saved.id}`, 'true')
+            runDiagnosticPrefetch(saved.id, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, map))
+            onCourseSavedRef.current?.();
+          }
         }
-      }
         setStatus('done');
+        generationStatus = 'success'
       } else if (fromCache) {
+        generationSource = 'cache'
         const results = await Promise.all(chapters.map(i => {
           const chapterLessons = resolvedCourse!.chapters[i]?.lessons ?? []
           const rawContexts = chapterLessons.map(l => extractRawContext(contentList, l.source_chunk_start, l.source_chunk_end))
@@ -371,6 +377,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             return
           }
           const content: CourseContent = { chapters: chapterList };
+          const { pdfStorageUrl, layoutStorageUrl } = await resolveStorageUrls()
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl);
           if (saved) {
             setSavedCourseId(saved.id);
@@ -382,6 +389,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           }
         }
         setStatus('done');
+        generationStatus = 'success'
       } else {
         const results = await Promise.all(
           chapters.map(i => {
@@ -399,6 +407,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             return
           }
           const content: CourseContent = { chapters: chapterList }
+          const { pdfStorageUrl, layoutStorageUrl } = await resolveStorageUrls()
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl)
           if (saved) {
             currentSavedId = saved.id
@@ -413,10 +422,18 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           runDiagnosticPrefetch(currentSavedId, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, chapterMap))
         }
         setStatus('done')
+        generationStatus = 'success'
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
+      generationStatus = 'error'
+    } finally {
+      void trackMetric('course_generation_duration_ms', performance.now() - startedAt, {
+        useCase: 'generate-course',
+        status: generationStatus,
+        provider: generationSource,
+      })
     }
   }, [courses, user, saveCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch, setPreviewPdfUrl, stopParseProgressPolling]);
 
