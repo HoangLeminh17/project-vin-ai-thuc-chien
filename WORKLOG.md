@@ -6,6 +6,53 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ---
 
+## Sprint 8 — 17/05/2026 →
+
+| Task | Người làm | PR |
+|---|---|---|
+| Synapsy v2 shell: TopBar + NavRail + DocDrawer folder tree | Nguyen Binh Thanh | #132 |
+| CourseTree + StudyMode v2 visual reskin + tab routing (edit/study) | Nguyen Binh Thanh | #133 |
+
+### [ADR-51] Synapsy v2 Shell Layout — 17/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #132 (`feat/ui-navrail-shell`)
+
+**Bối cảnh:** Giao diện cũ (page.tsx) là một trang đơn không có điều hướng cố định — user phải scroll và không có cách nào chuyển giữa Dashboard, Thư viện, và SRS mà không mất context. Prototype Synapsy v2 (trong `Ai Course Flashcard-handoff/`) đã thiết kế sẵn shell 3-panel.
+
+**Quyết định:**
+- Thêm **TopBar** 44px full-width: logo + section label + user avatar/logout.
+- Thêm **NavRail** 60px bên trái: 3 tab (KHO/THƯ VIỆN/SRS) với icon + label.
+- Thêm **DocDrawer** 258px: folder tree với mock data fallback (Y Khoa Cơ Sở), tạo thư mục lưu localStorage, nút xóa tài liệu hover.
+- Layout: `height:100vh flex-column` → TopBar + body row (NavRail | DocDrawer | main flex-1).
+- Tab content switch bằng `activeTab` state, `key={activeTab}` để animate.
+
+**Hệ quả:**
+- (+) User có thể chuyển tab mà không mất trạng thái upload/generation.
+- (+) DocDrawer hiển thị mastery badge + due count cho từng tài liệu.
+- (+) Drawer có thể collapse/expand bằng nút toggle nhỏ.
+- (-) Page.tsx vẫn còn inline nhiều components — cần tách ra nếu tiếp tục scale.
+
+---
+
+### [ADR-52] Tab Routing — THƯ VIỆN → edit, SRS → study — 17/05/2026
+
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #133 (`feat/ui-course-view`)
+
+**Bối cảnh:** ADR-47 làm cho click card trong CourseTree luôn switch sang tab "Học" (flashcard). Điều này sai với ý muốn: tab THƯ VIỆN cần mở khóa học ở chế độ edit (QnA editor, citation, AI tutor); tab SRS mới cần mở flashcard.
+
+**Quyết định:**
+- `handleCourseAction` route theo `activeTab`: SRS → `?tab=study`, còn lại → `?tab=edit`.
+- `/course/[id]/page.tsx` đọc `searchParams.get('tab')` và truyền `preferredDetailTab: 'study' | 'edit' | undefined` xuống `CourseFlow` → `CourseTree`.
+- `CourseTree`: khi `preferredDetailTab === 'edit'`, auto-select card đầu tiên và expand chapter đầu tiên (1 chạm).
+- Card click + arrow-key nav trong CourseTree đều respect `preferredDetailTab` thay vì hardcode `'study'`.
+
+**Hệ quả:**
+- (+) Tab THƯ VIỆN mở đúng chế độ edit; tab SRS mở đúng flashcard.
+- (+) Single-tap navigation từ DocDrawer vào edit panel.
+- (-) SRS integration với `/review` global và "Bắt đầu" button vẫn chưa hoàn chỉnh — cần PR riêng.
+
+---
+
 ## Sprint 7 — 11/05 → 16/05/2026
 
 | Task | Người làm | PR |
