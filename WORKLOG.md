@@ -11,9 +11,41 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Task | Người làm | PR |
 |---|---|---|
 | SRS overlay fallback cho thẻ mới + guard StudyMode deck rỗng | Codex | #142 |
+| SRS Firestore strip undefined fields + review toast/fade/shortcuts | Codex | #146 |
+| Fix lỗi màn đỏ "Có lỗi khi tạo khóa học" hiện khi F5 (authLoading bug) | Codex | #147 |
 | Synapsy v2 shell: TopBar + NavRail + DocDrawer folder tree | Nguyen Binh Thanh | #132 |
 | CourseTree + StudyMode v2 visual reskin + tab routing (edit/study) | Nguyen Binh Thanh | #133 |
 | Stage 2 dùng generator model riêng cho DeepSeek/OpenAI | Codex | branch `fix/stage2-generator-model` |
+
+### [ADR-56] Fix lỗi màn đỏ hiện khi F5 do sai điều kiện authLoading - 17/05/2026
+
+**Người làm:** Codex | **Ref:** PR #147 (`fix/auth-loading-error-flash`)
+
+**Bối cảnh:** Mỗi lần refresh trang, xuất hiện ô màu đỏ "Có lỗi khi tạo khóa học" trong khoảng ~1 giây rồi biến mất. Không có lỗi thực sự — đây là bug render.
+
+**Nguyên nhân:** Trong `web/app/page.tsx`, có một block `if (authLoading)` (line 567) render UI lỗi đỏ thay vì loading spinner. Ngay dưới đó còn một `if (authLoading)` thứ hai (line 585) mới render đúng Spinner — nhưng không bao giờ chạy tới vì block trên đã return trước. Khi F5, `authLoading = true` → block sai được kích hoạt, hiện màn đỏ → auth xong, `authLoading = false` → biến mất.
+
+**Quyết định:** Xóa block 567–583 (error UI đặt nhầm trong `if (authLoading)`). Error screen thật đã được xử lý ở dòng 562–564 bởi `if (error && !course) → <ErrorScreen>`.
+
+**Hệ quả:**
+- (+) F5 không còn flash màn đỏ gây hoang mang người dùng.
+- (+) Luồng render rõ ràng hơn: error → authLoading spinner → login → dashboard.
+
+---
+
+### [ADR-55] Review UX: toast, fade, phím tắt - 17/05/2026
+
+**Người làm:** Codex | **Ref:** PR #146 (`fix/srs-study-mode-flow`)
+
+**Bối cảnh:** Sau khi luồng SRS overlay hoạt động (PR #142), trang `/review` thiếu phản hồi trực quan khi người dùng đánh giá thẻ và chuyển thẻ.
+
+**Quyết định:** Thêm toast thông báo sau mỗi lần đánh giá, hiệu ứng fade khi chuyển thẻ, và phím tắt bàn phím (1–4 chọn rating, Space/Enter chuyển). Không thêm animation phức tạp, chỉ CSS transition đơn giản.
+
+**Hệ quả:**
+- (+) Người dùng có phản hồi ngay khi đánh giá, giảm nhầm lẫn về trạng thái thẻ.
+- (+) Phím tắt tăng tốc độ ôn tập cho user quen dùng bàn phím.
+
+---
 
 ### [ADR-54] SRS overlay mở được deck mới - 17/05/2026
 
