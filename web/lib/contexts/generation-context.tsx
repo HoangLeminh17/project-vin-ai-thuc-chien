@@ -331,6 +331,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           localStorage.setItem(`justGenerated_${existing.id}`, 'true')
           setSavedCourseId(existing.id);
           setStatus('done');
+          generationStatus = 'success'
           return;
         }
         // Course was deleted or has no content — fall through to regenerate
