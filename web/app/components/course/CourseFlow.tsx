@@ -21,7 +21,7 @@ interface Props {
   onProgressChange?: () => void
   onExit: () => void
   layoutStorageUrl?: string | null
-  preferredDetailTab?: 'study'
+  preferredDetailTab?: 'study' | 'edit'
 }
 
 function LoadingOverlay({ label }: { label: string }) {
@@ -38,6 +38,7 @@ export function CourseFlow({ course, progressMap, onProgressChange, onExit, layo
   const [view, setView] = useState<View>('init')
   const [diagnosticQuestions, setDiagnosticQuestions] = useState<DiagnosticQuestion[]>([])
   const [diagnosticState, setDiagnosticState] = useState<Record<string, number>>({})
+  const [postDiagnosticTab, setPostDiagnosticTab] = useState<'edit' | 'study' | undefined>(undefined)
   // Guard against React Strict Mode double-mount consuming the justGenerated flag twice
   const diagInitialized = useRef(false)
 
@@ -120,6 +121,7 @@ export function CourseFlow({ course, progressMap, onProgressChange, onExit, layo
     setDiagnosticState(results)
     localStorage.setItem(`diagnosticDone_${course.id}`, 'true')
     localStorage.setItem(`diagnosticResults_${course.id}`, JSON.stringify(results))
+    setPostDiagnosticTab('edit')
     setView('course-tree')
   }, [course.id])
 
@@ -165,7 +167,7 @@ export function CourseFlow({ course, progressMap, onProgressChange, onExit, layo
       onProgressChange={onProgressChange}
       onExit={onExit}
       layoutStorageUrl={layoutStorageUrl}
-      preferredDetailTab={preferredDetailTab}
+      preferredDetailTab={postDiagnosticTab ?? preferredDetailTab}
     />
   )
 }
