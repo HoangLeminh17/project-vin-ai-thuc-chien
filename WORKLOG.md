@@ -10,6 +10,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| Deliverables cuối sprint: pitch deck, demo package, docs refresh, thumbnail; architecture diagram; quality control | Nguyễn Bình Thành, Lê Kim Dũng, Lê Minh Hoàng | docs/demo handoff |
 | SRS review flow: mở deck mới, feedback khi ôn, thống kê Mới/Đang học/Đến hạn kiểu Anki, và docs bucket mapping | Nguyễn Bình Thành | #142, #146, #153, #154, #155 |
 | Synapsy v2: shell 3 vùng, CourseTree/StudyMode v2, auto-start upload, routing sau diagnostic, landing page public | Nguyễn Bình Thành | #132, #133, #135, #136, #152 |
 | Stage 2 chọn đúng model generator cho DeepSeek/OpenAI | Nguyễn Bình Thành | #140 |
@@ -20,6 +21,8 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 | Generation speedups và metric thời gian generate course | Lê Kim Dũng | #151 |
 
 > Không tính vào kết quả đã giao: PR #149 closed nhưng không merge.
+
+**Phân công deliverables cuối sprint:** Nguyễn Bình Thành phụ trách pitch deck, demo package gửi kênh ngoài, viết lại docs và tạo thumbnail; Lê Kim Dũng phụ trách architecture diagram; Lê Minh Hoàng phụ trách quality control trước khi nộp.
 
 ### [ADR-58] SRS review flow và thống kê kiểu Anki — 17/05/2026
 
