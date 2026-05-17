@@ -10,12 +10,40 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| SRS stats theo kiểu Anki: NEW dựa trên tổng card − reviewed, fix LEARNING threshold | Nguyen Binh Thanh | #153, #154 |
 | SRS overlay fallback cho thẻ mới + guard StudyMode deck rỗng | Nguyen Binh Thanh | #142 |
 | SRS Firestore strip undefined fields + review toast/fade/shortcuts | Nguyen Binh Thanh | #146 |
 | Fix lỗi màn đỏ "Có lỗi khi tạo khóa học" hiện khi F5 (authLoading bug) | Nguyen Binh Thanh | #147 |
 | Synapsy v2 shell: TopBar + NavRail + DocDrawer folder tree | Nguyen Binh Thanh | #132 |
 | CourseTree + StudyMode v2 visual reskin + tab routing (edit/study) | Nguyen Binh Thanh | #133 |
 | Stage 2 dùng generator model riêng cho DeepSeek/OpenAI | Nguyen Binh Thanh | branch `fix/stage2-generator-model` |
+
+### [ADR-57] SRS stats theo Anki: định nghĩa lại NEW + LEARNING - 17/05/2026
+
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #153 (`feat/total-card-count`) + PR #154 (`feat/srs-anki-stats`)
+
+**Bối cảnh:** Người dùng báo widget "Tiến độ ôn tập" trên trang chủ hiển thị "27 Đang học / 4 Cần ôn / 0 Thẻ mới", dù họ đã upload nhiều tài liệu nên tổng số thẻ phải lớn hơn nhiều. Cảm giác như có lỗi lưu trữ trạng thái thẻ.
+
+**Nguyên nhân (2 bug độc lập):**
+1. `Thẻ mới = 0` luôn đúng theo code cũ: `getStats()` đếm `where('status','==','NEW')`, nhưng `initializeProgress()` set `status='NEW'` rồi `calculateNextProgress()` ghi đè ngay thành `LEARNING/REVIEW` trước khi save. `NEW` không bao giờ tồn tại trong Firestore. Đồng thời `user_progress` chỉ có document khi user đã review thẻ ít nhất một lần → thẻ chưa chạm vào không xuất hiện ở bất kỳ counter nào.
+2. `Đang học = 27` quá rộng: `sm2.ts` set `status = interval > 7 ? 'REVIEW' : 'LEARNING'`, nên thẻ vừa Good lần đầu (interval=1 day) hay đã ôn vài lần (interval=6 days) vẫn bị xếp "Đang học". Khác với Anki, ở đó "Learning" chỉ là pha steps phút/giờ.
+
+**Quyết định:**
+- **Cache total card count per course**: thêm `SavedCourse.totalCardCount`, tính lúc `save()`/`update()` qua helper `countCourseCards()`. Backfill khi đọc nếu doc cũ thiếu field. Tránh phải fetch full `courseContent` mỗi lần stats.
+- **Đổi shape `IProgressRepository.getStats()`**: bỏ trường `new` (dead), thay bằng `reviewed` = tổng số doc trong `user_progress` của user.
+- **`GetSRSStatsUseCase` join với `ICourseRepository`**: `new = max(0, totalCards − reviewed)`. Nhận optional `courseId` để giới hạn về một deck.
+- **`/api/progress/stats?courseId=...`**: query param mới cho per-course breakdown.
+- **Sửa `sm2.ts`**: bộ SM2 này không có sub-day steps, nên `LEARNING` chỉ có nghĩa khi card vừa lapse (Again). Mọi rating non-Again → `REVIEW` ngay, bất kể interval.
+- **UI**: home widget relabel `Mới / Đang học / Đến hạn`. `CourseTree` header đổi từ `cần ôn / thẻ / vững` thành 4-bucket Anki-style `mới / học / ôn / thuộc`, tính client-side từ `progressMap` đã có.
+
+**Hệ quả:**
+- (+) Counter "Mới" phản ánh đúng số thẻ chưa từng review trên toàn bộ courses của user.
+- (+) "Đang học" giờ chỉ là thẻ vừa Again — khớp ngữ nghĩa Anki và không inflate theo interval.
+- (+) Per-course breakdown ngay trong `CourseTree` header, không cần thêm API call (dùng lại `progressMap`).
+- (-) Per-course endpoint `/api/progress/stats?courseId=` chưa có UI tiêu thụ — để dành cho future use cases (dashboard breakdown chi tiết).
+- (-) Vẫn còn vấn đề `cardId` không có namespace courseId, nên hai khóa khác nhau cùng `ci-li-cardIndex` sẽ collide trong `user_progress`. Out of scope; sẽ xử lý sau nếu user upload tài liệu trùng layout.
+
+---
 
 ### [ADR-56] Fix lỗi màn đỏ hiện khi F5 do sai điều kiện authLoading - 17/05/2026
 
