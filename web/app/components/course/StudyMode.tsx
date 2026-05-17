@@ -42,11 +42,11 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
   const lastEvaluatedKey = useRef<string | null>(null)
   const evaluationCacheRef = useRef(new Map<string, EvaluationResult>())
 
-  const card = cards[idx]
+  const card = cards[idx] ?? null
   const total = cards.length
-  const answerComplexity = getAnswerComplexity(card.concept.answer)
+  const answerComplexity = getAnswerComplexity(card?.concept.answer ?? '')
   const hasDraftAnswer = draftAnswer.trim().length > 0
-  const canSubmitForEvaluation = answerComplexity.shouldEvaluate && hasDraftAnswer
+  const canSubmitForEvaluation = Boolean(card) && answerComplexity.shouldEvaluate && hasDraftAnswer
 
   const resetEvaluation = useCallback(() => {
     evaluationRequestId.current += 1
@@ -81,6 +81,8 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
   }, [card, idx, total, onExit, resetEvaluation, onRated])
 
   const evaluateAnswer = useCallback(async () => {
+    if (!card) return
+
     const trimmedAnswer = draftAnswer.trim()
     const evaluationKey = `${card.id}::${trimmedAnswer}`
 
@@ -141,7 +143,7 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
       setEvaluationLabel(result.label)
       setEvaluationState('done')
     }
-  }, [card.id, card.concept.answer, card.concept.question, draftAnswer, evaluationState])
+  }, [card, draftAnswer, evaluationState])
 
   const revealAnswer = useCallback(() => {
     answerInputRef.current?.blur()
@@ -230,7 +232,7 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
   }, [handleGlobalKeyDown])
 
-  if (total === 0) {
+  if (total === 0 || !card) {
     return (
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 12, color: T.ink40, fontFamily: T.fontSans }}>
         <span style={{ fontSize: 32 }}>📭</span>
