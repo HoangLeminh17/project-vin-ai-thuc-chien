@@ -9,6 +9,7 @@ interface SRSStats {
   new: number
   learning: number
   due: number
+  totalCards?: number
 }
 
 function isAbortError(error: unknown) {
@@ -59,7 +60,7 @@ export function SRSStatsWidget() {
     )
   }
 
-  if (!stats || (stats.new === 0 && stats.learning === 0 && stats.due === 0)) {
+  if (!stats || (stats.new === 0 && stats.learning === 0 && stats.due === 0 && (stats.totalCards ?? 0) === 0)) {
     return null
   }
 
@@ -72,9 +73,9 @@ export function SRSStatsWidget() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
         {[
-          { label: 'Cần ôn', value: stats.due, color: T.accent },
-          { label: 'Đang học', value: stats.learning, color: T.srsGood },
-          { label: 'Thẻ mới', value: stats.new, color: T.ink40 },
+          { label: 'Mới', value: stats.new, color: T.ink40 },
+          { label: 'Đang học', value: stats.learning, color: '#c47a2a' },
+          { label: 'Đến hạn', value: stats.due, color: stats.due > 0 ? T.accent : T.ink40 },
         ].map((item, index) => (
           <div key={item.label} style={{ textAlign: 'center', borderLeft: index === 0 ? 'none' : `1px solid ${T.ink10}` }}>
             <p style={{ fontSize: 26, fontWeight: 800, color: item.color, margin: 0, letterSpacing: '-0.03em' }}>{item.value}</p>

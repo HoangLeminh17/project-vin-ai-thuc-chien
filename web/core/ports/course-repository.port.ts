@@ -7,12 +7,13 @@ export interface CreateCourseInput {
   course: Course;
   courseContent: CourseContent | null;
   contentHash?: string;
+  totalCardCount?: number;
 }
 
 export interface ICourseRepository {
   // Persistence methods (User-based)
   save(input: CreateCourseInput): Promise<SavedCourse>;
-  update(id: string, userId: string, content: CourseContent): Promise<void>;
+  update(id: string, userId: string, content: CourseContent, totalCardCount?: number): Promise<void>;
   updatePdfUrl(id: string, pdfStorageUrl: string): Promise<void>;
   updateLayoutUrl(id: string, layoutStorageUrl: string): Promise<void>;
   listByUser(userId: string): Promise<SavedCourse[]>;

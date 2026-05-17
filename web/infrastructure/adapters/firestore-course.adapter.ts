@@ -3,8 +3,14 @@ import { ICourseRepository, CreateCourseInput } from '@/core/ports/course-reposi
 import { SavedCourse } from '@/core/models/saved-course';
 import { Course, ChapterContent, CourseContent } from '@/core/models/learning-model';
 import { NotFoundError, InfrastructureError, BusinessRuleError } from '@/core/errors/domain-error';
+import { countCourseCards } from '@/lib/course-cards';
 
 const COLLECTION = 'courses';
+
+function withDerivedTotalCardCount(saved: SavedCourse): SavedCourse {
+  if (typeof saved.totalCardCount === 'number') return saved;
+  return { ...saved, totalCardCount: countCourseCards(saved.courseContent) };
+}
 
 export class FirestoreCourseAdapter implements ICourseRepository {
   constructor(private readonly db: Firestore) {}
@@ -29,6 +35,7 @@ export class FirestoreCourseAdapter implements ICourseRepository {
         course: input.course,
         courseContent: input.courseContent,
         contentHash: input.contentHash,
+        totalCardCount: input.totalCardCount ?? countCourseCards(input.courseContent),
       };
       await docRef.set(saved);
       return saved;
@@ -37,10 +44,13 @@ export class FirestoreCourseAdapter implements ICourseRepository {
     }
   }
 
-  async update(id: string, userId: string, content: CourseContent): Promise<void> {
+  async update(id: string, userId: string, content: CourseContent, totalCardCount?: number): Promise<void> {
     try {
       const { docRef } = await this.getOwnedCourseDoc(id, userId);
-      await docRef.update({ courseContent: content });
+      await docRef.update({
+        courseContent: content,
+        totalCardCount: totalCardCount ?? countCourseCards(content),
+      });
     } catch (e) {
       if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
       throw new InfrastructureError('Failed to update course in Firestore', e);
@@ -70,7 +80,7 @@ export class FirestoreCourseAdapter implements ICourseRepository {
         .where('userId', '==', userId)
         .orderBy('createdAt', 'desc')
         .get();
-      return snapshot.docs.map(d => d.data() as SavedCourse);
+      return snapshot.docs.map(d => withDerivedTotalCardCount(d.data() as SavedCourse));
     } catch (e: any) {
       throw new InfrastructureError(`Failed to list courses from Firestore: ${e?.message ?? e}`, e);
     }
@@ -79,7 +89,7 @@ export class FirestoreCourseAdapter implements ICourseRepository {
   async getById(id: string, userId: string): Promise<SavedCourse> {
     try {
       const { data } = await this.getOwnedCourseDoc(id, userId);
-      return data;
+      return withDerivedTotalCardCount(data);
     } catch (e) {
       if (e instanceof NotFoundError || e instanceof BusinessRuleError) throw e;
       throw new InfrastructureError('Failed to get course from Firestore', e);

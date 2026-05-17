@@ -208,7 +208,7 @@ export const getPrioritizedDueCardsUseCase = withUseCaseLogging(rawGetPrioritize
 const rawGenerateDiagnosticQuizUseCase = new GenerateDiagnosticQuizUseCase(aiAdapter, usageRepository);
 export const generateDiagnosticQuizUseCase = withUseCaseLogging(rawGenerateDiagnosticQuizUseCase, 'GenerateDiagnosticQuizUseCase', logger, monitoring);
 
-const rawGetSRSStatsUseCase = new GetSRSStatsUseCase(progressRepository);
+const rawGetSRSStatsUseCase = new GetSRSStatsUseCase(progressRepository, courseRepository);
 export const getSRSStatsUseCase = withUseCaseLogging(rawGetSRSStatsUseCase, 'GetSRSStatsUseCase', logger, monitoring);
 
 const rawGetProgressMapUseCase = new GetProgressMapUseCase(progressRepository);

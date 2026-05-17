@@ -22,12 +22,15 @@ export function calculateNextProgress(
 
   // 2. Update Interval and Repetitions
   if (rating === 0) {
-    // Again: Start over
+    // Again: Start over — card re-enters learning state.
     repetitions = 0;
     interval = 1;
     status = 'LEARNING';
   } else {
-    // Hard, Good, or Easy
+    // Hard, Good, or Easy: graduate immediately. The SM2 schedule here has no
+    // sub-day learning steps, so any non-Again rating produces an interval of
+    // at least 1 day and the card is "REVIEW" (scheduled). "LEARNING" is
+    // reserved for cards that just lapsed.
     if (repetitions === 0) {
       interval = 1;
     } else if (repetitions === 1) {
@@ -35,9 +38,9 @@ export function calculateNextProgress(
     } else {
       interval = Math.round(interval * easeFactor);
     }
-    
+
     repetitions++;
-    status = interval > 7 ? 'REVIEW' : 'LEARNING';
+    status = 'REVIEW';
   }
 
   // 3. Calculate Next Review Date
