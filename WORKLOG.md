@@ -10,162 +10,93 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| SRS stats theo kiểu Anki: NEW dựa trên tổng card − reviewed, fix LEARNING threshold | Nguyen Binh Thanh | #153, #154 |
-| SRS overlay fallback cho thẻ mới + guard StudyMode deck rỗng | Nguyen Binh Thanh | #142 |
-| SRS Firestore strip undefined fields + review toast/fade/shortcuts | Nguyen Binh Thanh | #146 |
-| Fix lỗi màn đỏ "Có lỗi khi tạo khóa học" hiện khi F5 (authLoading bug) | Nguyen Binh Thanh | #147 |
-| Synapsy v2 shell: TopBar + NavRail + DocDrawer folder tree | Nguyen Binh Thanh | #132 |
-| CourseTree + StudyMode v2 visual reskin + tab routing (edit/study) | Nguyen Binh Thanh | #133 |
-| Stage 2 dùng generator model riêng cho DeepSeek/OpenAI | Nguyen Binh Thanh | branch `fix/stage2-generator-model` |
+| SRS review flow: mở deck mới, feedback khi ôn, thống kê Mới/Đang học/Đến hạn kiểu Anki, và docs bucket mapping | Nguyễn Bình Thành | #142, #146, #153, #154, #155 |
+| Synapsy v2: shell 3 vùng, CourseTree/StudyMode v2, auto-start upload, routing sau diagnostic, landing page public | Nguyễn Bình Thành | #132, #133, #135, #136, #152 |
+| Stage 2 chọn đúng model generator cho DeepSeek/OpenAI | Nguyễn Bình Thành | #140 |
+| Dọn log AI dùng chung và sửa attribution WORKLOG bị ghi nhầm tên AI assistant | Nguyễn Bình Thành | #141, #148 |
+| Fix lỗi màn đỏ khi F5 do `authLoading` render sai | Nguyễn Bình Thành | #147 |
+| Learning-flow cleanup: giữ đúng tab khi chuyển thẻ, bỏ AI Tutor recommendation, sửa competency map trang chính | Lê Minh Hoàng | #143, #144, #145 |
+| Observability/IP-11 hardening tiếp tục: API middleware, UKT engine, dashboard API, answer evaluation, evidence docs | Lê Kim Dũng | #137, #138, #139, #150 |
+| Generation speedups và metric thời gian generate course | Lê Kim Dũng | #151 |
 
-### [ADR-57] SRS stats theo Anki: định nghĩa lại NEW + LEARNING - 17/05/2026
+> Không tính vào kết quả đã giao: PR #149 closed nhưng không merge.
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #153 (`feat/total-card-count`) + PR #154 (`feat/srs-anki-stats`)
+### [ADR-58] SRS review flow và thống kê kiểu Anki — 17/05/2026
 
-**Bối cảnh:** Người dùng báo widget "Tiến độ ôn tập" trên trang chủ hiển thị "27 Đang học / 4 Cần ôn / 0 Thẻ mới", dù họ đã upload nhiều tài liệu nên tổng số thẻ phải lớn hơn nhiều. Cảm giác như có lỗi lưu trữ trạng thái thẻ.
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #142, #146, #153, #154, #155
 
-**Nguyên nhân (2 bug độc lập):**
-1. `Thẻ mới = 0` luôn đúng theo code cũ: `getStats()` đếm `where('status','==','NEW')`, nhưng `initializeProgress()` set `status='NEW'` rồi `calculateNextProgress()` ghi đè ngay thành `LEARNING/REVIEW` trước khi save. `NEW` không bao giờ tồn tại trong Firestore. Đồng thời `user_progress` chỉ có document khi user đã review thẻ ít nhất một lần → thẻ chưa chạm vào không xuất hiện ở bất kỳ counter nào.
-2. `Đang học = 27` quá rộng: `sm2.ts` set `status = interval > 7 ? 'REVIEW' : 'LEARNING'`, nên thẻ vừa Good lần đầu (interval=1 day) hay đã ôn vài lần (interval=6 days) vẫn bị xếp "Đang học". Khác với Anki, ở đó "Learning" chỉ là pha steps phút/giờ.
+**Bối cảnh:** Deck mới không mở được ôn vì chưa có progress record, `/review` thiếu feedback sau mỗi lần chấm thẻ, và widget SRS hiển thị `0 Thẻ mới` dù user đã có nhiều card chưa học. Nguyên nhân chính là `NEW` không tồn tại lâu trong Firestore; thẻ chưa từng review cũng chưa có document để đếm.
 
 **Quyết định:**
-- **Cache total card count per course**: thêm `SavedCourse.totalCardCount`, tính lúc `save()`/`update()` qua helper `countCourseCards()`. Backfill khi đọc nếu doc cũ thiếu field. Tránh phải fetch full `courseContent` mỗi lần stats.
-- **Đổi shape `IProgressRepository.getStats()`**: bỏ trường `new` (dead), thay bằng `reviewed` = tổng số doc trong `user_progress` của user.
-- **`GetSRSStatsUseCase` join với `ICourseRepository`**: `new = max(0, totalCards − reviewed)`. Nhận optional `courseId` để giới hạn về một deck.
-- **`/api/progress/stats?courseId=...`**: query param mới cho per-course breakdown.
-- **Sửa `sm2.ts`**: bộ SM2 này không có sub-day steps, nên `LEARNING` chỉ có nghĩa khi card vừa lapse (Again). Mọi rating non-Again → `REVIEW` ngay, bất kể interval.
-- **UI**: home widget relabel `Mới / Đang học / Đến hạn`. `CourseTree` header đổi từ `cần ôn / thẻ / vững` thành 4-bucket Anki-style `mới / học / ôn / thuộc`, tính client-side từ `progressMap` đã có.
+- Cho CourseTree/StudyMode fallback từ due cards sang toàn bộ card của deck, kèm guard deck rỗng.
+- Thêm toast, fade và phím tắt 1-4/Space/Enter cho review flow.
+- Strip field `undefined` trước khi ghi progress vào Firestore để review save ổn định hơn.
+- Cache `totalCardCount` trên saved course, để `Mới = totalCards - reviewed` thay vì query status `NEW`.
+- Đổi `LEARNING` thành trạng thái của thẻ vừa lapse/Again; các rating còn lại chuyển sang `REVIEW`.
+- Ghi lại mapping `Mới / Đang học / Đến hạn / Thuộc` trong docs để UI và backend dùng cùng ngôn ngữ.
 
-**Hệ quả:**
-- (+) Counter "Mới" phản ánh đúng số thẻ chưa từng review trên toàn bộ courses của user.
-- (+) "Đang học" giờ chỉ là thẻ vừa Again — khớp ngữ nghĩa Anki và không inflate theo interval.
-- (+) Per-course breakdown ngay trong `CourseTree` header, không cần thêm API call (dùng lại `progressMap`).
-- (-) Per-course endpoint `/api/progress/stats?courseId=` chưa có UI tiêu thụ — để dành cho future use cases (dashboard breakdown chi tiết).
-- (-) Vẫn còn vấn đề `cardId` không có namespace courseId, nên hai khóa khác nhau cùng `ci-li-cardIndex` sẽ collide trong `user_progress`. Out of scope; sẽ xử lý sau nếu user upload tài liệu trùng layout.
+**Hệ quả:** Số thẻ mới phản ánh cả card chưa từng được chạm tới, course mới học được ngay từ overlay, và thống kê SRS bớt gây hiểu nhầm. Điểm còn để mở: `cardId` vẫn chưa namespace theo course nên có thể collide nếu hai khóa học sinh cùng layout ID.
 
 ---
 
-### [ADR-56] Fix lỗi màn đỏ hiện khi F5 do sai điều kiện authLoading - 17/05/2026
+### [ADR-57] Synapsy v2 chuyển sang app shell có điều hướng rõ ràng — 17/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #147 (`fix/auth-loading-error-flash`)
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #132, #133, #135, #136, #152
 
-**Bối cảnh:** Mỗi lần refresh trang, xuất hiện ô màu đỏ "Có lỗi khi tạo khóa học" trong khoảng ~1 giây rồi biến mất. Không có lỗi thực sự — đây là bug render.
+**Bối cảnh:** Màn hình cũ là một trang dài, khó chuyển giữa Dashboard, Thư viện và SRS. Sau khi có CourseTree/StudyMode v2, user cũng cần routing rõ hơn: vào từ Thư viện thì đọc/sửa bài, vào từ SRS thì ôn flashcard.
 
-**Nguyên nhân:** Trong `web/app/page.tsx`, có một block `if (authLoading)` (line 567) render UI lỗi đỏ thay vì loading spinner. Ngay dưới đó còn một `if (authLoading)` thứ hai (line 585) mới render đúng Spinner — nhưng không bao giờ chạy tới vì block trên đã return trước. Khi F5, `authLoading = true` → block sai được kích hoạt, hiện màn đỏ → auth xong, `authLoading = false` → biến mất.
+**Quyết định:**
+- Dùng shell 3 vùng: TopBar, NavRail, DocDrawer và main content.
+- Course action route theo ngữ cảnh: Thư viện mở `?tab=edit`, SRS mở `?tab=study`.
+- Khi user chọn PDF, generation bắt đầu ngay thay vì cần thêm một click "Tạo khóa học".
+- Sau diagnostic, nút "Bắt đầu học" đưa user vào tab đọc/sửa bài để xem nội dung trước.
+- Thay login screen trống bằng landing page public cho visitor chưa đăng nhập.
 
-**Quyết định:** Xóa block 567–583 (error UI đặt nhầm trong `if (authLoading)`). Error screen thật đã được xử lý ở dòng 562–564 bởi `if (error && !course) → <ErrorScreen>`.
-
-**Hệ quả:**
-- (+) F5 không còn flash màn đỏ gây hoang mang người dùng.
-- (+) Luồng render rõ ràng hơn: error → authLoading spinner → login → dashboard.
+**Hệ quả:** Luồng vào khóa học nhất quán hơn, giảm bước thừa lúc upload, và sản phẩm có cửa vào rõ ràng cho người mới. Debt còn lại là `page.tsx` vẫn chứa nhiều component inline cần tách dần nếu shell tiếp tục mở rộng.
 
 ---
 
-### [ADR-55] Review UX: toast, fade, phím tắt - 17/05/2026
+### [ADR-56] Tách model Stage 2 và giảm thời gian chờ generation — 17/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #146 (`fix/srs-study-mode-flow`)
+**Người làm:** Nguyễn Bình Thành (#140), Lê Kim Dũng (#151) | **Ref:** PR #140, #151
 
-**Bối cảnh:** Sau khi luồng SRS overlay hoạt động (PR #142), trang `/review` thiếu phản hồi trực quan khi người dùng đánh giá thẻ và chuyển thẻ.
+**Bối cảnh:** Production trace cho thấy Stage 2 giữ kết nối 2-4 phút chủ yếu vì chờ model trả JSON body. DeepSeek có thể đang dùng model planner/pro chậm cho generator, trong khi generation flow còn có idle time chưa được đo rõ.
 
-**Quyết định:** Thêm toast thông báo sau mỗi lần đánh giá, hiệu ứng fade khi chuyển thẻ, và phím tắt bàn phím (1–4 chọn rating, Space/Enter chuyển). Không thêm animation phức tạp, chỉ CSS transition đơn giản.
+**Quyết định:**
+- `OpenAiAdapter` nhận riêng `plannerModel`, `generatorModel`, `diagnosticModel`.
+- Stage 1 dùng planner model, Stage 2 dùng generator model, diagnostic fallback về generator model khi chưa cấu hình riêng.
+- DeepSeek Stage 2 mặc định sang `deepseek-v4-flash` nếu chưa set `DEEPSEEK_GENERATOR_MODEL`.
+- Giảm idle time trong course generation và export metric duration để theo dõi tiếp bằng observability.
 
-**Hệ quả:**
-- (+) Người dùng có phản hồi ngay khi đánh giá, giảm nhầm lẫn về trạng thái thẻ.
-- (+) Phím tắt tăng tốc độ ôn tập cho user quen dùng bàn phím.
+**Hệ quả:** Có thể đổi model Stage 2 qua env mà không ảnh hưởng Stage 1, đồng thời có metric để biết speedup thật ở production. Đây vẫn là tối ưu latency, chưa thay thế nhu cầu async job nếu muốn UX không phải chờ full generation.
 
 ---
 
-### [ADR-54] SRS overlay mở được deck mới - 17/05/2026
+### [ADR-55] Observability/IP-11 hardening chuyển từ ghi log sang vận hành được — 17/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #142 (`fix/srs-study-mode-flow`)
+**Người làm:** Lê Kim Dũng | **Ref:** PR #137, #138, #139, #150; liên quan #131, #134 ở Sprint 7
 
-**Bối cảnh:** PR #126 đã merge short-answer self-check vào `StudyMode`, nhưng nút ôn trong `CourseTree` vẫn bị khóa theo `totalDue === 0`. Với khóa học mới, chưa có progress entry nên `totalDue` bằng 0 dù vẫn có thẻ để học. Overlay bên trong đã có fallback `dueCards.length > 0 ? dueCards : allCards`, nhưng button không cho mở overlay để đi tới flow đó.
-
-**Quyết định:**
-- Tách helper `getStudyDeck`/`hasStudyDeckCards` để dùng cùng một logic ưu tiên due cards rồi fallback all cards.
-- Nút overlay enable khi deck fallback có thẻ; nếu không có due card thì hiển thị `Bắt đầu`.
-- `StudyMode` guard trường hợp deck rỗng hoặc index ngoài phạm vi trước khi đọc `card.concept`.
-- `/review` được xác minh vẫn đọc/ghi cùng nguồn SRS: `GET /api/progress/due` đọc `user_progress`, `POST /api/progress/review` ghi qua `ReviewCardUseCase`. Trang này chỉ hiện thẻ đã được schedule đến hạn, nên khóa học toàn thẻ mới vẫn cần bắt đầu từ course study overlay.
-
-**Hệ quả:**
-- (+) Course mới có thể vào luồng tự viết đáp án → xem đáp án → chọn rating 1-4 ngay cả khi chưa có due card.
-- (+) Tránh crash UI nếu StudyMode nhận deck rỗng do dữ liệu chưa sẵn sàng.
-- (-) `/review` global vẫn không tự tổng hợp thẻ mới từ mọi course vì endpoint due chỉ có progress records; muốn global học thẻ mới cần API ghép course content riêng.
-
-### [ADR-53] Tách model planner/generator cho Stage 2 - 17/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** branch `fix/stage2-generator-model`
-
-**Bối cảnh:** Trace production cho thấy các request `/api/generate-content` giữ kết nối 2-4 phút trong Stage 2. Các span Firebase/cache chỉ mất khoảng 1-2s và `fetch` tới DeepSeek chỉ đo tới response headers, còn thời gian lớn nằm ở lúc chờ model hoàn tất JSON body. Code trước đó dùng cùng `OpenAiAdapter.model` cho cả planner, generator, và diagnostic; với DeepSeek, adapter được cấu hình bằng `DEEPSEEK_PLANNER_MODEL || deepseek-v4-pro`, nên Stage 2 có thể vô tình dùng model planner/pro thay vì flash.
+**Bối cảnh:** Sau monitoring/tracing ban đầu, hệ thống vẫn thiếu lớp API chuẩn, dashboard data orchestration, answer evaluation ổn định, UKT state engine và bằng chứng đánh giá hiệu năng đủ rõ để debug/regression.
 
 **Quyết định:**
-- Mở rộng `OpenAiAdapter` với `plannerModel`, `generatorModel`, và `diagnosticModel`.
-- Stage 1 `generateCourse` dùng planner model.
-- Stage 2 `generateChapterContent` dùng generator model.
-- Diagnostic quiz dùng diagnostic model, fallback về generator model.
-- DI DeepSeek mặc định Stage 2 sang `deepseek-v4-flash` nếu chưa set `DEEPSEEK_GENERATOR_MODEL`.
+- Chuẩn hóa API/auth/logging/metrics middleware và kiểm soát storage path an toàn hơn.
+- Bổ sung dashboard API/hook, GenerationProvider, PDF parse progress polling và answer evaluation có cache/fallback.
+- Củng cố UKT bằng Bayesian state engine, FastAPI bridge, Redis/in-memory state và test validation.
+- Thêm bridge Alertmanager -> Discord, evaluation evidence và cleanup docs kiến trúc cũ.
 
-**Hệ quả:**
-- (+) Có thể đổi model Stage 2 qua Railway env mà không cần đổi key hay ảnh hưởng Stage 1.
-- (+) Giảm rủi ro Stage 2 chạy bằng model planner/pro chậm.
-- (-) Vẫn cần xử lý kiến trúc async/job nếu muốn UX giống upload xong dùng được ngay; đổi model chỉ giảm latency, không loại bỏ việc chờ full generation.
-
-### [ADR-53] IP-11 Hardening & Coverage — 17/05/2026
-
-**Người làm:** Nhóm | **Ref:** cập nhật nội bộ
-
-**Bối cảnh:** Rà soát IP-11 cho thấy vẫn còn 3 điểm cần siết lại: dashboard refresh chưa đồng bộ sau save generation, UKT retry Redis có nguy cơ loop vô hạn, và một số nhánh cache-hit/state flag vẫn thiếu regression coverage.
-
-**Quyết định:**
-- Thêm shared `ApiRouteHandler` generic cho middleware wrappers, dọn `any` ở route/API composition.
-- Gắn callback refresh course list từ `GenerationProvider` về `page.tsx` để sidebar cập nhật ngay sau khi save.
-- Giới hạn Redis `WATCH` retry trong `StateStore.update()` bằng max attempts + backoff ngắn.
-- Sửa cache-hit generation path để set đúng `isFromCache`.
-- Bổ sung test coverage cho `answer-evaluation`, generation partial failure/cancel/cache hit, UKT concurrency/Redis fallback, và monitoring bridge malformed payload.
-
-**Hệ quả:**
-- (+) Dashboard và course library đồng bộ ngay sau khi generate/save.
-- (+) UKT không còn rủi ro treo vô hạn khi Redis contention kéo dài.
-- (+) Các nhánh rủi ro cao đã có regression tests rõ ràng.
-- (+) `npm test`, `python test_api.py`, `pytest test_app.py`, `npx tsc --noEmit` đều pass sau refactor.
-
-### [ADR-51] Synapsy v2 Shell Layout — 17/05/2026
-
-**Người làm:** Nguyễn Bình Thành | **Ref:** PR #132 (`feat/ui-navrail-shell`)
-
-**Bối cảnh:** Giao diện cũ (page.tsx) là một trang đơn không có điều hướng cố định — user phải scroll và không có cách nào chuyển giữa Dashboard, Thư viện, và SRS mà không mất context. Prototype Synapsy v2 (trong `Ai Course Flashcard-handoff/`) đã thiết kế sẵn shell 3-panel.
-
-**Quyết định:**
-- Thêm **TopBar** 44px full-width: logo + section label + user avatar/logout.
-- Thêm **NavRail** 60px bên trái: 3 tab (KHO/THƯ VIỆN/SRS) với icon + label.
-- Thêm **DocDrawer** 258px: folder tree với mock data fallback (Y Khoa Cơ Sở), tạo thư mục lưu localStorage, nút xóa tài liệu hover.
-- Layout: `height:100vh flex-column` → TopBar + body row (NavRail | DocDrawer | main flex-1).
-- Tab content switch bằng `activeTab` state, `key={activeTab}` để animate.
-
-**Hệ quả:**
-- (+) User có thể chuyển tab mà không mất trạng thái upload/generation.
-- (+) DocDrawer hiển thị mastery badge + due count cho từng tài liệu.
-- (+) Drawer có thể collapse/expand bằng nút toggle nhỏ.
-- (-) Page.tsx vẫn còn inline nhiều components — cần tách ra nếu tiếp tục scale.
+**Hệ quả:** Observability không chỉ là Grafana/Prometheus mà đã nối vào API, dashboard, UKT và evidence review. Cần tiếp tục tách các commit log/session ra khỏi tài liệu vận hành để tránh nhiễu repo.
 
 ---
 
-### [ADR-52] Tab Routing — THƯ VIỆN → edit, SRS → study — 17/05/2026
+### [ADR-54] Learning flow giữ đúng ngữ cảnh học — 17/05/2026
 
-**Người làm:** Nguyễn Bình Thành | **Ref:** PR #133 (`feat/ui-course-view`)
+**Người làm:** Lê Minh Hoàng | **Ref:** PR #143, #144, #145
 
-**Bối cảnh:** ADR-47 làm cho click card trong CourseTree luôn switch sang tab "Học" (flashcard). Điều này sai với ý muốn: tab THƯ VIỆN cần mở khóa học ở chế độ edit (QnA editor, citation, AI tutor); tab SRS mới cần mở flashcard.
+**Bối cảnh:** Sau khi StudyMode có short-answer flow, một số thao tác vẫn kéo user về sai tab hoặc hiển thị gợi ý AI Tutor không còn phù hợp. Trang chính cũng cần sửa competency map cho đúng thông tin học tập hiện tại.
 
-**Quyết định:**
-- `handleCourseAction` route theo `activeTab`: SRS → `?tab=study`, còn lại → `?tab=edit`.
-- `/course/[id]/page.tsx` đọc `searchParams.get('tab')` và truyền `preferredDetailTab: 'study' | 'edit' | undefined` xuống `CourseFlow` → `CourseTree`.
-- `CourseTree`: khi `preferredDetailTab === 'edit'`, auto-select card đầu tiên và expand chapter đầu tiên (1 chạm).
-- Card click + arrow-key nav trong CourseTree đều respect `preferredDetailTab` thay vì hardcode `'study'`.
+**Quyết định:** Giữ nguyên tab học khi chuyển thẻ trong Study tab, bỏ AI Tutor recommendation gây nhiễu, và chỉnh competency map ở main page.
 
-**Hệ quả:**
-- (+) Tab THƯ VIỆN mở đúng chế độ edit; tab SRS mở đúng flashcard.
-- (+) Single-tap navigation từ DocDrawer vào edit panel.
-- (-) SRS integration với `/review` global và "Bắt đầu" button vẫn chưa hoàn chỉnh — cần PR riêng.
+**Hệ quả:** Flow học ít bị nhảy ngữ cảnh hơn và UI trang chính phản ánh đúng trạng thái năng lực hơn.
 
 ---
 
@@ -173,387 +104,86 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| Prometheus monitoring adapter + system dashboard visualization | Lê Kim Dũng | main@30e473d |
-| Grafana dashboards + metrics collection API + course mode UI components | Lê Kim Dũng | main@296832a |
-| Integration tests for `MineruParserAdapter` output extraction | Lê Kim Dũng | main@14fb97b |
-| Study-first short-answer self-check flow + direct-to-study entry | Lê Minh Hoàng | #126 |
-| Course ready-state action rail layout after pipeline | Lê Minh Hoàng | #121 |
-| MinerU VLM parser output compatibility | Nguyen Binh Thanh | #122 |
-| User-scoped UI state refresh + review UI consistency | Nguyen Binh Thanh | #120 |
-| Parallelize fresh course generation (Promise.all) | Nguyen Binh Thanh | #118 |
-| Parallel diagnostic quiz generation (3.5 min → ~10s) | Nguyen Binh Thanh | #117 |
-| Fix Vitest CJS config startup path on Linux CI | Nguyen Binh Thanh | #116 |
-| Multi-card lessons + chapter one-tap card tree | Nguyen Binh Thanh | #115 |
-| Việt hóa kc_name registry + spider chart labels | Nguyen Binh Thanh | #114 |
-| Enforce Vietnamese output trong diagnostic/quiz/Stage 2 prompts | Nguyen Binh Thanh | #113 |
-| Fix Vitest Rolldown optional binding trên CI Linux | Nguyen Binh Thanh | #112 |
-| Fix Railway deploy npm prefix trên self-hosted runner | Nguyen Binh Thanh | #111 |
-| Việt hóa copy UKT dashboard/admin/docs | Nguyen Binh Thanh | #110 |
-| Dashboard cá nhân hóa UKT + spider chart độ chắc chắn | Nguyen Binh Thanh | #109 |
-| Spider chart UKT theo module y khoa | Nguyen Binh Thanh | #108 |
-| Canonical ConceptCard answer + AI tutor follow-ups | Nguyen Binh Thanh | #107 |
-| Stable Knowledge Components + UKT quiz/SRS signals | Nguyen Binh Thanh | #104, #105 |
-| Diagnostic lesson-scoped coverage + partial-coverage acceptance | Nguyen Binh Thanh | #103 |
-| Restore root AI logging scripts | Nguyen Binh Thanh | #102 |
+| MinerU VLM + ảnh nguồn thật: output compatibility, image proxy, TS return type | Nguyễn Bình Thành | #122, #124, #125 |
+| Study-first flow: action rail sau pipeline, short-answer self-check, ADR/docs cho flow học | Lê Minh Hoàng | #121, #126, #129, #130 |
+| Generation/diagnostic speed và correctness: coverage theo lesson, multi-card lesson, parallel diagnostic, parallel Stage 2 | Nguyễn Bình Thành | #103, #115, #117, #118 |
+| User-scoped state refresh và review UI consistency | Nguyễn Bình Thành | #120 |
+| UKT/KC/dashboard surface: canonical answer, stable KC, spider chart, Vietnamese copy/prompts, UKT timeout retry | Nguyễn Bình Thành | #104, #105, #107, #108, #109, #110, #113, #114, #127 |
+| CI/deploy/package/docs reliability: lockfile, env docs, merge rules, AI log scripts, Railway/Vitest fixes, bad-merge cleanup | Nguyễn Bình Thành | #97, #98, #99, #100, #102, #106, #111, #112, #116, #128 |
 | Dependency cleanup after Next/React peer conflict | Lê Kim Dũng | #101 |
-| Manual environment setup clarification | Nguyen Binh Thanh | #100 |
-| Web package-lock sync for Docker `npm ci` | Nguyen Binh Thanh | #99 |
-| PIPELINE current-state documentation update | Nguyen Binh Thanh | #98 |
-| Sprint worklog tracking cleanup | Nguyen Binh Thanh | #97 |
-| Final monitoring restructure + `/api/auth/me` cleanup | Lê Kim Dũng | #96 |
-| Điều chỉnh branch/base cho `monitoring_restructure` | Lê Kim Dũng | #95 |
-| Distributed tracing và OpenTelemetry instrumentation | Lê Kim Dũng | #94 |
-| Monitoring restructure: tách `web/`, bổ sung observability stack | Lê Kim Dũng | #93 |
+| Monitoring restructure, tracing, auth cleanup, and observability hardening kickoff | Lê Kim Dũng | #93, #94, #95, #96, #131, #134, main@30e473d, main@296832a, main@14fb97b |
 
-### [ADR-50] Serve ảnh thật trong panel tài liệu nguồn - 16/05/2026
+> Không tính vào kết quả đã giao: PR #119 và #123 closed nhưng không merge.
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** branch `fix/real-source-images`
+### [ADR-53] MinerU VLM và ảnh nguồn thật trong tài liệu nguồn — 16/05/2026
 
-**Bối cảnh:** `PdfPanel` đã đọc được các item `type: "image"` từ MinerU `contentList`, nhưng chỉ render placeholder `[Hình ảnh]`. Sau PR #122, parser có thêm luồng MinerU VLM và fallback markdown-only; cần giữ hai trường hợp này tách bạch để chỉ render ảnh thật khi structured `contentList` có asset ảnh đã được lưu.
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #122, #124, #125
 
-**Quyết định:**
-- Khi parser giải nén zip MinerU, upload các file ảnh trong zip vào Firebase Storage theo namespace `course-layout-images/{userId}/{taskId}/...`.
-- Giữ `img_path` gốc của MinerU, nhưng gắn thêm `img_storage_path`, `img_url`, và `image_mime_type` vào item ảnh trong `contentList` trước khi frontend lưu layout JSON.
-- Thêm `/api/layout-image` để proxy ảnh có xác thực, chỉ cho phép đọc path dưới prefix của chính user.
-- `PdfPanel` render ảnh thật nếu layout có `img_url`; course cũ, markdown-only fallback, hoặc upload ảnh fail vẫn fallback về placeholder.
+**Bối cảnh:** MinerU VLM có thể trả zip khác contract cũ: `content_list_v2` dạng page-grouped, markdown-only fallback, hoặc image asset chỉ có path nội bộ trong zip. Nếu adapter vẫn giả định `content_list.json` flat, parse PDF fail hoặc panel nguồn chỉ hiện placeholder `[Hình ảnh]`.
 
-**Hệ quả:**
-- (+) Panel tài liệu nguồn hiển thị được hình thật từ PDF thay vì chỉ có placeholder.
-- (+) Tương thích với cả output MinerU VLM đã normalize về flat `contentList` và output pipeline/normal có `img_path`.
-- (+) API ảnh không expose public bucket URL; quyền đọc gắn với session user.
-- (-) Course đã tạo trước thay đổi này không tự có ảnh thật vì layout JSON cũ chưa có `img_url`.
-- (-) Fallback markdown-only từ MinerU không có structured image item nên không thể render ảnh thật.
+**Quyết định:** Chuẩn hóa VLM output về `contentList` flat, fallback sang markdown khi thiếu structured JSON, upload image assets trong zip lên Firebase Storage theo namespace user/task, và đọc ảnh qua `/api/layout-image` có session auth. Return type của helper image được mở để TypeScript thấy các field `img_url`, `img_storage_path`, `image_mime_type` sau khi attach.
+
+**Hệ quả:** Pipeline vẫn giữ contract nội bộ cho Stage 1/Stage 2/citation, nhưng source panel có thể hiển thị ảnh thật khi MinerU cung cấp asset. Course cũ hoặc markdown-only fallback vẫn không có ảnh thật vì thiếu metadata ảnh.
 
 ---
 
-### [ADR-49] MinerU VLM output contract compatibility - 16/05/2026
+### [ADR-52] Study-first flow thêm tự trả lời ngắn — 16/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #122 (`fix/mineru-vlm-output`)
+**Người làm:** Lê Minh Hoàng | **Ref:** PR #121, #126, #129, #130; follow-up build fix: Nguyễn Bình Thành #128
 
-**Bối cảnh:** Sau khi chuyển hướng dùng MinerU VLM theo tài liệu mới, một số job parse trả về zip không còn khớp giả định cũ của adapter. Code cũ chỉ đọc `content_list.json` / `_content_list_v2.json`; nếu zip chỉ có markdown hoặc `*_content_list_v2.json` dạng page-grouped của VLM thì `/api/parse-pdf` trả lỗi generic `An internal service failure occurred`.
+**Bối cảnh:** Sau generation, action card nằm xa pipeline và StudyMode vẫn chỉ là reveal đáp án + chấm SRS. Người học cần một bước active recall rõ hơn: tự nhập câu trả lời, so với đáp án chuẩn, rồi mới chọn rating.
 
-**Quyết định:**
-- Gửi `model_version: "vlm"` khi submit task Precision API, có thể override bằng `PDF_MINERU_MODEL_VERSION` nếu cần rollback sang `pipeline`.
-- Không dùng `make_mode`; tài liệu MinerU hiện mô tả `model_version` và output mặc định gồm `full.md`, `*_content_list.json`, `*_content_list_v2.json`.
-- Normalize `content_list_v2.json` từ cấu trúc page-grouped `type + content` về flat content list tương thích `contentListToMarkdown`, citation anchors, và `PdfPanel`.
-- Nếu không có structured content list nhưng zip có markdown (`content_list_parsed.md`, `full.md`, hoặc file `.md` khác), dùng markdown làm fallback để không chặn course generation.
-- Nếu zip thật sự không có nội dung đọc được, `/api/parse-pdf` trả lỗi user-actionable thay vì generic infrastructure failure.
+**Quyết định:** Đưa action rail về gần pipeline, mở thẳng Study tab khi user chọn học, thêm textbox short-answer trong `StudyMode`, gọi answer evaluation khi đáp án đủ dài, cache kết quả cho cùng câu trả lời và fallback sang heuristic local khi provider lỗi. PR #128 sửa các duplicate export/import do merge conflict của PR #126 để giữ TypeScript build được.
 
-**Hệ quả:**
-- (+) Tương thích tốt hơn với VLM backend MinerU 2.5/3.0 và các zip markdown-only.
-- (+) Giữ contract nội bộ hiện tại (`contentList` flat) nên Stage 1/Stage 2, citation validation, và source panel không cần đổi lớn.
-- (-) Fallback markdown không có bbox/contentList đầy đủ, nên source highlighting có thể kém hơn với những file không có structured JSON.
-- (-) `content_list_v2.json` là development format theo tài liệu MinerU, cần test regression khi MinerU đổi schema.
+**Hệ quả:** Flow học gần hơn với mục tiêu active recall. Hệ thống có thêm route phụ thuộc AI provider, nên fallback local vẫn cần giữ để UX không vỡ khi provider timeout.
 
 ---
 
-### [ADR-48] Parallelize Stage 2 generation cho Fresh Course - 16/05/2026
+### [ADR-51] Generation và diagnostic ưu tiên latency thấp nhưng vẫn giữ coverage — 15/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #118 (`perf/parallel-stage2-generation`)
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #103, #115, #117, #118, #120
 
-**Bối cảnh:** Sau khi Stage 1 (Planner) hoàn thành, hệ thống tạo Stage 2 (Generator) cho từng chương. Trước đây, `GenerationContext` gọi `fetchChapter` tuần tự cho từng chương để tiết kiệm rate limit và dễ theo dõi tiến độ từng phần. Tuy nhiên, với các khóa học lớn (8-12 chương), tổng thời gian chờ có thể lên tới 3-5 phút dù mỗi chương chỉ mất ~20-30 giây.
+**Bối cảnh:** Diagnostic prefetch từng map sai về `legacy-full`, diagnostic quiz mất khoảng 3.5 phút vì một LLM call lớn, và Stage 2 fresh course chạy tuần tự từng chương. Đồng thời lesson dày nội dung bị ép vào một card nên học và SRS không đủ granular.
 
-**Quyết định:**
-- Trong `GenerationContext`, sử dụng `Promise.all` để kích hoạt toàn bộ các lời gọi Stage 2 cùng lúc thay vì đợi từng chương.
-- Các chương vẫn được lưu vào cache và Firestore khi hoàn thành lời gọi song song.
-- UI `PipelineTracker` vẫn hiển thị tiến độ tổng hợp dựa trên số lượng chương đã hoàn thành trong `courseContentMap`.
-- Vẫn giữ cơ chế retry/error handling riêng lẻ cho từng chương để đảm bảo một chương lỗi không làm hỏng cả khóa học.
+**Quyết định:** Build diagnostic chunks theo lesson id `ci-li`, chấp nhận partial coverage có kiểm soát khi tài liệu lớn, tách diagnostic generation thành per-chunk calls có concurrency/backoff, chạy Stage 2 bằng `Promise.all`, và cho mỗi lesson sinh nhiều concept cards. UI state được refresh theo user scope để tránh nhầm dữ liệu giữa session/course.
 
-**Hệ quả:**
-- (+) Latency tạo toàn bộ nội dung khóa học giảm từ vài phút xuống còn ~30-40 giây (bằng thời gian của chương dài nhất).
-- (+) Tận dụng tối đa concurrency của AI providers (DeepSeek/OpenAI).
-- (-) Tăng rủi ro chạm Rate Limit (429) khi gửi 10+ request cùng lúc. Được xử lý bằng cơ chế retry có backoff đã cài đặt ở tầng adapter.
-- (-) Khó theo dõi "luồng" sinh từng chương theo thứ tự, nhưng UX tổng thể tốt hơn nhiều vì quá trình "Done" nhanh hơn.
+**Hệ quả:** Diagnostic latency giảm về mức giây, Stage 2 chờ theo chương lâu nhất thay vì tổng các chương, và SRS có đơn vị học nhỏ hơn. Trade-off là tăng concurrency/token overhead và cần retry tốt để chịu được 429 động từ provider.
 
 ---
 
-### [ADR-47] Parallel per-chunk generation để giảm latency diagnostic quiz - 15/05/2026
+### [ADR-50] UKT/KC trở thành lớp dữ liệu học tập ổn định — 14/05 → 16/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #117 (`perf/parallel-diagnostic-quiz`)
+**Người làm:** Nguyễn Bình Thành | **Ref:** PR #104, #105, #107, #108, #109, #110, #113, #114, #127
 
-**Bối cảnh:** Endpoint `/api/diagnostic-quiz` mất ~3.5 phút để hoàn thành. Jaeger trace cho thấy bottleneck nằm ở một lời gọi LLM duy nhất trong `GenerateDiagnosticQuizUseCase.execute()`: toàn bộ chunk của course (thường 20-30 lesson) được nối thành một prompt khổng lồ rồi gửi đi một lần. DeepSeek phải sinh 5,000–8,000 output token trong một response trước khi trả về bất cứ dữ liệu nào — Node.js bị block trong suốt thời gian đó.
+**Bối cảnh:** UKT không thể dựa vào free-text topic do LLM sinh vì tên kỹ năng sẽ drift giữa các lần chạy. Dashboard cũng cần biểu diễn năng lực theo module y khoa bằng tiếng Việt, không lộ jargon nội bộ cho learner.
 
-**Phân tích các phương án:**
-- **Parallel (Promise.all)**: Tách thành N lời gọi song song (1 chunk = 1 câu hỏi), concurrency limit 4. Latency giảm từ ~210s xuống ~10s. Tăng token do lặp lại system prompt N lần, nhưng DeepSeek không có fixed RPM/TPM — giới hạn là dynamic, retry bằng exponential backoff.
-- **Streaming (Vercel AI SDK)**: Giữ 1 lời gọi, stream kết quả về UI. Không giảm backend time, chỉ cải thiện perceived UX. Phức tạp hơn nhiều (SSE, partial JSON parsing, UI thay đổi).
-- **Batching**: Chia thành nhóm N chunk, xử lý tuần tự. Ít rủi ro rate limit nhưng không tối ưu latency.
+**Quyết định:** Tạo registry `medical-v1` với `kc_id/module_id` ổn định, ép Stage 1 gán KC cho từng lesson và server normalize lại, dùng canonical `answer` duy nhất cho card, aggregate UKT state thành spider chart theo module, Việt hóa UI/prompt/registry, và thêm timeout/retry/logging cho UKT adapter để xử lý cold start/502.
 
-**Quyết định:**
-- Chọn **Parallel per-chunk** với semaphore concurrency=4 và `withRetry` (exponential backoff, max 3 retries) để xử lý 429 dynamic từ DeepSeek.
-- Mỗi lời gọi sinh đúng 1 câu hỏi cho 1 chunk; kết quả được merge lại thành `DiagnosticQuiz` đầy đủ.
-- Token usage được cộng dồn từ tất cả lời gọi song song và báo cáo về `IUsageRepository` như cũ.
-- Không thay đổi interface `IAiService` hay contract của use case — chỉ thay đổi implementation trong `OpenAiAdapter`.
-
-**Hệ quả:**
-- (+) Latency giảm từ ~3.5 phút xuống ~8–15 giây (phụ thuộc DeepSeek server load).
-- (+) DeepSeek không có fixed rate limit — dynamic 429 được handle tự động bằng backoff.
-- (-) Tổng token tăng do system prompt lặp lại N lần (khoảng +500 tokens/chunk). Với 25 chunk: +12,500 prompt tokens so với call đơn.
-- (-) Nếu DeepSeek chịu tải cao, 4 concurrent requests vẫn có thể bị 429 — retry giải quyết được nhưng có thể tăng latency trong peak hours.
+**Hệ quả:** Diagnostic, SRS và dashboard cùng nói về một namespace KC ổn định. User thấy module tiếng Việt và mức nắm vững/độ chắc thay vì field kỹ thuật. Course cũ có thể giữ label cũ đã lưu, nhưng aggregate vẫn dựa trên stable id.
 
 ---
 
-### [ADR-47] Study-first short-answer self-check flow - 16/05/2026
+### [ADR-49] CI/deploy/docs phải chặn lỗi môi trường trước khi chặn dev — 12/05 → 15/05/2026
 
-**Người làm:** Lê Minh Hoàng | **Ref:** PR #126 (`feat/input-short-answer-and-check`), commits `eb4d20e`, `9341569`
+**Người làm:** Nguyễn Bình Thành (#97, #98, #99, #100, #102, #106, #111, #112, #116, #128), Lê Kim Dũng (#101)
 
-**Bối cảnh:** `StudyMode` trước đây chỉ cho reveal đáp án và đánh giá SRS, chưa có luồng active recall nhập câu trả lời ngắn. Flow vào khóa học sau khi generate cũng còn đi vào tab Sửa trước, còn card hành động "Khóa học đã sẵn sàng" nằm xa khu Pipeline nên không gần ngữ cảnh.
+**Bối cảnh:** Web deploy và smoke tests nhiều lần fail vì môi trường hơn là logic: npm global prefix trên self-hosted runner, optional Rolldown binding Linux, Vitest CJS/ESM startup path, lockfile lệch, dependency peer conflict, và merge conflict giữ cả hai phía.
 
-**Quyết định:**
-- Thêm `web/app/api/answer-evaluation/route.ts` để chấm câu trả lời qua provider AI đang cấu hình (`AI_PROVIDER`) theo 3 nhãn `correct`/`partial`/`incorrect`, có timeout, cache server-side, và fallback về heuristic local trong `web/lib/answer-similarity.ts` khi provider fail.
-- `StudyMode` thêm textbox active recall, cache client-side cho cùng câu trả lời, phân biệt 2 hành vi: `Enter` = nút chính (`Xem đáp án` hoặc `Nộp & xem đáp án`), `Space` = chỉ xem nhanh đáp án, `Esc` = blur khỏi textbox.
-- Chỉ chạy luồng chấm điểm khi canonical answer đủ dài (`> 30` từ hoặc `> 100` ký tự); card có đáp án ngắn sẽ reveal thẳng, không chấm.
-- UI reveal hiển thị `Câu trả lời của bạn` + `Câu trả lời chính xác`; trạng thái `Không chính xác` / `Không chính xác hoàn toàn` dùng tông màu nhẹ, bỏ hiển thị điểm số để giảm cảm giác bị "chấm phạt".
-- Luồng `Vào học luôn` chuyển sang `/course/[id]?tab=study`; `CourseFlow`, `CourseTree`, `web/app/course/[id]/page.tsx` nhận `preferredDetailTab='study'` để mở ngay tab Học, auto chọn card đầu tiên, và click/arrow navigation trong tree cũng đi thẳng vào study.
-- Card hành động "Khóa học đã sẵn sàng" trên `web/app/page.tsx` chuyển sang rail bên phải, đặt ngay dưới Pipeline để hợp ngữ cảnh hơn.
+**Quyết định:** Đồng bộ `web/package-lock`, ghi rõ manual env setup, khôi phục root scripts, làm rõ merge strategy không squash, dùng local Railway CLI với `NPM_CONFIG_PREFIX` ổn định, ép cài optional binding Linux, bỏ `defineConfig` import gây CJS/ESM startup lỗi, và sửa duplicate export/import sau merge hỏng.
 
-**Hệ quả:**
-- (+) `StudyMode` có active recall flow rõ ràng: người học có thể gõ nháp, xem nhanh, hoặc nộp để so đáp án theo ngữ nghĩa.
-- (+) Các card định nghĩa / notation ngắn không bị over-grade; các card dài vẫn có AI evaluation khi cần.
-- (+) Luồng sau-generate và vào course từ library bám sát mục tiêu "học ngay", không còn rớt vào tab Sửa trừ khi user chủ động chuyển.
-- (-) Tăng thêm một server route phụ thuộc env/provider AI; khi provider chưa set đúng hoặc timeout, UI vẫn phải fallback sang local heuristic.
+**Hệ quả:** CI/deploy phản ánh lỗi code thật hơn thay vì vỡ ở bootstrap. Các docs workflow cũng rõ hơn để tránh lặp lại lỗi squash/merge ambiguity.
 
 ---
 
-### [ADR-46] Tránh Vitest CJS config startup path trên Linux CI - 15/05/2026
+### [ADR-48] Monitoring restructure và hardening kickoff — 11/05 → 16/05/2026
 
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #116 (`fix/vitest-config-esm`)
+**Người làm:** Lê Kim Dũng | **Ref:** PR #93, #94, #95, #96, #131, #134, main@30e473d, main@296832a, main@14fb97b
 
-**Bối cảnh:** Job "Run Build Safety Smoke Tests" gọi trực tiếp `NEXT_PHASE=phase-production-build npx vitest run tests/smoke tests/lib` trên Linux Node 20 và fail trước khi chạy test. Stack trace nằm ở `vitest/dist/config.cjs` khi `require()` ESM-only `std-env/dist/index.mjs`.
+**Bối cảnh:** Sau Prometheus/Grafana Sprint 6, repo cần tách `web/`, monitoring config, tracing collector và auth endpoint rõ ràng hơn. Hardening sau đó mở rộng sang Chain AI adapter, dashboard/SRS hooks, progress repository, UKT service và evaluation/test evidence.
 
-**Quyết định:**
-- Bỏ runtime import `defineConfig` từ `vitest/config` trong `web/vitest.config.ts`.
-- Export plain config object tương đương để Vitest load config mà không đi qua helper CJS gây lỗi ESM.
-- Giữ nguyên alias `@` và test environment `node`.
+**Quyết định:** Restructure repo quanh `web/` và `monitoring/`, thêm OpenTelemetry Collector/Alertmanager/Loki/Jaeger provisioning, instrument Web App/UKT, thêm `/api/auth/me`, rồi bắt đầu hardening các adapter/progress/dashboard/UKT/test paths. Các commit main@30e473d, main@296832a, main@14fb97b được giữ như evidence khi không có PR riêng rõ ràng trong history.
 
-**Hệ quả:**
-- (+) Lệnh smoke/lib CI load được config mà không chạm lỗi `ERR_REQUIRE_ESM`.
-- (+) Không đổi test behavior.
-- (-) Mất wrapper `defineConfig`, nhưng config nhỏ và vẫn được `next build`/lint/test xác nhận.
-
----
-
-### [ADR-45] Multi-card lessons và CourseTree mở chapter một chạm - 15/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #115 (`feat/multi-card-lessons`)
-
-**Bối cảnh:** Thiết kế `CourseTree` đang ép 1 lesson = 1 concept card. Với các lesson dày nội dung, card bị nén quá nhiều fact và người học phải bấm 2 lần: mở chapter rồi mở lesson mới thấy card. Diagnostic vẫn nên bản đồ hóa theo lesson/KC, còn SRS cần đơn vị nhỏ hơn.
-
-**Quyết định:**
-- Stage 2 sinh `cards[]` cho mỗi lesson, thường 2-3 card atomic, tối đa 4 khi lesson có nhiều learning point riêng biệt.
-- Giữ `concept` là compatibility surface trỏ về card đầu tiên để course cũ và các surface phụ không gãy.
-- Cache Stage 2 concept-only không có `cards[]` được coi là stale và sẽ regenerate.
-- CourseTree bỏ accordion lesson: bấm chapter một lần sẽ hiện lesson label và toàn bộ concept cards bên dưới.
-- Diagnostic tiếp tục map theo lesson id `ci-li`; SRS card id mới dùng `ci-li-cardIndex`, có fallback progress cho card đầu tiên từ legacy `ci-li`.
-
-**Hệ quả:**
-- (+) Dense lesson không còn bị nén vào một card duy nhất.
-- (+) UI giống course outline hơn: chapter mở ra các lesson label và card item trực tiếp.
-- (+) Diagnostic, SRS và UKT vẫn tách đúng vai trò: diagnostic/practice theo lesson/KC, SRS theo card/KC.
-- (+) Course cũ concept-only vẫn render được, nhưng course/cache mới sẽ chuyển sang `cards[]`.
-
----
-
-### [ADR-44] Việt hóa kc_name registry và spider chart labels - 15/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #114 (`fix/knowledge-registry-vietnamese-labels`)
-
-**Bối cảnh:** Sau khi xây spider chart và diagnostic results, section "Theo chủ đề" hiển thị tên KC trực tiếp từ `kc_name` trong registry — nhưng các giá trị này đang là tiếng Anh ("General clinical reasoning", "General anatomy"). Spider chart có 3 label jargon nội bộ ("Bản đồ UKT", "Mức độ nắm vững theo module y khoa", "mastery + độ chắc") không thân thiện với người học. ADR-40 đã Việt hóa một phần UI nhưng bỏ qua tầng registry.
-
-**Quyết định:**
-- Dịch `MEDICAL_MODULES[].name` sang tiếng Việt: Anatomy → Giải phẫu, Physiology → Sinh lý, Pharmacology → Dược lý, Microbiology → Vi sinh, Pathology → Bệnh lý, Clinical Medicine → Lâm sàng, Biochemistry → Hóa sinh, Immunology → Miễn dịch.
-- Dịch toàn bộ 48 `MEDICAL_KCS[].kc_name` sang tiếng Việt (ví dụ: "General clinical reasoning" → "Lý luận lâm sàng đại cương").
-- Đổi 3 label spider chart: "Bản đồ UKT" → "Bản đồ năng lực", "Mức độ nắm vững theo module y khoa" → "Năng lực theo module y khoa", "mastery + độ chắc" → "Thành thạo · độ chắc chắn".
-- `kc_id` và `module_id` (English slugs) giữ nguyên — đây là stable identifier cho UKT, Firestore, và prompts.
-
-**Hệ quả:**
-- (+) "Theo chủ đề" trong DiagnosticResults hiển thị tên tiếng Việt thay vì English.
-- (+) Spider chart label thân thiện, không lộ jargon UKT với người học.
-- (+) `module_name` trong `KnowledgeComponentRef` (ghi vào Firestore) sẽ là tiếng Việt với các course mới. Course cũ giữ nguyên English `module_name` đã lưu — UKT aggregate theo `module_id` (slug) nên không ảnh hưởng tính toán.
-
----
-
-### [ADR-43] Enforce Vietnamese output trong diagnostic/quiz/Stage 2 prompts - 15/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #113 (`fix/prompts-vietnamese-quiz-output`)
-
-**Bối cảnh:** Diagnostic quiz và quiz trong Stage 2 đôi khi ra tiếng Anh, đôi khi tiếng Việt — không nhất quán. Concept cards Stage 2 luôn ra tiếng Việt vì phần đó có ví dụ schema tiếng Việt rõ ràng ("X hoạt động như thế nào?"). Nhưng phần quiz trong `STAGE2_CHAPTER_PROMPT` và toàn bộ `DIAGNOSTIC_QUIZ_PROMPT` / `DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT` chỉ có ví dụ schema tiếng Anh ("Question text here?", "Option A is correct because…") → LLM follow example language.
-
-**Quyết định:**
-- Thêm rule tường minh "Write ALL questions, options, and explanations in Vietnamese" vào phần quiz của `STAGE2_CHAPTER_PROMPT`.
-- Thêm "ALL question, options, and explanation text MUST be written in Vietnamese" vào `DIAGNOSTIC_QUIZ_PROMPT` và `DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT`.
-- Cập nhật ví dụ schema trong cả 3 prompt từ tiếng Anh sang tiếng Việt ("Cơ chế hoạt động của X là gì?", "Đáp án A đúng vì…").
-- Không thay đổi `PLANNER_PROMPT` — planner dùng rule "Output MUST match source document language" đã đúng.
-
-**Hệ quả:**
-- (+) Diagnostic quiz và chapter quiz nhất quán tiếng Việt.
-- (+) Concept cards Stage 2 không bị ảnh hưởng — đã có ví dụ tiếng Việt từ trước.
-- Đây là bổ sung cho ADR-40 (không phải đảo ngược) — ADR-40 chỉ Việt hóa UI copy, còn prompts chưa được enforce language.
-
----
-
-### [ADR-42] Fix Rolldown optional binding cho Vitest CI - 15/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #112 (`fix/ci-rolldown-optional-binding`)
-
-**Bối cảnh:** Sau PR #111, `web-build-test` fail ở bước smoke tests với lỗi `Cannot find native binding` từ `rolldown`, thiếu package optional `@rolldown/binding-linux-x64-gnu`. `web/package-lock.json` đã có binding này, nên lỗi đến từ npm optional-dependency handling trên self-hosted Linux runner, không phải thiếu lockfile.
-
-**Quyết định:**
-- Đổi bước web dependency install thành `npm ci --include=optional` để ép npm cài optional dependencies.
-- Thêm bước Linux-only repair sau `npm ci`: cài local `@rolldown/binding-linux-x64-gnu@1.0.0-rc.15` bằng `npm install --no-save --include=optional --no-audit --no-fund`.
-- Verify ngay bằng `node -e "require.resolve('@rolldown/binding-linux-x64-gnu')"` trước khi chạy typecheck/lint/Vitest.
-
-**Kết quả mong đợi:** Vitest không còn fail startup vì thiếu native Rolldown binding trên Linux CI; nếu test fail tiếp thì lỗi sẽ nằm ở test/app logic thật.
-
----
-
-### [ADR-41] Fix Railway deploy npm prefix - 15/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #111 (`fix/railway-deploy-npm-prefix`)
-
-**Bối cảnh:** `web-build-test` đã pass nhưng job `deploy-web` fail ở bước `npx railway up` với lỗi npm `ENOENT ... _work/_temp/npm-global`. Lỗi xảy ra trước khi Railway deploy thật sự chạy, do self-hosted runner có npm global prefix trỏ tới thư mục temp chưa tồn tại hoặc không ổn định.
-
-**Quyết định:**
-- Deploy job tạo rõ thư mục npm prefix bằng `${RUNNER_TEMP:-/tmp}/npm-global`.
-- Export `NPM_CONFIG_PREFIX` qua `$GITHUB_ENV` để các bước sau dùng cùng prefix hợp lệ.
-- Cài Railway CLI local bằng `npm install --no-save --no-audit --no-fund @railway/cli`.
-- Gọi trực tiếp `./node_modules/.bin/railway up ...` thay vì `npx railway ...` để tránh `npx` chạm vào global prefix lỗi.
-- Áp dụng cùng pattern cho cả `deploy-web` và `deploy-ukt`.
-
-**Kết quả mong đợi:** CI deploy không còn fail vì thiếu thư mục npm global temp; nếu deploy fail tiếp thì lỗi sẽ đến từ Railway/project config thật, không phải npm bootstrap.
-
----
-
-### [ADR-40] Việt hóa copy sau dashboard UKT - 14/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #110 (`refactor/vietnamese-ukt-copy`)
-
-**Bối cảnh:** Sau khi dashboard UKT chạy được, một số bề mặt user-facing vẫn còn English copy như `UKT mastery`, `Medical module spider chart`, Admin Monitor labels và README/PIPELINE đoạn mới. Product muốn ưu tiên tiếng Việt cho UI và documentation, nhưng giữ thuật ngữ kỹ thuật khi cần rõ contract.
-
-**Quyết định:**
-- Việt hóa text nhìn thấy trong spider chart UKT, trạng thái đồng bộ UKT ở diagnostic result và Admin Monitor.
-- Chart hiển thị tên module bằng tiếng Việt: Giải phẫu, Sinh lý, Dược lý, Vi sinh, Bệnh lý, Lâm sàng, Hóa sinh, Miễn dịch.
-- README, PIPELINE và WORKLOG đổi các đoạn user-facing mới sang tiếng Việt; giữ route/API field/code identifier như `kc_id`, `p_correct`, `sigma`, `/api/ukt/mastery`.
-- Không dịch prompt/schema contract trong `web/lib/prompts.ts` để tránh làm thay đổi hành vi LLM và provider parsing.
-
-**Kết quả mong đợi:** App và tài liệu chính nhất quán tiếng Việt hơn, còn thuật ngữ kỹ thuật vẫn đủ rõ để dev/test không bị nhầm contract.
-
----
-
-### [ADR-39] Dashboard cá nhân hóa UKT - 14/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #109 (`feat/dashboard-ukt-mastery`)
-
-**Bối cảnh:** PR #108 mới hiển thị spider chart ngay sau diagnostic quiz. Product cần chart này là bề mặt cá nhân hóa ở main page: đọc lịch sử tín hiệu UKT đã tích lũy của user, không phụ thuộc việc vừa làm diagnostic xong.
-
-**Quyết định:**
-- UKT service thêm `GET /state/{student_id}` để trả persisted `knowledge_state` theo KC.
-- Web thêm `/api/ukt/mastery`: verify session, đọc UKT state của user hiện tại, aggregate thành 8 module từ `MEDICAL_MODULES`.
-- Main dashboard gọi `/api/ukt/mastery` và render spider chart trước activity heatmap. User mới vẫn thấy đủ 8 trục ở trạng thái no-data.
-- `aggregateModuleMastery()` giờ gom cả `p_correct`/`mu` cho mức nắm vững và `sigma` cho độ không chắc; UI vẽ band độ không chắc và hiện phần trăm độ chắc.
-- Root `docker-compose.yml` default `REDIS_URL=redis://redis:6379` cho web/UKT và bật Redis AOF + named volume để state không rơi về in-memory khi local `.env` chưa set Redis.
-- Chapter quiz signal sẽ dùng cùng `/api/ukt/interactions` với `kc_id` khi chapter quiz UI được nối vào luồng submit; hiện tại diagnostic và SRS đã ghi vào cùng KC namespace.
-
-**Kết quả mong đợi:** Main page trở thành nơi soi mức nắm vững/độ chắc theo module xuyên suốt lịch sử diagnostic và SRS; chart không còn bị giới hạn trong màn hình kết quả diagnostic.
-
----
-
-### [ADR-38] Spider chart UKT theo module - 14/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #108 (`feat/spider-chart-structure`)
-
-**Bối cảnh:** Sau PR #104/#105, UKT đã nhận `kc_id` ổn định và trả `knowledge_state` theo KC. Product cần một lớp hiển thị theo module lớn để learner nhìn nhanh điểm mạnh/yếu theo 8 trục y khoa thay vì đọc từng KC rời rạc.
-
-**Quyết định:**
-- Spider chart dùng đúng 8 axis từ `MEDICAL_MODULES`: Giải phẫu, Sinh lý, Dược lý, Vi sinh, Bệnh lý, Lâm sàng, Hóa sinh, Miễn dịch.
-- Điểm nguồn là UKT `knowledge_state[KC].p_correct`; nếu thiếu mới fallback sang `mu`.
-- `aggregateModuleMastery()` gom nhiều KC cùng `module_id` bằng trung bình cộng và trả đủ 8 module theo thứ tự registry.
-- Module chưa có KC evidence hiển thị dạng no-data (`score = null`), không coi là 0% mastery.
-- Diagnostic results sync `/api/ukt/interactions` và hiển thị spider chart ngay trên màn hình kết quả. Nếu UKT lỗi, diagnostic coloring local vẫn tiếp tục như trước.
-
-**Kết quả mong đợi:** Learner thấy mức nắm vững theo module ngay sau diagnostic quiz; SRS vẫn tiếp tục cập nhật cùng KC namespace để spider chart có thể mở rộng thành dashboard bền vững sau này.
-
----
-
-### [ADR-37] Canonical ConceptCard answer and AI tutor follow-ups - 14/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #107 (`feat/canonical-card-answer`)
-
-**Bối cảnh:** Card editor đang tách `TL;DR` và `Chi tiết` thành hai answer surfaces. Hai field có thể khác nội dung và khác citation, làm learner khó biết đâu là câu trả lời chính thống. Khi thêm cosine similarity/active recall scoring, nhiều answer surfaces sẽ làm muddy source và có nguy cơ chấm điểm theo text không giống UI user vừa học.
-
-**Quyết định:**
-- Stage 2 chỉ sinh một `answer` canonical, source-backed, có inline citation markers.
-- `detail` giữ optional để backward compatible với saved courses cũ, nhưng không còn được generate hoặc render như một ô đáp án riêng trong `EditMode`.
-- `followUps` được giữ lại vì ngắn, tốn ít token, và dùng như AI tutor prompts. Follow-up không có citation và không tham gia active-recall scoring.
-- Diagnostic chunk input bỏ `Detail:` và chỉ đưa outline + concept question + canonical answer vào prompt.
-- Citation validation chỉ validate marker trong `answer`, vì đây là source truth duy nhất của card mới.
-- Cache guard coi Stage 2 cache/saved content còn `detail` là stale để cùng một PDF/hash vẫn regenerate canonical cards thay vì reuse TL;DR/Chi tiết cũ.
-- StudyMode reveal cũng đổi label từ `TL;DR` sang `Câu trả lời` và không render legacy `detail`; SRS rating flow giữ nguyên.
-- Xóa nút `nguồn` riêng trong `EditMode`; user mở source trực tiếp bằng citation number cạnh từng claim.
-- SRS review UI chưa đổi trong phase này; SRS input tiếp tục gửi `concept.answer` làm đáp án canonical.
-
-**Ước tính giảm token:**
-- Prompt: giảm khoảng 94 prompt tokens cho mỗi Stage 2 chapter call do schema/rules ngắn hơn.
-- Completion: giảm khoảng 100-220 completion tokens mỗi lesson vì không còn emit `detail` 3-5 câu.
-- Stage 2 completion: giảm ước tính 15-30%, tùy độ dài answer và quiz.
-- Tổng Stage 2 tokens: giảm ước tính 8-18% khi `raw_context` dài.
-- Tổng pipeline: giảm ước tính 5-12% vì Stage 1, raw_context input và quiz vẫn giữ nguyên.
-
-**Kết quả:** Edit tab có một ô `Câu trả lời` canonical và AI tutor/follow-up prompts phía sau. Source citation và input chấm active recall sau này đều quy về một answer duy nhất.
-
----
-
-### [ADR-36] Stable Knowledge Components for UKT tracing - 14/05/2026
-
-**Người làm:** Nguyen Binh Thanh | **Ref:** PR #104 (`feat/kc-pipeline-metadata`), PR #105 (`feat/kc-main-squash`)
-
-**Bối cảnh:** UKT cần trace tiến độ học xuyên nhiều session và nhiều tài liệu, nhưng `topic` cũ là free-text do LLM sinh nên không ổn định. Nếu cùng một nội dung lúc được gọi là "General physiology", lúc khác là "Physiology basics", UKT sẽ coi là hai kỹ năng khác nhau và spider chart/module mastery mất ý nghĩa.
-
-**Quyết định:**
-- Tạo registry y khoa cố định `medical-v1` gồm tối đa 8 module lớn: anatomy, physiology, pharmacology, microbiology, pathology, clinical, biochemistry, immunology.
-- Stage 1 Planner phải gán mỗi lesson vào `knowledge: { kc_id, kc_name, module_id, module_name, confidence }`; server normalize lại bằng `normalizeCourseKnowledge()` để `kc_id` deterministic.
-- Giữ fallback `{module}.general` để mọi lesson đều có KC hợp lệ nếu classifier chưa đủ chi tiết.
-- Stage 2 chỉ propagate metadata, không tự tạo KC identity mới; concept cards nhận `kc_id/module_id` từ lesson.
-- Diagnostic quiz và SRS đều gửi tín hiệu vào UKT: diagnostic dùng `/api/ukt/interactions`, review card dùng `/update` với `kc_id`.
-- Diagnostic prompt nhận `[[KC_ID]]`/`[[MODULE_ID]]`, nhưng use case vẫn overwrite metadata từ trusted chunk map để tránh LLM drift.
-
-**Kết quả:** Diagnostic response đã trả `student_id` thật và `knowledge_state` theo KC ổn định như `pathology.general`, `physiology.general`, `biochemistry.general`. `priority_order` dùng được cho ưu tiên học, còn spider chart có thể aggregate theo `module_id`.
-
-**Ghi chú merge:** PR #104 đã merge vào branch `fix/diagnostic-lesson-coverage`, không phải `main`. Khi đưa lên `main`, dùng Squash and merge để giữ nhiều commit làm việc trong PR nhưng chỉ tạo một commit tổng hợp trên `main`.
-
----
-
-### [ADR-35] Diagnostic quiz maps 1-1 to lesson progress - 12/05/2026
-
-**Nguoi lam:** Nguyen Binh Thanh | **Ref:** PR #103 (`fix/diagnostic-lesson-coverage`)
-
-**Boi canh:** Fresh generation dang prefetch diagnostic ngay sau chapter dau tien va gui raw MinerU markdown. API legacy boc markdown thanh chunk `legacy-full`, nen AI co the tra `source_chunk_id = legacy-full` thay vi key lesson `ci-li`. Ket qua: user lam diagnostic xong nhung CourseTree van hien nhieu lesson "Chua test".
-
-**Quyet dinh:**
-- Tao `lib/diagnostic-chunks.ts` de build moi lesson thanh mot chunk `{ id: "ci-li", text }`.
-- Strip inline citation markers `[chunk-X-Y]` truoc khi gui sang diagnostic prompt de AI khong nham voi `source_chunk_id`.
-- Doi prefetch tu `{ markdown }` sang `{ chunks }` va chi chay sau khi full course content da co, ke ca fresh generation.
-- Prompt diagnostic yeu cau exactly one question per `SOURCE_CHUNK_ID`; use case normalize id neu provider tra thieu/sai/duplicate.
-- Validate localStorage cache: questions/results cu dung `legacy-full` hoac khong cover du lesson ids se bi xoa va regenerate.
-
-**Ket qua:** Khi diagnostic generation thanh cong, moi lesson trong course co mot question map ve key `ci-li`; `DiagnosticResults` tao `diagnosticState["ci-li"]` va CourseTree khong con grey do sai id. Neu AI khong tra du coverage, UI chuyen `diagnostic-error` de retry/skip thay vi save cache hong.
-
-**Follow-up fix (14/05/2026):** Với tài liệu lớn, AI có thể trả ít câu hỏi hơn số lesson. Strict 100% coverage làm UI fail dù server trả 200. Đổi sang partial-coverage acceptance: questions chỉ cần non-empty, results được giữ nếu có ít nhất một key khớp lesson hiện tại, và lesson không có câu diagnostic vẫn grey "Chua test".
-
----
-
-### [ADR-34] Monitoring restructure và distributed tracing — 12/05/2026
-
-**Người làm:** Lê Kim Dũng | **Ref:** PR #93, #94, #95, #96
-
-**Bối cảnh:** Sau khi có Prometheus/Grafana ở Sprint 6, monitoring cần được tổ chức lại rõ hơn theo service, đồng thời bổ sung tracing để quan sát luồng request qua Web App, UKT service và collector.
-
-**Quyết định:**
-- Restructure repo để phần Next.js nằm dưới `web/`, giữ monitoring config tách riêng trong `monitoring/`.
-- Thêm OpenTelemetry Collector, Alertmanager, Loki/Jaeger datasource provisioning và rule files cho Prometheus.
-- Instrument Web App và UKT service để gửi trace/metrics qua collector.
-- Bổ sung network alias cho `otel-collector`, requirements cho UKT, và endpoint `/api/auth/me` để verify session.
-
-**Kết quả:** Sprint 7 bắt đầu bằng nhánh monitoring restructure, tập trung vào observability/tracing thay vì các task citation/generation của Sprint 6.
+**Hệ quả:** Observability chuyển từ cấu hình phụ trợ sang một phần của vận hành sản phẩm: có trace, metrics, dashboard và test evidence. Một phần hardening kéo sang Sprint 8 và được ghi tiếp ở ADR-55.
 
 ---
 
@@ -733,11 +363,7 @@ Validation: Sau mỗi `generateChapterContent`, `validateCitationMarkers()` (tro
 
 `PdfPanel` nhận hai nguồn highlight: (`chunkStart`, `chunkEnd`) từ lesson-level navigation và `selectedChunkId` từ click marker. Khi cả hai có giá trị, `selectedChunkId` thắng hoàn toàn:
 
-```ts
-const scrollTarget    = selectedChunkId ?? chunkStart ?? null
-const highlightStart  = selectedChunkId ?? chunkStart ?? null
-const highlightEnd    = selectedChunkId ?? chunkEnd   ?? null
-```
+Nếu user click marker cụ thể, panel scroll/highlight theo marker đó. Nếu chưa click marker, panel mới fallback về range của lesson.
 
 Lý do: Lesson-range highlight hữu ích khi mở PdfPanel lần đầu (hiện toàn bộ đoạn nguồn). Khi user click marker cụ thể, họ muốn focus chính xác 1 chunk đó, không phải cả range.
 
@@ -1217,24 +843,13 @@ Bug fix kèm theo: `item.img_path` đã có prefix `images/` sẵn → bỏ pref
 
 **Bối cảnh:** Sau khi xóa tính năng slide (ADR-12), Stage 2 cần format mới cho nội dung lesson. Mục tiêu: **active recall** (learner tự trả lời) thay vì passive presentation.
 
-**Shape mới — `ConceptCard`:**
-```ts
-type ConceptCard = {
-  question: string    // câu hỏi gợi nhớ, kiểu "X hoạt động như thế nào?"
-  answer: string      // TL;DR 2-3 câu, không bullet
-  detail?: string     // 3-5 câu, có analogy/ví dụ nếu concept trừu tượng
-  followUps: string[] // 2 câu hỏi follow-up đào sâu
-}
-```
+**Shape mới — `ConceptCard`:** gồm câu hỏi gợi nhớ, câu trả lời ngắn, phần giải thích chi tiết tùy chọn và một vài câu hỏi follow-up để đào sâu.
 
 **UI 2 trạng thái:**
 - **Trước khi Reveal:** Hiện câu hỏi + ô input để tự trả lời + nút Reveal.
 - **Sau khi Reveal:** Input mờ đi, hiện TL;DR, follow-up chips, 4 nút Anki mock (Again/Hard/Good/Easy).
 
-**Fallback nếu model không trả về concept:**
-```ts
-{ question: `${lesson.title} là gì?`, answer: outline.slice(0, 2).join('. '), followUps: [] }
-```
+**Fallback nếu model không trả về concept:** dùng title của lesson làm câu hỏi mặc định, lấy vài ý đầu trong outline làm câu trả lời và bỏ follow-up.
 
 **Lưu ý:** Anki buttons + follow-up chips hiện chỉ `console.log`, **chưa lưu dữ liệu**. Đây là mock UI để validate format trước khi làm spaced repetition thật.
 
