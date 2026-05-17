@@ -6,6 +6,7 @@ import { GenerateCourseUseCase } from '@/core/use-cases/generate-course.usecase'
 import { withUseCaseLogging } from '@/core/utils/use-case-logger'
 import { logger, monitoring } from './logger.di'
 import type { IAiService } from '@/core/ports/ai.port'
+import { numberEnv } from '@/lib/config/server'
 
 const adapters: IAiService[] = []
 
@@ -45,7 +46,7 @@ if (process.env.LOCAL_AI_BASE_URL) {
 const chainAiAdapter = new ChainAiAdapter(adapters)
 
 export const generateCourseUseCase = withUseCaseLogging(
-  new GenerateCourseUseCase(chainAiAdapter),
+  new GenerateCourseUseCase(chainAiAdapter, undefined, numberEnv('OPENAI_MAX_TOKENS', 120000)),
   'GenerateCourseUseCase',
   logger,
   monitoring,

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 import { handleApiError } from '@/lib/api-utils';
+import { isProduction } from '@/lib/config/server';
 
 async function loginHandler(req: Request) {
   try {
@@ -22,7 +23,7 @@ async function loginHandler(req: Request) {
     response.cookies.set('session', sessionCookie, {
       maxAge: 60 * 60 * 24 * 5, // 5 days
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isProduction,
       path: '/',
     });
 

@@ -511,9 +511,9 @@ export default function Home() {
 
   const prevStatus = useRef(status)
   useEffect(() => {
-    if (prevStatus.current !== 'idle' && status === 'idle') refreshCourses()
+    if (prevStatus.current !== 'idle' && status === 'idle') refreshDashboard()
     prevStatus.current = status
-  }, [status, refreshCourses])
+  }, [status, refreshDashboard])
 
   const uniqueCourses = useMemo(() => {
     if (!Array.isArray(courses)) return []
@@ -529,10 +529,6 @@ export default function Home() {
       seenTitles.add(c.title); return true
     })
   }, [courses])
-
-  const { stats: srsStats, loading: srsLoading } = useSRSStats(stableUserId)
-  const progressMap = useProgressMap(stableUserId)
-  const { points: moduleMastery, loading: uktMasteryLoading } = useUktMastery(stableUserId)
 
   const reset = useCallback(() => {
     setFile(null); resetGeneration()

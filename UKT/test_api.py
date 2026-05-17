@@ -8,7 +8,13 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+import asyncio
 import time
+import threading
+import types
+from types import SimpleNamespace
+
+import pytest
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -241,6 +247,180 @@ def test_state_store_memory():
     print("[PASS] test_state_store_memory")
 
 
+def test_ukt_request_validation_rejects_unsafe_payloads():
+    """UKT request schemas should bound IDs, list sizes, and timestamps."""
+    from app.schemas import BatchStateRequest, Interaction, PredictRequest, UpdateRequest
+
+    with pytest.raises(Exception):
+        UpdateRequest(student_id="../student", kc_id="kc_1", rating="ok")
+
+    with pytest.raises(Exception):
+        UpdateRequest(student_id="student_1", kc_id="x" * 129, rating="ok")
+
+    with pytest.raises(Exception):
+        Interaction(question_id=-1, kc_id="kc_1", response=1, timestamp=1)
+
+    with pytest.raises(Exception):
+        Interaction(question_id=1, kc_id="kc_1", response=1, timestamp=4_102_444_801)
+
+    with pytest.raises(Exception):
+        BatchStateRequest(student_ids=[f"student_{i}" for i in range(201)])
+
+    valid_interaction = make_interaction("kc_1", 1)
+    with pytest.raises(Exception):
+        PredictRequest(
+            student_id="student_1",
+            interactions=[valid_interaction for _ in range(501)],
+        )
+
+    assert UpdateRequest(student_id="student_1", kc_id="kc_1", rating="easy")
+    print("[PASS] test_ukt_request_validation_rejects_unsafe_payloads")
+
+
+def test_state_store_update_is_atomic_for_same_student():
+    """Concurrent update() calls for one student must not drop writes."""
+    from app.state_store import StateStore
+
+    original_redis_url = os.environ.pop("REDIS_URL", None)
+    try:
+        store = StateStore()
+    finally:
+        if original_redis_url is not None:
+            os.environ["REDIS_URL"] = original_redis_url
+
+    def increment(current):
+        count = (current or {}).get("counter", {}).get("count", 0)
+        time.sleep(0.001)
+        next_state = {"counter": {"count": count + 1}}
+        return next_state, count + 1
+
+    threads = [
+        threading.Thread(target=lambda: store.update("student_atomic", increment))
+        for _ in range(25)
+    ]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert store.get("student_atomic") == {"counter": {"count": 25}}
+    print("[PASS] test_state_store_update_is_atomic_for_same_student")
+
+
+def test_state_store_reports_redis_fallback_degraded():
+    """Configured Redis failure should be visible to health checks."""
+    from app.state_store import StateStore
+
+    original_redis_url = os.environ.get("REDIS_URL")
+    os.environ["REDIS_URL"] = "redis://127.0.0.1:1/0"
+    try:
+        store = StateStore()
+    finally:
+        if original_redis_url is None:
+            os.environ.pop("REDIS_URL", None)
+        else:
+            os.environ["REDIS_URL"] = original_redis_url
+
+    assert store.persistence_backend == "memory"
+    assert store.degraded is True
+    assert store.degradation_reason == "redis_unavailable"
+    print("[PASS] test_state_store_reports_redis_fallback_degraded")
+
+
+def test_state_store_ignores_corrupt_redis_json():
+    """Corrupt Redis JSON should not crash get/get_many/update paths."""
+    from app.state_store import StateStore
+
+    class FakePipeline:
+        def __init__(self, redis):
+            self.redis = redis
+            self.get_keys = []
+            self.write = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def watch(self, _key):
+            return None
+
+        def get(self, key):
+            self.get_keys.append(key)
+            return self.redis.values.get(key)
+
+        def multi(self):
+            return None
+
+        def setex(self, key, _ttl, value):
+            self.write = (key, value)
+
+        def execute(self):
+            if self.write:
+                key, value = self.write
+                self.redis.values[key] = value
+                return [True]
+            return [self.redis.values.get(key) for key in self.get_keys]
+
+    class FakeRedis:
+        def __init__(self):
+            self.values = {
+                "ukt:state:bad": "{not-json",
+                "ukt:state:good": '{"kc": {"mu": 0.5}}',
+            }
+
+        def get(self, key):
+            return self.values.get(key)
+
+        def pipeline(self, transaction=True):
+            return FakePipeline(self)
+
+    store = StateStore.__new__(StateStore)
+    store._redis = FakeRedis()
+    store._redis_watch_error = None
+
+    assert store.get("bad") is None
+    assert store.get_many(["bad", "good"]) == {"good": {"kc": {"mu": 0.5}}}
+
+    result = store.update("bad", lambda current: ({"recovered": {"mu": 0.7}}, current))
+    assert result is None
+    assert store.get("bad") == {"recovered": {"mu": 0.7}}
+    print("[PASS] test_state_store_ignores_corrupt_redis_json")
+
+
+def test_health_reports_persistence_degradation():
+    """Health endpoint should expose degraded memory fallback state."""
+    instrumentator = types.ModuleType("prometheus_fastapi_instrumentator")
+    instrumentator.Instrumentator = lambda: SimpleNamespace(
+        instrument=lambda _app: SimpleNamespace(expose=lambda _app: None)
+    )
+    sys.modules.setdefault("prometheus_fastapi_instrumentator", instrumentator)
+    otel_instrumentation = types.ModuleType("opentelemetry.instrumentation")
+    otel_fastapi = types.ModuleType("opentelemetry.instrumentation.fastapi")
+    otel_fastapi.FastAPIInstrumentor = SimpleNamespace(instrument_app=lambda _app: None)
+    sys.modules.setdefault("opentelemetry.instrumentation", otel_instrumentation)
+    sys.modules.setdefault("opentelemetry.instrumentation.fastapi", otel_fastapi)
+
+    from app.main import health
+
+    store = SimpleNamespace(
+        persistence_backend="memory",
+        degraded=True,
+        degradation_reason="redis_unavailable",
+    )
+    req = SimpleNamespace(app=SimpleNamespace(state=SimpleNamespace(engine=object(), store=store)))
+
+    payload = asyncio.run(health(req))
+
+    assert payload["status"] == "degraded"
+    assert payload["model_loaded"] is True
+    assert payload["persistence"] == "memory"
+    assert payload["degraded"] is True
+    assert payload["degradation_reason"] == "redis_unavailable"
+    print("[PASS] test_health_reports_persistence_degradation")
+
+
 # ── Runner ────────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
@@ -253,6 +433,11 @@ if __name__ == "__main__":
         test_time_calibration,
         test_prior_state_integration,
         test_state_store_memory,
+        test_ukt_request_validation_rejects_unsafe_payloads,
+        test_state_store_update_is_atomic_for_same_student,
+        test_state_store_reports_redis_fallback_degraded,
+        test_state_store_ignores_corrupt_redis_json,
+        test_health_reports_persistence_degradation,
     ]
 
     passed = 0

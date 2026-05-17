@@ -22,8 +22,8 @@ export function withUseCaseLogging<T extends { execute: (...args: any[]) => Prom
             
             // Record token metrics if present in the result
             if (result && typeof result === 'object' && result.tokens) {
-              const { promptTokens, completionTokens, totalTokens } = result.tokens;
-              const provider = (target as any).aiService?.model || 'unknown';
+              const { promptTokens, completionTokens, totalTokens, provider: tokenProvider } = result.tokens;
+              const provider = tokenProvider || 'unknown';
               
               if (typeof promptTokens === 'number') {
                 monitoring.recordMetric('prompt_tokens', promptTokens, { useCase: useCaseName, provider });

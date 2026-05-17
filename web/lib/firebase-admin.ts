@@ -3,6 +3,7 @@ import { getStorage } from 'firebase-admin/storage'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
 import { logger } from '@/infrastructure/di/logger.di'
+import { firebaseAdminConfig, isBuildOrTest } from '@/lib/config/server'
 
 // A recursive proxy that returns itself for any property access or function call.
 // This allows any chain like bucket.file(path).save(data).then(...) to not crash.
@@ -21,13 +22,10 @@ const createRecursiveProxy = (): any => {
 function getApp(): App {
   if (getApps().length > 0) return getApps()[0]
 
-  const projectId = process.env.FIREBASE_PROJECT_ID
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')
-  const storageBucket = process.env.FIREBASE_STORAGE_BUCKET
+  const { projectId, clientEmail, privateKey, storageBucket } = firebaseAdminConfig
 
   if (!projectId || !clientEmail || !privateKey || !storageBucket) {
-    if (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'test') {
+    if (isBuildOrTest) {
       logger.warn('Firebase Admin env vars missing; using recursive dummy proxy')
       return createRecursiveProxy();
     }
@@ -41,21 +39,21 @@ function getApp(): App {
 }
 
 export function getBucket() {
-  if (!process.env.FIREBASE_PROJECT_ID && (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'test')) {
+  if (!firebaseAdminConfig.projectId && isBuildOrTest) {
     return createRecursiveProxy();
   }
   return getStorage(getApp()).bucket()
 }
 
 export function getFirebaseAdminAuth() {
-  if (!process.env.FIREBASE_PROJECT_ID && (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'test')) {
+  if (!firebaseAdminConfig.projectId && isBuildOrTest) {
     return createRecursiveProxy();
   }
   return getAuth(getApp())
 }
 
 export function getFirebaseAdminFirestore() {
-  if (!process.env.FIREBASE_PROJECT_ID && (process.env.NEXT_PHASE === 'phase-production-build' || process.env.NODE_ENV === 'test')) {
+  if (!firebaseAdminConfig.projectId && isBuildOrTest) {
     return createRecursiveProxy();
   }
   return getFirestore(getApp())

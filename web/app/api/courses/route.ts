@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withApiLogging } from '@/lib/middlewares/with-api-logging';
 import { handleApiError } from '@/lib/api-utils';
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
+import { isOwnedStoragePath } from '@/lib/storage-paths';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,14 @@ async function postHandler(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Missing title or course' }, { status: 400 });
   }
 
+  if (pdfStorageUrl !== undefined && !isOwnedStoragePath(pdfStorageUrl, user.id, 'course-pdfs')) {
+    return NextResponse.json({ success: false, error: 'Invalid pdfStorageUrl' }, { status: 400 });
+  }
+
+  if (layoutStorageUrl !== undefined && !isOwnedStoragePath(layoutStorageUrl, user.id, 'course-layouts')) {
+    return NextResponse.json({ success: false, error: 'Invalid layoutStorageUrl' }, { status: 400 });
+  }
+
   const saved = await saveCourseUseCase.execute({
     userId: user.id,
     title,
@@ -35,16 +44,20 @@ async function postHandler(req: NextRequest) {
     contentHash
   });
 
-  if (pdfStorageUrl && typeof pdfStorageUrl === 'string') {
+  if (pdfStorageUrl) {
     await courseRepository.updatePdfUrl(saved.id, pdfStorageUrl);
   }
 
-  if (layoutStorageUrl && typeof layoutStorageUrl === 'string') {
+  if (layoutStorageUrl) {
     await courseRepository.updateLayoutUrl(saved.id, layoutStorageUrl);
   }
 
   return NextResponse.json({ success: true, course: saved });
 }
 
-export const GET = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req) => getHandler(req as any).catch(e => handleApiError(e, 'GET /api/courses')) as any));
-export const POST = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req) => postHandler(req as any).catch(e => handleApiError(e, 'POST /api/courses')) as any));
+export const GET = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req: NextRequest) =>
+  getHandler(req).catch((e: unknown) => handleApiError(e, 'GET /api/courses'))
+));
+export const POST = withApiLogging('/api/courses', withApiMetrics('/api/courses', (req: NextRequest) =>
+  postHandler(req).catch((e: unknown) => handleApiError(e, 'POST /api/courses'))
+));

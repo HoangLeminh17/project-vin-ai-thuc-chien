@@ -23,6 +23,7 @@ from app.schemas import (
     PredictRequest,
     PredictResponse,
     StateResponse,
+    StudentId,
     BatchStateRequest,
     BatchStateResponse,
     UpdateRequest,
@@ -112,11 +113,23 @@ else:
 
 @app.get("/health")
 async def health(req: Request):
-    return {"status": "ok", "model_loaded": getattr(req.app.state, 'engine', None) is not None}
+    store = getattr(req.app.state, 'store', None)
+    model_loaded = getattr(req.app.state, 'engine', None) is not None
+    degraded = bool(getattr(store, "degraded", False)) or not model_loaded
+    response = {
+        "status": "degraded" if degraded else "ok",
+        "model_loaded": model_loaded,
+        "persistence": getattr(store, "persistence_backend", "unavailable"),
+        "degraded": degraded,
+    }
+    reason = getattr(store, "degradation_reason", None)
+    if reason:
+        response["degradation_reason"] = reason
+    return response
 
 
 @app.get("/state/{student_id}", response_model=StateResponse)
-async def state(student_id: str, store: StateStore = Depends(get_store)):
+async def state(student_id: StudentId, store: StateStore = Depends(get_store)):
     return StateResponse(
         student_id=student_id,
         knowledge_state=store.get(student_id) or {},
@@ -143,21 +156,16 @@ async def predict(
     if not req.interactions:
         raise HTTPException(status_code=400, detail="interactions không được rỗng")
 
-    # Lấy state cũ từ store (nếu có)
-    prior_state = store.get(req.student_id)
+    def apply_prediction(prior_state: dict | None) -> tuple[dict, PredictResponse]:
+        result = engine.predict(
+            interactions=req.interactions,
+            prior_state=prior_state,
+            total_minutes=req.total_minutes,
+        )
+        result.student_id = req.student_id
+        return result.knowledge_state, result
 
-    # Chạy UKT inference
-    result = engine.predict(
-        interactions=req.interactions,
-        prior_state=prior_state,
-        total_minutes=req.total_minutes,
-    )
-    result.student_id = req.student_id
-
-    # Lưu state mới
-    store.set(req.student_id, result.knowledge_state)
-
-    return result
+    return store.update(req.student_id, apply_prediction)
 
 
 @app.post("/update", response_model=UpdateResponse)
@@ -170,14 +178,15 @@ async def update(
     Cập nhật knowledge state sau khi học sinh đánh giá
     thẻ học (hard / ok / easy).
     """
-    current = store.get(req.student_id) or {}
+    def apply_rating(current: dict | None) -> tuple[dict, dict]:
+        updated = engine.update_state(
+            current_state=current or {},
+            kc_id=req.kc_id,
+            rating=req.rating,          # "hard" | "ok" | "easy"
+        )
+        return updated, updated
 
-    updated = engine.update_state(
-        current_state=current,
-        kc_id=req.kc_id,
-        rating=req.rating,          # "hard" | "ok" | "easy"
-    )
-    store.set(req.student_id, updated)
+    updated = store.update(req.student_id, apply_rating)
 
     return UpdateResponse(
         kc_id=req.kc_id,

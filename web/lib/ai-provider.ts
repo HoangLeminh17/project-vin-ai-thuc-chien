@@ -1,5 +1,13 @@
 export type AiProvider = 'openai' | 'gemini' | 'huggingface' | 'deepseek'
 
+export type AiProviderAvailability = {
+  gemini?: boolean
+  openai?: boolean
+  huggingface?: boolean
+  deepseek?: boolean
+  fallbackProvider?: string | null
+}
+
 export function normalizeAiProvider(value?: string | null): AiProvider {
   const v = value?.toLowerCase()
   if (v === 'gemini') return 'gemini'
@@ -8,23 +16,23 @@ export function normalizeAiProvider(value?: string | null): AiProvider {
   return 'openai'
 }
 
-export function resolveAiProvider(value?: string | null): AiProvider {
+export function resolveAiProvider(value?: string | null, availability: AiProviderAvailability = {}): AiProvider {
   // Priority:
   // 1) Explicit request (value)
   // 2) Auto-pick based on which key exists (prefer Gemini)
   // 3) AI_PROVIDER env fallback
   const requested = value ? normalizeAiProvider(value) : null
-  const hasGemini = !!process.env.GEMINI_API_KEY
-  const hasOpenAi = !!process.env.OPENAI_API_KEY
-  const hasHF = !!process.env.HUGGINGFACE_API_KEY
-  const hasDeepSeek = !!process.env.DEEPSEEK_API_KEY
+  const hasGemini = !!availability.gemini
+  const hasOpenAi = !!availability.openai
+  const hasHF = !!availability.huggingface
+  const hasDeepSeek = !!availability.deepseek
 
   const auto: AiProvider =
     hasDeepSeek ? 'deepseek'
     : hasGemini ? 'gemini'
     : hasOpenAi ? 'openai'
     : hasHF ? 'huggingface'
-    : normalizeAiProvider(process.env.AI_PROVIDER)
+    : normalizeAiProvider(availability.fallbackProvider)
 
   const preferred: AiProvider = requested ?? auto
 

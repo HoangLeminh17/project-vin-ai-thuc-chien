@@ -14,7 +14,14 @@ const OPENAI_URL = 'https://api.openai.com/v1/chat/completions'
 // Server-only helper; keep logs structured.
 import { logger } from '@/infrastructure/di/logger.di'
 
-export async function extractFacts(content: string): Promise<string[]> {
+export type ExtractFactsConfig = {
+  openAiApiKey?: string
+  openAiModel: string
+  huggingFaceApiKey?: string
+  huggingFaceModel: string
+}
+
+export async function extractFacts(content: string, config: ExtractFactsConfig): Promise<string[]> {
   const messages = [
     {
       role: 'system',
@@ -25,16 +32,16 @@ export async function extractFacts(content: string): Promise<string[]> {
   ]
 
   // 1. Try OpenAI
-  if (process.env.OPENAI_API_KEY) {
+  if (config.openAiApiKey) {
     try {
       const res = await fetch(OPENAI_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          Authorization: `Bearer ${config.openAiApiKey}`,
         },
         body: JSON.stringify({
-          model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+          model: config.openAiModel,
           temperature: 0.7,
           messages,
           response_format: { type: 'json_object' },
@@ -52,16 +59,16 @@ export async function extractFacts(content: string): Promise<string[]> {
   }
 
   // 2. Try Hugging Face
-  if (process.env.HUGGINGFACE_API_KEY) {
+  if (config.huggingFaceApiKey) {
     try {
       const res = await fetch('https://router.huggingface.co/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          Authorization: `Bearer ${config.huggingFaceApiKey}`,
         },
         body: JSON.stringify({
-          model: process.env.HUGGINGFACE_MODEL || 'meta-llama/Llama-3.1-8B-Instruct',
+          model: config.huggingFaceModel,
           temperature: 0.7,
           messages,
           response_format: { type: 'json_object' },

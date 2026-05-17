@@ -4,3 +4,5 @@ export * from './di/parser.di';
 export * from './di/ai.di';
 export * from './di/auth.di';
 export * from './di/course.di';
+export * from './di/answer-evaluation.di';
+export * from './di/facts.di';

@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { ref as storageRef, uploadBytes } from 'firebase/storage';
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Course, ChapterContent, CourseContent, isLegacyOutline } from '@/core/models/learning-model';
 import { useAuth } from './auth-context';
 import { useCourses } from '../hooks/use-courses';
@@ -10,6 +9,9 @@ import { buildValidChunkIds, validateCitationMarkers } from '@/lib/citation-util
 import { buildDiagnosticChunks, diagnosticQuestionsCoverChunks } from '@/lib/diagnostic-chunks';
 import { courseContentNeedsCardRegeneration } from '@/lib/course-content-version';
 import type { ContentChunk } from '@/core/ports/ai.port';
+import { toCompleteChapterList } from '@/lib/stage2-results';
+import { uploadCourseLayout, uploadCoursePdf } from '@/lib/generation-uploads';
+import { pollParseProgress } from '@/lib/parse-progress-polling';
 import { devError } from '@/lib/devlog'
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
@@ -95,8 +97,22 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const [diagnosticStatus, setDiagnosticStatus] = useState<DiagnosticStatus>('idle');
   const [pdfLocalPath, setPdfLocalPath] = useState<string | null>(null);
   const [parseProgress, setParseProgress] = useState<GenerationProgress['parseProgress']>(null);
+  const pdfLocalPathRef = useRef<string | null>(null);
+  const parseProgressControllerRef = useRef<AbortController | null>(null);
+
+  const stopParseProgressPolling = useCallback(() => {
+    parseProgressControllerRef.current?.abort();
+    parseProgressControllerRef.current = null;
+  }, []);
+
+  const setPreviewPdfUrl = useCallback((url: string | null) => {
+    if (pdfLocalPathRef.current) URL.revokeObjectURL(pdfLocalPathRef.current);
+    pdfLocalPathRef.current = url;
+    setPdfLocalPath(url);
+  }, []);
 
   const resetGeneration = useCallback(() => {
+    stopParseProgressPolling();
     setStatus('idle');
     setCourse(null);
     setCourseContentMap({});
@@ -108,9 +124,16 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     setSavedCourseId(null);
     setIsFromCache(false);
     setDiagnosticStatus('idle');
-    setPdfLocalPath(null);
+    setPreviewPdfUrl(null);
     setParseProgress(null);
-  }, []);
+  }, [setPreviewPdfUrl, stopParseProgressPolling]);
+
+  useEffect(() => {
+    return () => {
+      stopParseProgressPolling();
+      if (pdfLocalPathRef.current) URL.revokeObjectURL(pdfLocalPathRef.current);
+    };
+  }, [stopParseProgressPolling]);
 
   const runDiagnosticPrefetch = useCallback((courseId: string, chunks: ContentChunk[]) => {
     if (chunks.length === 0) {
@@ -176,16 +199,13 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
 
     // Create blob URL for same-session preview
     const localPath = URL.createObjectURL(file);
-    setPdfLocalPath(localPath);
+    setPreviewPdfUrl(localPath);
 
     // Upload PDF to Firebase Storage (client-side); get storage path for persistent reference
     let pdfStorageUrl: string | undefined;
     if (user?.uid) {
       try {
-        const filename = `${crypto.randomUUID()}.pdf`;
-        const uploadRef = storageRef(storage, `course-pdfs/${user.uid}/${filename}`);
-        const result = await uploadBytes(uploadRef, file);
-        pdfStorageUrl = result.ref.fullPath;
+        pdfStorageUrl = await uploadCoursePdf(storage, user.uid, file);
       } catch {
         // Upload failed — citation panel won't work for this course, generation continues
       }
@@ -200,12 +220,11 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     let contentList: Array<{ type?: string; text?: string; table_body?: string; page_idx?: number }> = [];
     let validChunkIds = new Set<string>();
     let taskId: string | undefined;
-    let isPollingProgress = true;
     try {
       const res = await fetch('/api/parse-pdf', { method: 'POST', body: form });
       const data = await res.json();
       if (!data.success) {
-        isPollingProgress = false;
+        stopParseProgressPolling();
         setError(data.error || 'Parse failed');
         setStatus('idle');
         return;
@@ -216,25 +235,9 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
 
       // Poll progress if taskId is provided
       if (taskId) {
-        const pollProgress = async () => {
-          while (isPollingProgress) {
-            try {
-              const progressRes = await fetch(`/api/parse-pdf/progress?taskId=${taskId}`);
-              const progressData = await progressRes.json();
-              if (progressData.success && progressData.progress) {
-                setParseProgress({
-                  currentChunk: progressData.progress.currentChunk,
-                  totalChunks: progressData.progress.totalChunks,
-                  percentComplete: progressData.progress.percentComplete,
-                });
-              }
-            } catch {
-              // Polling failed, continue silently
-            }
-            await new Promise(r => setTimeout(r, 2000));
-          }
-        };
-        void pollProgress();
+        const controller = new AbortController();
+        parseProgressControllerRef.current = controller;
+        void pollParseProgress(taskId, setParseProgress, controller.signal);
       }
 
       // Upload MinerU contentList JSON for layout serving
@@ -242,23 +245,19 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       validChunkIds = buildValidChunkIds(contentList);
       if (user?.uid && contentList.length > 0) {
         try {
-          const layoutBlob = new Blob([JSON.stringify(contentList)], { type: 'application/json' });
-          const layoutFilename = `${crypto.randomUUID()}.json`;
-          const layoutRef = storageRef(storage, `course-layouts/${user.uid}/${layoutFilename}`);
-          const layoutResult = await uploadBytes(layoutRef, layoutBlob);
-          layoutStorageUrl = layoutResult.ref.fullPath;
+          layoutStorageUrl = await uploadCourseLayout(storage, user.uid, contentList);
         } catch {
           // Layout upload failed — bbox highlighting won't work, generation continues
         }
       }
     } catch (e) {
-      isPollingProgress = false;
+      stopParseProgressPolling();
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
       return;
     }
 
-    isPollingProgress = false;
+    stopParseProgressPolling();
     setStatus('generating');
     let resolvedCourse: Course | null = null;
     let hash = '';
@@ -361,7 +360,12 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         }));
         results.forEach(ch => { if (ch && validChunkIds.size > 0) validateCitationMarkers(ch, validChunkIds) });
         if (user && resolvedCourse) {
-          const chapterList = results.filter(Boolean) as ChapterContent[]
+          const chapterList = toCompleteChapterList(results)
+          if (!chapterList) {
+            setError('Một số chương chưa tạo xong. Vui lòng thử tạo lại trước khi lưu khóa học.')
+            setStatus('done')
+            return
+          }
           const content: CourseContent = { chapters: chapterList };
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl);
           if (saved) {
@@ -383,7 +387,12 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         )
         results.forEach(ch => { if (ch && validChunkIds.size > 0) validateCitationMarkers(ch, validChunkIds) })
         if (user && resolvedCourse) {
-          const chapterList = results.filter(Boolean) as ChapterContent[]
+          const chapterList = toCompleteChapterList(results)
+          if (!chapterList) {
+            setError('Một số chương chưa tạo xong. Vui lòng thử tạo lại trước khi lưu khóa học.')
+            setStatus('done')
+            return
+          }
           const content: CourseContent = { chapters: chapterList }
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl)
           if (saved) {
@@ -404,7 +413,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
     }
-  }, [courses, user, saveCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch]);
+  }, [courses, user, saveCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch, setPreviewPdfUrl, stopParseProgressPolling]);
 
   const stateValue = useMemo(() => ({
     status,

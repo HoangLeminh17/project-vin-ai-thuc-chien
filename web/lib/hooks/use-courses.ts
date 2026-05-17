@@ -4,9 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { SavedCourse } from '@/core/models/saved-course';
 import { Course, CourseContent } from '@/core/models/learning-model';
 import { LocalCourseAdapter } from '@/infrastructure/adapters/local-course.adapter';
+import { isLocalCourseStore } from '@/lib/config/client';
 
-const isLocal = process.env.NEXT_PUBLIC_COURSE_STORE === 'local';
-const localAdapter = isLocal ? new LocalCourseAdapter() : null;
+const localAdapter = isLocalCourseStore ? new LocalCourseAdapter() : null;
 
 function isAbortError(error: unknown) {
   return error instanceof DOMException && error.name === 'AbortError';

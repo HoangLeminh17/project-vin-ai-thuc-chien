@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { extractFacts } from '@/lib/ai'
 import { withAuth } from '@/lib/middlewares/with-auth'
 import { withApiLogging } from '@/lib/middlewares/with-api-logging'
 import { withApiMetrics } from '@/lib/middlewares/with-api-metrics'
@@ -10,7 +9,8 @@ const handler = async (req: NextRequest) => {
     return NextResponse.json({ success: false, error: 'Missing content' }, { status: 400 })
   }
 
-  const facts = await extractFacts(markdown)
+  const { extractFactsService } = await import('@/infrastructure/registry')
+  const facts = await extractFactsService.execute(markdown)
   return NextResponse.json({ success: true, facts })
 }
 

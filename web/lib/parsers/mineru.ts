@@ -5,9 +5,10 @@ import fs from 'fs/promises'
 import path from 'path'
 import { contentListToMarkdown } from '@/infrastructure/adapters/content-list-converter'
 import { logger } from '@/infrastructure/di/logger.di'
+import { mineruLegacyConfig } from '@/lib/config/server'
 
-const BASE_URL = process.env.PDF_MINERU_BASE_URL!
-const API_KEY = process.env.PDF_MINERU_API_KEY!
+const BASE_URL = mineruLegacyConfig.baseUrl
+const API_KEY = mineruLegacyConfig.apiKey
 
 // ── helpers ──
 

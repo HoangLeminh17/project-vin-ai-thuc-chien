@@ -1,14 +1,39 @@
 """Pydantic schemas cho request/response của UKT API."""
 
 from pydantic import BaseModel, Field
-from typing import Literal
+from typing import Annotated, Literal
+
+
+ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.:@-]*$"
+MAX_STUDENT_IDS_PER_BATCH = 200
+MAX_INTERACTIONS_PER_REQUEST = 500
+MAX_UNIX_TIMESTAMP = 4_102_444_800  # 2100-01-01T00:00:00Z
+
+StudentId = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=128,
+        pattern=ID_PATTERN,
+        description="Stable student/user ID safe for Redis keys",
+    ),
+]
+KCId = Annotated[
+    str,
+    Field(
+        min_length=1,
+        max_length=128,
+        pattern=ID_PATTERN,
+        description="Knowledge Component ID, ví dụ: 'dao_ham'",
+    ),
+]
 
 
 class Interaction(BaseModel):
-    question_id: int = Field(..., description="ID của câu hỏi")
-    kc_id: str = Field(..., description="Knowledge Component ID, ví dụ: 'dao_ham'")
+    question_id: int = Field(..., ge=0, le=1_000_000_000, description="ID của câu hỏi")
+    kc_id: KCId
     response: int = Field(..., ge=0, le=1, description="1 = đúng, 0 = sai")
-    timestamp: int = Field(..., description="Unix timestamp lúc trả lời")
+    timestamp: int = Field(..., ge=0, le=MAX_UNIX_TIMESTAMP, description="Unix timestamp lúc trả lời")
 
 
 class KCState(BaseModel):
@@ -19,8 +44,8 @@ class KCState(BaseModel):
 
 
 class PredictRequest(BaseModel):
-    student_id: str = Field(..., description="ID học sinh (UUID hoặc string)")
-    interactions: list[Interaction] = Field(..., min_length=1)
+    student_id: StudentId
+    interactions: list[Interaction] = Field(..., min_length=1, max_length=MAX_INTERACTIONS_PER_REQUEST)
     total_minutes: int = Field(45, ge=5, le=180, description="Thời gian học còn lại")
 
 
@@ -44,12 +69,12 @@ class PredictResponse(BaseModel):
 
 
 class StateResponse(BaseModel):
-    student_id: str
+    student_id: StudentId
     knowledge_state: dict[str, KCState] = Field(default_factory=dict)
 
 
 class BatchStateRequest(BaseModel):
-    student_ids: list[str] = Field(..., min_length=1)
+    student_ids: list[StudentId] = Field(..., min_length=1, max_length=MAX_STUDENT_IDS_PER_BATCH)
 
 
 class BatchStateResponse(BaseModel):
@@ -57,8 +82,8 @@ class BatchStateResponse(BaseModel):
 
 
 class UpdateRequest(BaseModel):
-    student_id: str
-    kc_id: str
+    student_id: StudentId
+    kc_id: KCId
     rating: Literal["hard", "ok", "easy"]
 
 

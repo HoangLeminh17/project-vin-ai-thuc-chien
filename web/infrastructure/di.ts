@@ -33,6 +33,7 @@ import { SaveCourseUseCase } from '@/core/use-cases/courses/save-course.usecase'
 import { ListCoursesUseCase } from '@/core/use-cases/courses/list-courses.usecase';
 import { getDb, getBucket, getFirebaseAdminAuth } from '@/lib/firebase-admin';
 import { withUseCaseLogging } from '@/core/utils/use-case-logger';
+import { numberEnv } from '@/lib/config/server';
 
 // Helpers
 const normalizeBaseUrl = (url: string | undefined): string => {
@@ -178,7 +179,7 @@ export const uktService = new UKTServiceAdapter(normalizeBaseUrl(process.env.UKT
 const rawParseDocumentUseCase = new ParseDocumentUseCase(storageAdapter, parserAdapter);
 export const parseDocumentUseCase = withUseCaseLogging(rawParseDocumentUseCase, 'ParseDocumentUseCase', logger, monitoring);
 
-const rawGenerateCourseUseCase = new GenerateCourseUseCase(aiAdapter, usageRepository);
+const rawGenerateCourseUseCase = new GenerateCourseUseCase(aiAdapter, usageRepository, numberEnv('OPENAI_MAX_TOKENS', 120000));
 export const generateCourseUseCase = withUseCaseLogging(rawGenerateCourseUseCase, 'GenerateCourseUseCase', logger, monitoring);
 
 const rawVerifySessionUseCase = new VerifySessionUseCase(authAdapter);

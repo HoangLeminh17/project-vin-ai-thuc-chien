@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/infrastructure/di/logger.di'
+import { scraperToken } from '@/lib/config/server'
+import type { ApiRouteHandler } from './api-handler';
 
-type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<Response | NextResponse>;
-
-export function withAdminAuth(handler: ApiHandler): ApiHandler {
-  return async (req: NextRequest, ...args: any[]) => {
+export function withAdminAuth<TArgs extends unknown[]>(handler: ApiRouteHandler<TArgs>): ApiRouteHandler<TArgs> {
+  return async (req: NextRequest, ...args: TArgs) => {
     const sessionCookie = req.cookies.get('session')?.value;
     const authHeader = req.headers.get('authorization');
-    const scraperToken = process.env.SCRAPER_TOKEN;
 
     // Allow Prometheus scraping via Bearer token
     if (scraperToken && authHeader === `Bearer ${scraperToken}`) {

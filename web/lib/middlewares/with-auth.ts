@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/infrastructure/di/logger.di'
-
-type ApiHandler = (req: NextRequest, ...args: any[]) => Promise<Response | NextResponse>;
+import type { ApiRouteHandler } from './api-handler';
 
 /**
  * Middleware to ensure the user is authenticated.
  * Injects user info into the request context if possible, 
  * but for standard NextRequest we just verify and proceed.
  */
-export function withAuth(handler: ApiHandler): ApiHandler {
-  return async (req: NextRequest, ...args: any[]) => {
+export function withAuth<TArgs extends unknown[]>(handler: ApiRouteHandler<TArgs>): ApiRouteHandler<TArgs> {
+  return async (req: NextRequest, ...args: TArgs) => {
     const sessionCookie = req.cookies.get('session')?.value;
     
     try {

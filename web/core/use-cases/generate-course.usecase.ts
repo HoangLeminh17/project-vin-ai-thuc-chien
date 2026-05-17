@@ -6,7 +6,8 @@ import { IUsageRepository } from '../ports/usage-repository.port'
 export class GenerateCourseUseCase {
   constructor(
     private readonly aiService: IAiService,
-    private readonly usageRepo?: IUsageRepository
+    private readonly usageRepo?: IUsageRepository,
+    private readonly maxTokens = 120000,
   ) {}
 
   async execute(markdown: string, userId?: string): Promise<{ 
@@ -19,9 +20,8 @@ export class GenerateCourseUseCase {
     
     // Quick heuristic: tokens ~= chars / 4
     const estimatedTokens = Math.ceil(markdown.length / 4)
-    const MAX_TOKENS = process.env.OPENAI_MAX_TOKENS ? parseInt(process.env.OPENAI_MAX_TOKENS, 10) : 120000
 
-    if (estimatedTokens <= MAX_TOKENS) {
+    if (estimatedTokens <= this.maxTokens) {
       const result = await this.aiService.generateCourse(markdown)
       result.course = normalizeCourseKnowledge(result.course)
       if (result.tokens && this.usageRepo) {
@@ -40,7 +40,7 @@ export class GenerateCourseUseCase {
 
     // Split markdown into chunked pieces using logical boundaries when possible
     const approxCharsPerToken = 4
-    const chunkMaxChars = MAX_TOKENS * approxCharsPerToken
+    const chunkMaxChars = this.maxTokens * approxCharsPerToken
     const chunks: string[] = []
     let cursor = 0
     while (cursor < markdown.length) {

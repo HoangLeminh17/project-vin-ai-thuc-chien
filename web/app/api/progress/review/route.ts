@@ -18,4 +18,4 @@ async function handler(req: NextRequest) {
   return NextResponse.json(nextProgress);
 }
 
-export const POST = withApiLogging('ReviewCard', withApiMetrics('/api/progress/review', handler as any));
+export const POST = withApiLogging('ReviewCard', withApiMetrics('/api/progress/review', handler));
