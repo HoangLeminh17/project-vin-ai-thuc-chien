@@ -16,6 +16,23 @@
 | 🧠 UKT Microservice | 3 | 🟡 Medium |
 | 📊 Observability | 2 | 🟢 Low |
 
+### Cập nhật rà soát bổ sung — 2026-05-17
+
+Rà soát mới nhất tập trung vào các rủi ro còn tồn tại sau các đợt tối ưu trước: bảo mật storage path, tính toàn vẹn dữ liệu Stage 2, atomicity của UKT state, separation of concerns theo Clean Architecture, cache/privacy và validation API.
+
+| Nhóm | Finding mới | Mức ưu tiên |
+|---|---:|---|
+| Bảo mật & dữ liệu | 2 | 🔴 High |
+| UKT state & validation | 4 | 🔴 High / 🟡 Medium |
+| Clean Architecture | 3 | 🟡 Medium |
+| Frontend workflow/state | 3 | 🟡 Medium |
+| Observability/Infra edge cases | 1 | 🟡 Medium |
+
+**Kết quả kiểm tra tại thời điểm rà soát:**
+- `web`: `npm test` pass — 26 files / 133 tests.
+- `web`: `npm run lint` pass với 1 warning ở `StudyMode.tsx` về missing dependency `onRated`.
+- `UKT`: `python -m pytest` pass — 8 tests.
+
 ---
 
 ## 🏗️ 1. Kiến trúc & Code Duplication
@@ -62,6 +79,29 @@ Stage 2 gọi trực tiếp `ai.ts` (bypass hoàn toàn DI container), còn Stag
 [prompts.ts](file:///d:/AI%20In%20Action/A20-App-046/web/lib/prompts.ts) chứa cả `PLANNER_PROMPT` và `PLANNER_PROMPT_LIGHTWEIGHT`, `DIAGNOSTIC_QUIZ_PROMPT` và `DIAGNOSTIC_QUIZ_PROMPT_LIGHTWEIGHT`. Không rõ logic chuyển đổi giữa full/lightweight — nếu không dùng lightweight thì nên xóa.
 
 **✅ Đã kiểm tra & làm rõ:** Các bản prompt `_LIGHTWEIGHT` đang được sử dụng cụ thể bởi `HuggingFaceAdapter` (trong `infrastructure/adapters/huggingface.adapter.ts`). Lý do là API của HuggingFace có giới hạn context window nhỏ hơn (8192 tokens), nên cần prompt ngắn gọn hơn để dành không gian cho nội dung bài học. Vì vậy, việc giữ lại các bản prompt này là có chủ đích.
+
+### 1.4 `answer-evaluation` route bypass Clean Architecture (Medium)
+
+**Vấn đề:** [answer-evaluation/route.ts](file:///d:/AI%20In%20Action/A20-App-046/web/app/api/answer-evaluation/route.ts) đang chứa trực tiếp provider selection, đọc `process.env`, prompt, HTTP call tới OpenAI/Gemini/HuggingFace/DeepSeek và parsing response. Logic này trùng vai trò adapter/use case, làm route phình to và khó test.
+
+**Vị trí liên quan:**
+- `web/app/api/answer-evaluation/route.ts:87-221` — AI provider integration nằm trong route.
+- `web/app/api/answer-evaluation/route.ts:166-214` — đọc env/model/API key trong presentation layer.
+
+**Khuyến nghị:**
+- Tạo `EvaluateAnswerUseCase` trong `core/use-cases/`.
+- Tạo `AnswerEvaluationPort` và adapter tương ứng trong `infrastructure/adapters/`.
+- Route chỉ còn verify session, validate payload, gọi use case và map response.
+
+### 1.5 Env access rò rỉ ra core/lib/route (Medium)
+
+Theo `CONVENTIONS.md`, chỉ DI/config layer nên đọc `process.env`. Hiện vẫn còn một số điểm đọc env ngoài DI:
+
+- `web/core/use-cases/generate-course.usecase.ts:22` — core use case đọc `OPENAI_MAX_TOKENS`.
+- `web/app/api/answer-evaluation/route.ts:166-214` — route đọc model/API key.
+- `web/lib/parsers/mineru.ts:9-10` — parser legacy đọc MinerU env trực tiếp.
+
+**Khuyến nghị:** inject config qua constructor hoặc adapter options từ `infrastructure/di/*`; core/use case chỉ nhận dependency/config đã chuẩn hóa.
 
 ---
 
@@ -117,6 +157,36 @@ Tất cả đều có `cache: 'no-store'` — không tận dụng bất kỳ cac
 [generation-context.tsx:L228](file:///d:/AI%20In%20Action/A20-App-046/web/lib/contexts/generation-context.tsx#L228): `setTimeout(r, 500)` — Poll progress mỗi 0.5s là quá dày cho một tiến trình kéo dài 3-5 phút.
 
 **✅ Đã thực hiện:** Tăng thời gian polling lên **2000ms (2s)** để giảm tải cho server mà vẫn đảm bảo trải nghiệm người dùng mượt mà.
+
+### 2.6 `GenerationProvider` vẫn chứa workflow quá lớn (Medium)
+
+**Vấn đề:** Dù context đã được tách để giảm render noise, `startGeneration()` trong [generation-context.tsx](file:///d:/AI%20In%20Action/A20-App-046/web/lib/contexts/generation-context.tsx) vẫn đang gom nhiều trách nhiệm: upload PDF, parse, polling, build chunk/citation context, cache lookup, Stage 1/Stage 2 generation, save course, diagnostic prefetch.
+
+**Vị trí:** `web/lib/contexts/generation-context.tsx:173-407`
+
+**Rủi ro:** khó test workflow end-to-end, khó cancel/retry từng bước, dễ phát sinh bug khi thêm trạng thái mới.
+
+**Khuyến nghị:**
+- Tách `usePdfUpload`, `useParseProgress`, `useCourseGenerationWorkflow` hoặc service function thuần có test.
+- Đẩy các bước cần tính toàn vẹn dữ liệu về server-side use case/API thay vì orchestration lớn trên client.
+
+### 2.7 Resource/state leak trong generation polling và blob URL (Medium)
+
+**Vấn đề:**
+- `URL.createObjectURL(file)` chưa thấy revoke khi reset/unmount.
+- Polling progress dùng biến local `isPollingProgress`, không có `AbortController`/cleanup lifecycle rõ ràng.
+
+**Vị trí:** `web/lib/contexts/generation-context.tsx:177-179`, `217-237`
+
+**Khuyến nghị:** lưu object URL vào ref và gọi `URL.revokeObjectURL()` khi reset/unmount; chuyển polling sang hook có `AbortController` hoặc cancellation token.
+
+### 2.8 `StudyMode.advance()` có stale closure và lint warning (Low)
+
+**Vấn đề:** `advance()` dùng `idx` captured trong `setTimeout`, đồng thời lint báo thiếu dependency `onRated`.
+
+**Vị trí:** `web/app/components/course/StudyMode.tsx:58-81`
+
+**Khuyến nghị:** dùng functional `setIdx(prev => ...)`, cleanup timeout bằng ref, disable action khi đang animate, thêm dependency `onRated` hoặc ổn định callback từ parent.
 
 ---
 
@@ -191,6 +261,27 @@ Nhiều adapter trả raw error messages lên client:
 **✅ Đã giải quyết:**
 - Chuẩn hóa tầng API dùng `handleApiError()` để map `InfrastructureError` về response generic (`502` với message an toàn), tránh trả chi tiết lỗi upstream ra client.
 - Chi tiết lỗi (message/stack) vẫn được log server-side qua `logger` và gửi về `monitoring.captureException(...)` để debug mà không lộ thông tin nhạy cảm cho người dùng.
+
+### 4.5 API save course tin storage path từ client (High) 🔴
+
+**Vấn đề:** [courses/route.ts](file:///d:/AI%20In%20Action/A20-App-046/web/app/api/courses/route.ts) nhận `pdfStorageUrl` và `layoutStorageUrl` từ request body rồi ghi vào course sau khi save. User đã đăng nhập có thể gửi storage path tùy ý nếu downstream không validate ownership chặt.
+
+**Vị trí:** `web/app/api/courses/route.ts:24-43`
+
+**Khuyến nghị:**
+- Validate prefix bắt buộc theo `course-pdfs/${user.id}/...` và `course-layouts/${user.id}/...` trước khi lưu.
+- Tốt hơn: server-side use case cấp/ghi storage path, client không được tự quyết định path persisted.
+- Thêm test route cho payload path không thuộc user.
+
+### 4.6 Answer evaluation cache chứa nội dung raw và không bounded (Medium)
+
+**Vấn đề:** `evaluationCache` là in-memory `Map` không giới hạn size; cache key chứa raw `question`, `canonicalAnswer`, `userAnswer`.
+
+**Vị trí:** `web/app/api/answer-evaluation/route.ts:25-27`, `254-269`
+
+**Rủi ro:** memory growth trên server long-lived và lưu nội dung học/answer trong memory key.
+
+**Khuyến nghị:** hash cache key bằng SHA-256, thêm LRU/max entries, hoặc dùng cache backend có TTL thực.
 
 ---
 
@@ -269,6 +360,46 @@ Python `hash()` khác nhau giữa các process (do PYTHONHASHSEED). Model infere
 - Bổ sung `get_many(student_ids)` sử dụng Redis pipeline để batch `GET` nhiều keys trong 1 round-trip.
 - API `/state/batch` dùng `get_many()` để phục vụ batch lookup hiệu quả.
 
+### 6.4 UKT state read-modify-write không atomic (High) 🔴
+
+**Vấn đề:** `/predict` và `/update` đều dùng pattern `store.get()` → compute → `store.set()`. Hai request đồng thời cho cùng `student_id` có thể cùng đọc state cũ rồi ghi đè nhau, làm mất update.
+
+**Vị trí:**
+- `UKT/app/main.py:147-158`
+- `UKT/app/main.py:173-180`
+- `UKT/app/state_store.py:40-94`
+
+**Khuyến nghị:**
+- Thêm `StateStore.update(student_id, updater_fn)` để gom read/compute/write vào một abstraction atomic.
+- Với in-memory: dùng per-student lock.
+- Với Redis: dùng `WATCH/MULTI`, Lua script, hoặc distributed lock ngắn hạn theo `student_id`.
+
+### 6.5 Redis fallback sang in-memory bị silent, health vẫn OK (Medium)
+
+**Vấn đề:** Khi Redis lỗi, service fallback về memory store và `/health` vẫn trả `status: ok`. Production có thể mất persistence sau restart hoặc lệch state giữa nhiều instance mà không có cảnh báo rõ.
+
+**Vị trí:** `UKT/app/state_store.py:34-38`, `UKT/app/main.py:113-115`
+
+**Khuyến nghị:**
+- `/health` trả thêm `persistence: "redis" | "memory"` và `degraded: true` khi fallback.
+- Với production, cân nhắc fail-fast nếu Redis là dependency bắt buộc.
+
+### 6.6 Corrupt Redis JSON có thể làm crash single-state path (Medium)
+
+**Vấn đề:** `get_many()` đã catch JSON decode lỗi, nhưng `get()` gọi `json.loads(raw)` trực tiếp. Các endpoint `/state/{student_id}`, `/predict`, `/update` có thể 500 nếu một key Redis bị corrupt.
+
+**Vị trí:** `UKT/app/state_store.py:43-44`
+
+**Khuyến nghị:** tách helper `_decode_state(raw, student_id)` dùng chung, log key lỗi, trả `None` hoặc controlled error tùy policy.
+
+### 6.7 Validation API UKT còn quá rộng (Medium)
+
+**Vấn đề:** `student_id`, `kc_id` chưa có `min_length/max_length/pattern`; `BatchStateRequest.student_ids` chưa có max items; `question_id`/`timestamp` chưa bound rõ.
+
+**Vị trí:** `UKT/app/schemas.py:7-24`, `51-62`
+
+**Khuyến nghị:** dùng `Field(min_length=..., max_length=..., pattern=...)`, giới hạn `student_ids` bằng `max_length`, và chuẩn hóa ID trước khi lưu Redis.
+
 ---
 
 ## 📊 7. Observability
@@ -295,23 +426,34 @@ Nên route qua `PinoLoggerAdapter` để tận dụng structured logging + Loki.
 - Thêm hook ở `instrumentation.node.ts` để redirect `console.log/warn/error` sang `logger` (structured) khi chạy server.
 - Giảm rủi ro log rời rạc trong production; các `console.*` còn lại chủ yếu nằm trong test/dev scripts.
 
+### 7.3 Monitoring bridge thiếu validation/error handling đầu vào (Medium)
+
+**Vấn đề:** Alertmanager bridge parse `await request.json()` không bắt lỗi JSON malformed; env `MAX_ALERTS`/`DISCORD_TIMEOUT_SECONDS` được parse trong request path và có thể gây 500 nếu cấu hình sai.
+
+**Vị trí:** `monitoring/bridge/app.py:82`, `123-128`
+
+**Khuyến nghị:**
+- Parse env ở startup với default an toàn.
+- Dùng Pydantic model cho Alertmanager payload.
+- Bắt JSON decode error và trả 400 thay vì 500.
+
 ---
 
 ## 🎯 Ưu Tiên Hành Động (Roadmap Đề Xuất)
 
 ### Ngay lập tức (Sprint hiện tại)
-1. **Fix CORS wildcard** trên UKT → chỉ cho phép domain frontend
-2. **Đổi Grafana admin password** → env var
-3. **Tăng polling interval** 500ms → 3000ms
+1. **Validate `pdfStorageUrl`/`layoutStorageUrl`** trong `/api/courses` hoặc chuyển ownership path sang server-side use case.
+2. **Fix Stage 2 partial failure indexing** trong `generation-context.tsx`: không dùng `results.filter(Boolean)` để save `courseContent.chapters`.
+3. **Làm atomic UKT state update** bằng `StateStore.update(student_id, fn)` với lock/Redis transaction.
 
 ### Sprint tới
-4. **Gộp dashboard API** → giảm 4 calls thành 1
-5. **Tách `page.tsx`** → component tree hợp lý
-6. **Thêm stats counter doc** → tránh full-scan getStats()
-7. **Fix `hash()` trong UKT** → deterministic hashing
+4. **Tách `answer-evaluation` ra use case + adapter**, bỏ AI provider logic khỏi route.
+5. **Hardening UKT health/validation**: báo degraded khi Redis fallback, validate ID/list bounds, xử lý corrupt Redis JSON.
+6. **Tách workflow generation client** thành hook/service nhỏ và thêm cleanup cho blob URL/polling.
+7. **Hash + bound answer evaluation cache** để giảm rủi ro privacy/memory growth.
 
 ### Backlog
-8. **Thống nhất AI fallback chain** → loại bỏ duplicate logic
-9. **Xóa dead code** (`generateCourse_UNUSED`, unused prompts)
-10. **Docker resource limits** + multi-stage UKT build
-11. **Route console.log** qua structured logger
+8. **Gộp dashboard API hoặc dùng SWR/React Query** để giảm duplicate fetch/no-store.
+9. **Chuẩn hóa env isolation**: route/core/lib không đọc `process.env` trực tiếp ngoài DI/config.
+10. **Dọn `any` ở middleware/API wrappers** bằng generic route handler type chung.
+11. **Thêm tests còn thiếu** cho `answer-evaluation`, generation partial failure/cancel/cache hit, UKT concurrency/Redis fallback, monitoring bridge malformed payload.

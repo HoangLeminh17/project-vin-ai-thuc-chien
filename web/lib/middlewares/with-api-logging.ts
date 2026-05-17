@@ -15,6 +15,8 @@ export function withApiLogging(routeName: string, handler: ApiHandler): ApiHandl
       logger.info(`[API] ${req.method} ${routeName} completed`, { status: response.status, durationMs: duration });
       return response;
     } catch (error: any) {
+      const duration = Date.now() - startTime;
+      logger.error(`[API] ${req.method} ${routeName} failed`, { durationMs: duration, error: error?.message });
       return handleApiError(error, `${req.method} ${routeName}`);
     }
   };
