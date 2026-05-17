@@ -345,18 +345,15 @@ function DashboardPanel({ srsStats, srsLoading, moduleMastery, uktMasteryLoading
 // ── Courses panel (Column 3 when Tab = KHÓA) ─────────────────────────────────
 
 interface CoursesPanelProps {
-  file: File | null
   dragOver: boolean
   error: string | null
   onUploadClick: () => void
   onDrop: (e: DragEvent<HTMLDivElement>) => void
   onDragOver: (e: DragEvent<HTMLDivElement>) => void
   onDragLeave: () => void
-  onFileStart: () => void
-  onFileClear: () => void
 }
 
-function CoursesPanel({ file, dragOver, error, onUploadClick, onDrop, onDragOver, onDragLeave, onFileStart, onFileClear }: CoursesPanelProps) {
+function CoursesPanel({ dragOver, error, onUploadClick, onDrop, onDragOver, onDragLeave }: CoursesPanelProps) {
   return (
     <div
       style={{ flex: 1, overflowY: 'auto', background: T.bg, display: 'flex', flexDirection: 'column' }}
@@ -364,20 +361,6 @@ function CoursesPanel({ file, dragOver, error, onUploadClick, onDrop, onDragOver
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
     >
-      {/* File selected banner */}
-      {file && (
-        <div style={{ padding: '12px 20px', background: T.accentSoft, borderBottom: `1px solid ${T.accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexShrink: 0 }}>
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: T.ink, margin: 0 }}>{file.name}</p>
-            <p className="sy-mono" style={{ fontSize: 11, color: T.ink60, margin: '2px 0 0' }}>{(file.size / 1024 / 1024).toFixed(1)} MB</p>
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={onFileStart} style={{ background: T.ink, color: T.bgSolid, padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', border: 'none' }}>Tạo khóa học →</button>
-            <button onClick={onFileClear} style={{ background: T.bgSolid, color: T.ink60, padding: '8px 12px', borderRadius: 8, fontSize: 13, border: `1px solid ${T.ink10}`, cursor: 'pointer' }}>Bỏ</button>
-          </div>
-        </div>
-      )}
-
       {error && (
         <div style={{ margin: '12px 20px 0', padding: '10px 14px', background: '#fff5f5', border: '1px solid #fecdcd', borderRadius: 8, fontSize: 13, color: '#7a0000' }}>
           {error}
@@ -738,15 +721,12 @@ export default function Home() {
         )}
         {activeTab === 'courses' && (
           <CoursesPanel
-            file={file}
             dragOver={dragOver}
             error={error}
             onUploadClick={() => inputRef.current?.click()}
             onDrop={handleDrop}
             onDragOver={e => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
-            onFileStart={handleStart}
-            onFileClear={() => setFile(null)}
           />
         )}
         {activeTab === 'srs' && (
