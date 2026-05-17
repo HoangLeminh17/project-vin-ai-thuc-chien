@@ -231,7 +231,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [activeCard, allCards, studyOverlay, detailTab])
+  }, [activeCard, allCards, studyOverlay, detailTab, preferredDetailTab])
 
   // ── Auto-scroll to active card ────────────────────────────────────────────
 

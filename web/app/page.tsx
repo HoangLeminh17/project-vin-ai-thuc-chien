@@ -5,12 +5,13 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { Spinner } from '@/app/components'
 import { useCourses } from '@/lib/hooks/use-courses'
+import { useDashboardData } from '@/lib/hooks/use-dashboard-data'
 import { SavedCourse } from '@/core/models/saved-course'
 import { Course, ChapterContent } from '@/core/models/learning-model'
 import { useGeneration, type DiagnosticStatus } from '@/lib/contexts/generation-context'
-import { SynapsyLogo, SynapsyRing, GeoDecoration, T } from '@/app/components/synapsy'
+import { SynapsyLogo, GeoDecoration, T } from '@/app/components/synapsy'
 import { KnowledgeSpiderChart } from '@/app/components/knowledge/KnowledgeSpiderChart'
-import { aggregateModuleMastery, type ModuleMasteryPoint } from '@/lib/ukt-module-mastery'
+import { type ModuleMasteryPoint } from '@/lib/ukt-module-mastery'
 import { getLessonCards } from '@/lib/course-cards'
 import { NavRail, DocDrawer, type NavTab, type CourseRow } from '@/app/components/shell'
 
@@ -18,32 +19,10 @@ import { FlashFactGallery } from '@/app/components'
 import { type SRSStats } from '@/lib/hooks/use-srs-stats'
 import { ErrorScreen } from './components/dashboard/ErrorScreen'
 
-function isAbortError(error: unknown) {
-  return error instanceof DOMException && error.name === 'AbortError'
-}
-
-function useSRSStats(userId: string | null) {
-  const [stats, setStats] = useState<SRSStats | null>(null)
-  const [loading, setLoading] = useState(false)
-  useEffect(() => {
-    if (!userId) { setStats(null); setLoading(false); return }
-    const controller = new AbortController()
-    setLoading(true)
-    fetch('/api/progress/stats', { cache: 'no-store', credentials: 'same-origin', signal: controller.signal })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d && !d.error) setStats(d) })
-      .catch(error => { if (!isAbortError(error)) setStats(null) })
-      .finally(() => { if (!controller.signal.aborted) setLoading(false) })
-    return () => controller.abort()
-  }, [userId])
-  return { stats, loading }
-}
-
 // ── Progress map ──────────────────────────────────────────────────────────────
 
 interface ProgressMapEntry { status: 'NEW' | 'LEARNING' | 'REVIEW'; nextReviewDate: string; lastReviewedAt?: string; isDue: boolean }
 type ProgressMap = Record<string, ProgressMapEntry>
-const EMPTY_MODULE_MASTERY = aggregateModuleMastery({})
 
 function buildHeatmap(map: ProgressMap, days = 30): number[] {
   const buckets = Array<number>(days).fill(0)
@@ -56,40 +35,6 @@ function buildHeatmap(map: ProgressMap, days = 30): number[] {
     buckets[days - 1 - diffDays]++
   }
   return buckets
-}
-
-function useProgressMap(userId: string | null) {
-  const [map, setMap] = useState<ProgressMap>({})
-  useEffect(() => {
-    if (!userId) { setMap({}); return }
-    const controller = new AbortController()
-    fetch('/api/progress/map', { cache: 'no-store', credentials: 'same-origin', signal: controller.signal })
-      .then(r => r.ok ? r.json() : {})
-      .then((m: ProgressMap | { error?: string }) => { if (!('error' in m)) setMap(m as ProgressMap) })
-      .catch(error => { if (!isAbortError(error)) setMap({}) })
-    return () => controller.abort()
-  }, [userId])
-  return map
-}
-
-function useUktMastery(userId: string | null) {
-  const [points, setPoints] = useState<ModuleMasteryPoint[]>(EMPTY_MODULE_MASTERY)
-  const [loading, setLoading] = useState(false)
-  useEffect(() => {
-    if (!userId) { setPoints(EMPTY_MODULE_MASTERY); setLoading(false); return }
-    let cancelled = false; setLoading(true)
-    const controller = new AbortController()
-    fetch('/api/ukt/mastery', { cache: 'no-store', credentials: 'same-origin', signal: controller.signal })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (cancelled) return
-        setPoints(Array.isArray(data?.module_mastery) ? data.module_mastery : EMPTY_MODULE_MASTERY)
-      })
-      .catch(() => { if (!cancelled) setPoints(EMPTY_MODULE_MASTERY) })
-      .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true; controller.abort() }
-  }, [userId])
-  return { points, loading }
 }
 
 // ── Course stats helpers ──────────────────────────────────────────────────────
@@ -496,7 +441,7 @@ export default function Home() {
   const {
     status, course, courseContentMap, stage2Loading, stage2Errors,
     error, rawMarkdown, savedCourseId, diagnosticStatus,
-    parseProgress, startGeneration, resetGeneration, fetchChapter,
+    parseProgress, startGeneration, resetGeneration, fetchChapter, registerCourseSavedHandler,
   } = useGeneration()
 
   const router = useRouter()
@@ -505,9 +450,17 @@ export default function Home() {
   const inputRef = useRef<HTMLInputElement>(null)
   const { user, loading: authLoading, login, logout } = useAuth()
   const stableUserId = authLoading ? null : user?.uid ?? null
-  const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses, error: deleteError } = useCourses(stableUserId)
+  const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses } = useCourses(stableUserId)
+  const { srsStats, progressMap, moduleMastery, loading: dashboardLoading, refresh: refreshDashboard } = useDashboardData(stableUserId)
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
   const [drawerCollapsed, setDrawerCollapsed] = useState(false)
+  const srsLoading = dashboardLoading
+  const uktMasteryLoading = dashboardLoading
+
+  useEffect(() => {
+    registerCourseSavedHandler(refreshCourses)
+    return () => registerCourseSavedHandler(null)
+  }, [refreshCourses, registerCourseSavedHandler])
 
   const prevStatus = useRef(status)
   useEffect(() => {
@@ -530,6 +483,9 @@ export default function Home() {
     })
   }, [courses])
 
+  const totalCards = useMemo(() => buildHeatmap(progressMap).reduce((a, b) => a + b, 0), [progressMap])
+  const streak = srsStats?.streak ?? 0
+
   const reset = useCallback(() => {
     setFile(null); resetGeneration()
     if (inputRef.current) inputRef.current.value = ''
@@ -543,9 +499,6 @@ export default function Home() {
   }
   function handleDrop(e: DragEvent<HTMLDivElement>) { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null) }
 
-  const heatmap = buildHeatmap(progressMap)
-  const totalCards = heatmap.reduce((a, b) => a + b, 0)
-  const streak = srsStats?.streak ?? 0
   const userInitials = user ? (user.displayName || user.email || 'U')[0].toUpperCase() : undefined
 
   const courseRows = useMemo<CourseRow[]>(() =>

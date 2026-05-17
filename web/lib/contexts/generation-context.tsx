@@ -10,6 +10,7 @@ import { buildDiagnosticChunks, diagnosticQuestionsCoverChunks } from '@/lib/dia
 import { courseContentNeedsCardRegeneration } from '@/lib/course-content-version';
 import type { ContentChunk } from '@/core/ports/ai.port';
 import { toCompleteChapterList } from '@/lib/stage2-results';
+import { hasReusableCachedCourseContent } from '@/lib/generation-cache';
 import { uploadCourseLayout, uploadCoursePdf } from '@/lib/generation-uploads';
 import { pollParseProgress } from '@/lib/parse-progress-polling';
 import { devError } from '@/lib/devlog'
@@ -39,6 +40,7 @@ export interface GenerationActions {
   startGeneration: (file: File) => Promise<void>;
   resetGeneration: () => void;
   fetchChapter: (i: number, overrideCourse?: Course, overrideHash?: string, rawContexts?: string[]) => Promise<ChapterContent | null>;
+  registerCourseSavedHandler: (handler: (() => void) | null) => void;
 }
 
 const GenerationStateContext = createContext<GenerationState | undefined>(undefined);
@@ -99,10 +101,15 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const [parseProgress, setParseProgress] = useState<GenerationProgress['parseProgress']>(null);
   const pdfLocalPathRef = useRef<string | null>(null);
   const parseProgressControllerRef = useRef<AbortController | null>(null);
+  const onCourseSavedRef = useRef<(() => void) | null>(null);
 
   const stopParseProgressPolling = useCallback(() => {
     parseProgressControllerRef.current?.abort();
     parseProgressControllerRef.current = null;
+  }, []);
+
+  const registerCourseSavedHandler = useCallback((handler: (() => void) | null) => {
+    onCourseSavedRef.current = handler;
   }, []);
 
   const setPreviewPdfUrl = useCallback((url: string | null) => {
@@ -306,6 +313,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           existing.courseContent?.chapters?.length &&
           !courseContentNeedsCardRegeneration(existing.courseContent)
         ) {
+          setIsFromCache(true)
           const map: Record<number, ChapterContent> = {}
           existing.courseContent.chapters.forEach((ch, i) => { map[i] = ch })
           setCourseContentMap(map)
@@ -332,12 +340,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       const hasLegacyOutline = resolvedCourse.chapters.some(ch =>
         ch.lessons.some(l => isLegacyOutline(l.outline))
       )
-      if (
-        fromCache &&
-        data.courseContent?.chapters?.length &&
-        !hasLegacyOutline &&
-        !courseContentNeedsCardRegeneration(data.courseContent)
-      ) {
+      if (hasReusableCachedCourseContent(fromCache, data.courseContent, hasLegacyOutline)) {
         const cachedChapters = data.courseContent.chapters as ChapterContent[] || [];
         const map: Record<number, ChapterContent> = {};
         cachedChapters.forEach((ch: ChapterContent, i: number) => { map[i] = ch; });
@@ -345,12 +348,13 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         if (user && resolvedCourse) {
           const content: CourseContent = { chapters: cachedChapters };
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl);
-          if (saved) {
-            setSavedCourseId(saved.id);
-            localStorage.setItem(`justGenerated_${saved.id}`, 'true')
-            runDiagnosticPrefetch(saved.id, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, map))
-          }
+        if (saved) {
+          setSavedCourseId(saved.id);
+          localStorage.setItem(`justGenerated_${saved.id}`, 'true')
+          runDiagnosticPrefetch(saved.id, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, map))
+          onCourseSavedRef.current?.();
         }
+      }
         setStatus('done');
       } else if (fromCache) {
         const results = await Promise.all(chapters.map(i => {
@@ -374,6 +378,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
             const fallbackMap: Record<number, ChapterContent> = {}
             results.forEach((ch, i) => { if (ch) fallbackMap[i] = ch })
             runDiagnosticPrefetch(saved.id, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, fallbackMap))
+            onCourseSavedRef.current?.();
           }
         }
         setStatus('done');
@@ -438,7 +443,8 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
     startGeneration,
     resetGeneration,
     fetchChapter,
-  }), [startGeneration, resetGeneration, fetchChapter]);
+    registerCourseSavedHandler,
+  }), [startGeneration, resetGeneration, fetchChapter, registerCourseSavedHandler]);
 
   return (
     <GenerationActionsContext.Provider value={actionsValue}>

@@ -194,8 +194,8 @@ def test_time_calibration():
     assert result_short.session_recommendation == "exploit"
     assert result_long.session_recommendation  == "explore"
     print("[PASS] test_time_calibration")
-    print(f"  8 phút  → {result_short.session_recommendation}")
-    print(f"  60 phút → {result_long.session_recommendation}")
+    print(f"  8 min -> {result_short.session_recommendation}")
+    print(f"  60 min -> {result_long.session_recommendation}")
 
 
 def test_prior_state_integration():
@@ -389,6 +389,126 @@ def test_state_store_ignores_corrupt_redis_json():
     print("[PASS] test_state_store_ignores_corrupt_redis_json")
 
 
+def test_state_store_retries_redis_watch_conflict():
+    """Redis WATCH conflicts should retry and preserve the write."""
+    from app.state_store import StateStore
+
+    class FakeWatchError(Exception):
+        pass
+
+    class FakePipeline:
+        def __init__(self, redis):
+            self.redis = redis
+            self.write = None
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def watch(self, _key):
+            if not self.redis.failed_once:
+                self.redis.failed_once = True
+                raise FakeWatchError("conflict")
+
+        def get(self, key):
+            return self.redis.values.get(key)
+
+        def multi(self):
+            return None
+
+        def setex(self, key, _ttl, value):
+            self.write = (key, value)
+
+        def execute(self):
+            if self.write:
+                key, value = self.write
+                self.redis.values[key] = value
+            return [True]
+
+    class FakeRedis:
+        def __init__(self):
+            self.values = {"ukt:state:student_watch": '{"counter": {"count": 0}}'}
+            self.failed_once = False
+
+        def get(self, key):
+            return self.values.get(key)
+
+        def pipeline(self, transaction=True):
+            return FakePipeline(self)
+
+    store = StateStore.__new__(StateStore)
+    store._redis = FakeRedis()
+    store._redis_watch_error = FakeWatchError
+
+    def increment(current):
+        count = (current or {}).get("counter", {}).get("count", 0)
+        return ({"counter": {"count": count + 1}}, count + 1)
+
+    result = store.update("student_watch", increment)
+
+    assert result == 1
+    assert store.get("student_watch") == {"counter": {"count": 1}}
+    print("[PASS] test_state_store_retries_redis_watch_conflict")
+
+
+def test_state_store_gives_up_after_retry_limit():
+    """Persistent WATCH conflicts should eventually fail."""
+    from app.state_store import StateStore
+
+    class FakeWatchError(Exception):
+        pass
+
+    class FakePipeline:
+        def __init__(self, redis):
+            self.redis = redis
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def watch(self, _key):
+            raise FakeWatchError("conflict")
+
+        def get(self, key):
+            return self.redis.values.get(key)
+
+        def multi(self):
+            return None
+
+        def setex(self, key, _ttl, value):
+            self.redis.values[key] = value
+
+        def execute(self):
+            return [True]
+
+    class FakeRedis:
+        def __init__(self):
+            self.values = {"ukt:state:student_fail": '{"counter": {"count": 0}}'}
+
+        def get(self, key):
+            return self.values.get(key)
+
+        def pipeline(self, transaction=True):
+            return FakePipeline(self)
+
+    store = StateStore.__new__(StateStore)
+    store._redis = FakeRedis()
+    store._redis_watch_error = FakeWatchError
+
+    def increment(current):
+        count = (current or {}).get("counter", {}).get("count", 0)
+        return ({"counter": {"count": count + 1}}, count + 1)
+
+    with pytest.raises(RuntimeError):
+        store.update("student_fail", increment)
+
+    print("[PASS] test_state_store_gives_up_after_retry_limit")
+
+
 def test_health_reports_persistence_degradation():
     """Health endpoint should expose degraded memory fallback state."""
     instrumentator = types.ModuleType("prometheus_fastapi_instrumentator")
@@ -437,6 +557,8 @@ if __name__ == "__main__":
         test_state_store_update_is_atomic_for_same_student,
         test_state_store_reports_redis_fallback_degraded,
         test_state_store_ignores_corrupt_redis_json,
+        test_state_store_retries_redis_watch_conflict,
+        test_state_store_gives_up_after_retry_limit,
         test_health_reports_persistence_degradation,
     ]
 
@@ -455,6 +577,6 @@ if __name__ == "__main__":
         print()
 
     print("=" * 56)
-    print(f"Kết quả: {passed} passed, {failed} failed")
+    print(f"Ket qua: {passed} passed, {failed} failed")
     print("=" * 56)
     sys.exit(0 if failed == 0 else 1)
