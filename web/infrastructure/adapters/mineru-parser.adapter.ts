@@ -111,9 +111,9 @@ function convertContentListV2PageItem(item: Record<string, unknown>, pageIdx: nu
   if (type === 'image' || type === 'chart') {
     return {
       ...base,
-      type,
+      type: 'image',
       img_path: content.img_path,
-      sub_type: item.sub_type,
+      sub_type: type === 'chart' ? 'chart' : item.sub_type,
       image_caption: normalizeStringList(content.image_caption || content.chart_caption),
       image_footnote: normalizeStringList(content.image_footnote || content.chart_footnote),
       text: flattenInlineContent(content.content).trim(),

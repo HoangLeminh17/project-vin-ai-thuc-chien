@@ -321,14 +321,17 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           setCourseContentMap(map)
           const diagnosticChunks = buildDiagnosticChunks(existing.title, existing.course, map)
           if (
-            !cachedDiagnosticQuestionsCover(existing.id, diagnosticChunks) &&
-            !localStorage.getItem(`diagnosticDone_${existing.id}`)
+            cachedDiagnosticQuestionsCover(existing.id, diagnosticChunks) ||
+            localStorage.getItem(`diagnosticDone_${existing.id}`)
           ) {
+            setDiagnosticStatus('done')
+          } else {
             runDiagnosticPrefetch(existing.id, diagnosticChunks)
           }
           localStorage.setItem(`justGenerated_${existing.id}`, 'true')
           setSavedCourseId(existing.id);
           setStatus('done');
+          generationStatus = 'success'
           return;
         }
         // Course was deleted or has no content — fall through to regenerate
