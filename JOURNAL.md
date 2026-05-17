@@ -13,31 +13,37 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 ### Nhóm
 
 #### Đã làm
-- Refactor IP-11 hardening: shared generic API route handler types, dọn `any` ở middleware/API wrappers
-- Sửa đồng bộ dashboard/course library sau khi generate-save xong bằng callback refresh từ `GenerationProvider`
-- Siết UKT `StateStore.update()` với retry Redis `WATCH` có giới hạn + backoff để tránh loop vô hạn
-- Bổ sung test coverage cho `answer-evaluation`, generation partial failure/cancel/cache hit, UKT concurrency/Redis fallback, monitoring bridge malformed payload
-- Dọn warning lint cũ ở `CourseTree.tsx` và `StudyMode.tsx`
+- Gom lại luồng SRS: deck mới có thể bắt đầu học ngay, review có toast/fade/phím tắt, thống kê `Mới / Đang học / Đến hạn` đúng hơn theo kiểu Anki.
+- Hoàn thiện thêm Synapsy v2: shell TopBar/NavRail/DocDrawer, CourseTree/StudyMode v2, auto-start upload, routing `Thư viện → edit` và `SRS → study`.
+- Tách model Stage 2 để generator dùng đúng model nhanh hơn thay vì vô tình dùng model planner/pro.
+- Tiếp tục giảm latency generation: thử hướng batch/concurrency, thêm metric thời gian generate course để theo dõi rõ hơn.
+- Củng cố observability/IP-11: API middleware, UKT engine, dashboard API, answer evaluation, evidence docs.
+- Sửa một số lỗi UX nhỏ nhưng ảnh hưởng cảm giác dùng: màn đỏ khi F5, Study tab nhảy sai khi chuyển thẻ, competency map trang chính.
+- Dọn lại `WORKLOG.md`/ADR theo PR history, gom task theo luồng việc thay vì một PR một dòng.
 
 #### Khó nhất tuần này
-- Giữ workflow generation/cache nhất quán mà không làm lệch sidebar course list hoặc đẩy thêm fetch thừa
-- Cân bằng retry Redis đủ an toàn nhưng không để request treo vô hạn
+- Khó nhất không chỉ là code mà là quản lý thời gian: có quá nhiều thứ phải nộp, nhiều hướng đều quan trọng, nên phải liên tục chọn cái nào làm trước và cái nào chấp nhận để sau.
+- Giảm latency vẫn khó. Có thử hướng API batch/concurrency để rút thời gian chờ, nhưng hiệu quả chưa thật sự triệt để vì còn phụ thuộc provider, retry, rate limit và cách UX chờ generation.
+- Muốn làm luồng UX mượt hơn nhiều, nhất là trải nghiệm sau upload/generate và lúc học, nhưng chưa kịp đẩy tới mức “xịn” như kỳ vọng.
 
 #### AI tool đã dùng
 | Tool | Dùng để làm gì | Kết quả |
 |---|---|---|
-| Claude Code | Rà refactor IP-11, sửa regression, cập nhật docs | Giảm rủi ro và giữ code/type/lint/test sạch |
+| Claude Code / Codex | Debug latency, refactor SRS/UX, rà PR history, cập nhật docs | Tăng tốc xử lý nhiều việc song song, nhưng vẫn cần tự quyết định ưu tiên và scope |
 
 #### Học được
-- Những bug “nhỏ” như refresh state, retry cap, và cache flag sai thường gây lỗi UX lớn hơn mình nghĩ.
-- Khi đổi kiến trúc, test regression cho các nhánh partial/cached/fallback là bắt buộc.
+- Khi deadline dồn lại, kỹ năng quan trọng nhất là biết cắt scope: cái nào ảnh hưởng trực tiếp tới demo/user flow thì ưu tiên trước.
+- Tối ưu latency không chỉ là gọi API nhanh hơn; phải nhìn cả provider limit, retry, cache, trace và cách UI cho user chờ.
+- UX tốt không đến từ một màn hình đẹp đơn lẻ, mà từ việc các bước nhỏ không làm user bị lạc: upload xong đi đâu, học từ tab nào, review có phản hồi gì.
 
 #### Nếu làm lại, sẽ làm khác
-- Tách dashboard state và generation orchestration sớm hơn để tránh phải sửa nhiều lớp cùng lúc.
+- Sẽ chốt sớm 2-3 mục ưu tiên chính cho tuần, thay vì cố ôm cả latency, SRS, dashboard, observability và UX cùng lúc.
+- Sẽ đo latency bằng trace/metric trước rồi mới chọn hướng tối ưu, tránh thử batch/concurrency khi chưa chắc bottleneck nằm ở đâu.
 
 #### Kế hoạch tuần tới
-- Theo dõi trace Firestore AggregationQuery và tối ưu các request dashboard còn chậm
-- Rà lại các warning lint còn ở những file không thuộc phạm vi refactor hiện tại
+- Hoàn thiện luồng UX còn dang dở sau upload/generate và khi vào học.
+- Theo dõi metric latency Stage 2/diagnostic để quyết định tiếp: batch API, concurrency limit, cache, hay chuyển sang async job.
+- Rà lại dashboard/SRS để ưu tiên những điểm user thấy ngay, thay vì tiếp tục mở thêm quá nhiều surface mới.
 
 ---
 
