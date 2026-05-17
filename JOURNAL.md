@@ -8,6 +8,39 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 
 ---
 
+## Tuần 8 — 17/05/2026
+
+### Nhóm
+
+#### Đã làm
+- Refactor IP-11 hardening: shared generic API route handler types, dọn `any` ở middleware/API wrappers
+- Sửa đồng bộ dashboard/course library sau khi generate-save xong bằng callback refresh từ `GenerationProvider`
+- Siết UKT `StateStore.update()` với retry Redis `WATCH` có giới hạn + backoff để tránh loop vô hạn
+- Bổ sung test coverage cho `answer-evaluation`, generation partial failure/cancel/cache hit, UKT concurrency/Redis fallback, monitoring bridge malformed payload
+- Dọn warning lint cũ ở `CourseTree.tsx` và `StudyMode.tsx`
+
+#### Khó nhất tuần này
+- Giữ workflow generation/cache nhất quán mà không làm lệch sidebar course list hoặc đẩy thêm fetch thừa
+- Cân bằng retry Redis đủ an toàn nhưng không để request treo vô hạn
+
+#### AI tool đã dùng
+| Tool | Dùng để làm gì | Kết quả |
+|---|---|---|
+| Claude Code | Rà refactor IP-11, sửa regression, cập nhật docs | Giảm rủi ro và giữ code/type/lint/test sạch |
+
+#### Học được
+- Những bug “nhỏ” như refresh state, retry cap, và cache flag sai thường gây lỗi UX lớn hơn mình nghĩ.
+- Khi đổi kiến trúc, test regression cho các nhánh partial/cached/fallback là bắt buộc.
+
+#### Nếu làm lại, sẽ làm khác
+- Tách dashboard state và generation orchestration sớm hơn để tránh phải sửa nhiều lớp cùng lúc.
+
+#### Kế hoạch tuần tới
+- Theo dõi trace Firestore AggregationQuery và tối ưu các request dashboard còn chậm
+- Rà lại các warning lint còn ở những file không thuộc phạm vi refactor hiện tại
+
+---
+
 ## Tuần 1 — 05/04/2026
 
 #### Đã làm

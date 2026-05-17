@@ -10,8 +10,28 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
+| IP-11 hardening: shared API handlers, dashboard sync, UKT retry cap, test coverage | Codex | local |
 | Synapsy v2 shell: TopBar + NavRail + DocDrawer folder tree | Nguyen Binh Thanh | #132 |
 | CourseTree + StudyMode v2 visual reskin + tab routing (edit/study) | Nguyen Binh Thanh | #133 |
+
+### [ADR-53] IP-11 Hardening & Coverage — 17/05/2026
+
+**Người làm:** Codex | **Ref:** local refactor
+
+**Bối cảnh:** Rà soát IP-11 cho thấy vẫn còn 3 điểm cần siết lại: dashboard refresh chưa đồng bộ sau save generation, UKT retry Redis có nguy cơ loop vô hạn, và một số nhánh cache-hit/state flag vẫn thiếu regression coverage.
+
+**Quyết định:**
+- Thêm shared `ApiRouteHandler` generic cho middleware wrappers, dọn `any` ở route/API composition.
+- Gắn callback refresh course list từ `GenerationProvider` về `page.tsx` để sidebar cập nhật ngay sau khi save.
+- Giới hạn Redis `WATCH` retry trong `StateStore.update()` bằng max attempts + backoff ngắn.
+- Sửa cache-hit generation path để set đúng `isFromCache`.
+- Bổ sung test coverage cho `answer-evaluation`, generation partial failure/cancel/cache hit, UKT concurrency/Redis fallback, và monitoring bridge malformed payload.
+
+**Hệ quả:**
+- (+) Dashboard và course library đồng bộ ngay sau khi generate/save.
+- (+) UKT không còn rủi ro treo vô hạn khi Redis contention kéo dài.
+- (+) Các nhánh rủi ro cao đã có regression tests rõ ràng.
+- (+) `npm test`, `python test_api.py`, `pytest test_app.py`, `npx tsc --noEmit` đều pass sau refactor.
 
 ### [ADR-51] Synapsy v2 Shell Layout — 17/05/2026
 

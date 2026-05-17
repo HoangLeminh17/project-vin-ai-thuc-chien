@@ -118,6 +118,14 @@ graph TD
     - **Observability**: OpenTelemetry (distributed tracing), Prometheus (metrics), Loki (logging) và Alertmanager qua Discord Bridge.
 4.  **`app/` (Presentation)**: Giao diện React (Next.js) nằm trong thư mục `web/`.
 
+### Cập nhật gần nhất — 17/05/2026
+- `answer-evaluation` đã tách sang `EvaluateAnswerUseCase` + `AnswerEvaluationAdapter`; route chỉ còn auth, validate payload, gọi use case.
+- Dashboard front-end lấy dữ liệu qua `/api/dashboard` thay vì 3 request rời (`/api/progress/stats`, `/api/progress/map`, `/api/ukt/mastery`).
+- Middleware API dùng chung `ApiRouteHandler` generic, giảm `any` ở route wrappers và giữ đúng tuple `ctx` cho dynamic routes.
+- `GenerationProvider` có callback refresh để đồng bộ course list sau save; cache-hit path giữ đúng `isFromCache`.
+- `UKT StateStore` retry `WATCH` conflict có giới hạn attempts + backoff, tránh loop vô hạn khi Redis contention.
+- Env access được cô lập vào config/DI; `monitoring/bridge` validate payload bằng Pydantic trước khi gửi Discord webhook.
+
 ---
 
 ## 2. Luồng Dữ Liệu Tiêu Biểu (Data Flow)
@@ -130,6 +138,7 @@ graph TD
 2. **Tạo Khóa Học (Course Generation)**:
    - **Stage 1 (Planner)**: `GenerateCourseUseCase` nhận Markdown, phân tích và trả về bộ khung khóa học (Outline/Chapters/Lessons).
    - **Stage 2 (Generator)**: `GenerateContentUseCase` sinh chi tiết thẻ ghi nhớ (ConceptCards) và Quiz cho tất cả các bài học **song song** (`Promise.all` kết hợp semaphore concurrency). Hỗ trợ trả về nhiều thẻ (`cards[]`) trên mỗi bài học để tách nhỏ kiến thức.
+   - Cache-hit / partial-failure handling được tách ra thành helper riêng ở layer `web/lib/` để giữ workflow ổn định và test được từng nhánh.
 
 3. **Chẩn đoán kiến thức (Diagnostic) & Mastery**:
    - `DiagnosticUseCase` sử dụng `FallbackAIAdapter` để sinh câu hỏi chẩn đoán gắn với **Knowledge Components (KC)**.
@@ -137,7 +146,11 @@ graph TD
    - Dashboard gọi `/api/ukt/mastery` để lấy dữ liệu aggregated hiển thị **Spider Chart**.
    - Redis AOF đảm bảo UKT state không bị mất khi restart container.
 
-4. **Giám sát & Tracing**:
+4. **API Wrapper & Validation**:
+   - Middleware `withApiLogging`, `withApiMetrics`, `withAuth`, `withAdminAuth` dùng chung type handler generic để compose route an toàn hơn.
+   - `monitoring/bridge` dùng Pydantic schema để reject malformed Alertmanager payload trước khi post sang Discord.
+
+5. **Giám sát & Tracing**:
    - Mọi request qua Web App và UKT Service đều được instrument bằng **OpenTelemetry**.
    - Trace và Metrics được gửi về **OTel Collector**, sau đó phân phối sang **Jaeger** (tracing) và **Prometheus** (metrics).
    - Nếu có lỗi nghiêm trọng, **Alertmanager** gửi thông báo về Discord qua **Discord Bridge**.
