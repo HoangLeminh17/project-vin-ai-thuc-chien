@@ -4,11 +4,64 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
 DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL", "").strip()
 DISCORD_USERNAME = os.getenv("DISCORD_USERNAME", "Alertmanager")
 DISCORD_AVATAR_URL = os.getenv("DISCORD_AVATAR_URL", "").strip() or None
+DEFAULT_MAX_ALERTS = 10
+DEFAULT_DISCORD_TIMEOUT_SECONDS = 5.0
+MAX_ALERTS = 100
+MAX_TIMEOUT_SECONDS = 30.0
+
+
+def _parse_int_env(name: str, default: int, min_value: int, max_value: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return max(min_value, min(max_value, value))
+
+
+def _parse_float_env(name: str, default: float, min_value: float, max_value: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return max(min_value, min(max_value, value))
+
+
+CONFIG_MAX_ALERTS = _parse_int_env("MAX_ALERTS", DEFAULT_MAX_ALERTS, 1, MAX_ALERTS)
+CONFIG_DISCORD_TIMEOUT_SECONDS = _parse_float_env(
+    "DISCORD_TIMEOUT_SECONDS",
+    DEFAULT_DISCORD_TIMEOUT_SECONDS,
+    0.5,
+    MAX_TIMEOUT_SECONDS,
+)
+
+
+class AlertPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    labels: Dict[str, Any] = Field(default_factory=dict)
+    annotations: Dict[str, Any] = Field(default_factory=dict)
+
+
+class AlertmanagerPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    status: str = Field(default="unknown", max_length=64)
+    alerts: List[AlertPayload] = Field(default_factory=list, max_length=1000)
+    commonLabels: Dict[str, Any] = Field(default_factory=dict)
+    commonAnnotations: Dict[str, Any] = Field(default_factory=dict)
+    externalURL: str = Field(default="", max_length=2048)
 
 
 app = FastAPI(title="Alertmanager Discord Bridge", version="1.0.0")
@@ -30,9 +83,9 @@ def _severity_color(sev: str) -> int:
     return 0x808080
 
 
-def _summarize_alert(alert: Dict[str, Any]) -> str:
-    labels = alert.get("labels") or {}
-    annotations = alert.get("annotations") or {}
+def _summarize_alert(alert: AlertPayload) -> str:
+    labels = alert.labels or {}
+    annotations = alert.annotations or {}
 
     name = labels.get("alertname", "(no alertname)")
     sev = labels.get("severity", "")
@@ -56,12 +109,12 @@ def _summarize_alert(alert: Dict[str, Any]) -> str:
     return f"**{head}**"
 
 
-def _build_payload(am: Dict[str, Any]) -> Dict[str, Any]:
-    status = (am.get("status") or "").lower() or "unknown"
-    alerts: List[Dict[str, Any]] = am.get("alerts") or []
-    common_labels = am.get("commonLabels") or {}
-    common_annotations = am.get("commonAnnotations") or {}
-    external_url = am.get("externalURL") or ""
+def _build_payload(am: AlertmanagerPayload) -> Dict[str, Any]:
+    status = (am.status or "").lower() or "unknown"
+    alerts = am.alerts or []
+    common_labels = am.commonLabels or {}
+    common_annotations = am.commonAnnotations or {}
+    external_url = am.externalURL or ""
 
     sev = common_labels.get("severity", "")
     title = common_annotations.get("title") or common_annotations.get("summary")
@@ -79,10 +132,9 @@ def _build_payload(am: Dict[str, Any]) -> Dict[str, Any]:
         embed["url"] = external_url
 
     # Include up to N alerts to avoid Discord limits.
-    max_alerts = int(os.getenv("MAX_ALERTS", "10"))
-    lines = [_summarize_alert(a) for a in alerts[:max_alerts]]
-    if len(alerts) > max_alerts:
-        lines.append(f"…and {len(alerts) - max_alerts} more")
+    lines = [_summarize_alert(a) for a in alerts[:CONFIG_MAX_ALERTS]]
+    if len(alerts) > CONFIG_MAX_ALERTS:
+        lines.append(f"…and {len(alerts) - CONFIG_MAX_ALERTS} more")
     embed["description"] = "\n\n".join(lines) if lines else "(no alerts)"
 
     # Compact context fields
@@ -120,11 +172,19 @@ async def alertmanager(request: Request) -> Dict[str, Any]:
     if not DISCORD_WEBHOOK_URL:
         raise HTTPException(status_code=500, detail="DISCORD_WEBHOOK_URL is not set")
 
-    am = await request.json()
+    try:
+        body = await request.json()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid JSON body") from None
+
+    try:
+        am = AlertmanagerPayload.model_validate(body)
+    except ValidationError as exc:
+        raise HTTPException(status_code=400, detail=exc.errors()) from None
+
     payload = _build_payload(am)
 
-    timeout_s = float(os.getenv("DISCORD_TIMEOUT_SECONDS", "5"))
-    async with httpx.AsyncClient(timeout=timeout_s) as client:
+    async with httpx.AsyncClient(timeout=CONFIG_DISCORD_TIMEOUT_SECONDS) as client:
         resp = await client.post(DISCORD_WEBHOOK_URL, json=payload)
 
         # Discord's webhook validation sometimes rejects embeds with a vague
