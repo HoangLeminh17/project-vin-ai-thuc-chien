@@ -10,9 +10,9 @@ import { LocalCourseAdapter } from '@/infrastructure/adapters/local-course.adapt
 import { CourseFlow } from '@/app/components/course'
 import type { ProgressEntry } from '@/lib/types'
 import { T } from '@/app/components/synapsy'
+import { isLocalCourseStore } from '@/lib/config/client'
 
-const isLocal = process.env.NEXT_PUBLIC_COURSE_STORE === 'local'
-const localAdapter = isLocal ? new LocalCourseAdapter() : null
+const localAdapter = isLocalCourseStore ? new LocalCourseAdapter() : null
 
 type ProgressMap = Record<string, ProgressEntry & { nextReviewDate: string; lastReviewedAt?: string }>
 

@@ -1,7 +1,9 @@
 // Centralize console usage so production code doesn't scatter console.* calls.
 // In production builds these become no-ops.
 
-const enabled = process.env.NODE_ENV !== 'production'
+import { isClientProduction } from '@/lib/config/client'
+
+const enabled = !isClientProduction
 
 export function devLog(...args: any[]) {
   if (enabled) console.log(...args)

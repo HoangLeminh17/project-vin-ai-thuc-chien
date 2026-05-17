@@ -3,16 +3,16 @@ import { AnswerEvaluationAdapter } from '../adapters/answer-evaluation.adapter'
 import { resolveAiProvider } from '@/lib/ai-provider'
 import { withUseCaseLogging } from '@/core/utils/use-case-logger'
 import { logger, monitoring } from './logger.di'
-
-function numberEnv(name: string, fallback: number): number {
-  const value = process.env[name]
-  if (!value) return fallback
-  const parsed = Number(value)
-  return Number.isFinite(parsed) ? parsed : fallback
-}
+import { numberEnv } from '@/lib/config/server'
 
 export const answerEvaluationAdapter = new AnswerEvaluationAdapter({
-  provider: resolveAiProvider(process.env.AI_PROVIDER),
+  provider: resolveAiProvider(process.env.AI_PROVIDER, {
+    gemini: !!process.env.GEMINI_API_KEY,
+    openai: !!process.env.OPENAI_API_KEY,
+    deepseek: !!process.env.DEEPSEEK_API_KEY,
+    huggingface: !!process.env.HUGGINGFACE_API_KEY,
+    fallbackProvider: process.env.AI_PROVIDER,
+  }),
   timeoutMs: numberEnv('ANSWER_EVALUATION_TIMEOUT_MS', 5000),
   maxCacheEntries: numberEnv('ANSWER_EVALUATION_CACHE_MAX_ENTRIES', 500),
   providers: {

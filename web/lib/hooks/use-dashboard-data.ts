@@ -4,11 +4,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { SavedCourse } from '@/core/models/saved-course'
 import { LocalCourseAdapter } from '@/infrastructure/adapters/local-course.adapter'
 import { aggregateModuleMastery, type ModuleMasteryPoint } from '@/lib/ukt-module-mastery'
+import { isLocalCourseStore } from '@/lib/config/client'
 import type { ProgressMap } from './use-progress-map'
 import type { SRSStats } from './use-srs-stats'
 
-const isLocal = process.env.NEXT_PUBLIC_COURSE_STORE === 'local'
-const localAdapter = isLocal ? new LocalCourseAdapter() : null
+const localAdapter = isLocalCourseStore ? new LocalCourseAdapter() : null
 const EMPTY_MODULE_MASTERY = aggregateModuleMastery({})
 
 type DashboardPayload = {

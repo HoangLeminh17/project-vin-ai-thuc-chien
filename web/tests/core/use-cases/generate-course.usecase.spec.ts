@@ -1,15 +1,8 @@
-import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { GenerateCourseUseCase } from '@/core/use-cases/generate-course.usecase'
 
 describe('GenerateCourseUseCase', () => {
-  const originalMaxTokens = process.env.OPENAI_MAX_TOKENS
-
-  beforeEach(() => {
-    process.env.OPENAI_MAX_TOKENS = '120000'
-  })
-
   afterEach(() => {
-    process.env.OPENAI_MAX_TOKENS = originalMaxTokens
     vi.restoreAllMocks()
   })
 
@@ -50,8 +43,6 @@ describe('GenerateCourseUseCase', () => {
   })
 
   it('splits large markdown and merges chunked outlines', async () => {
-    process.env.OPENAI_MAX_TOKENS = '10'
-
     const aiService = {
       generateCourse: vi
         .fn()
@@ -103,7 +94,7 @@ describe('GenerateCourseUseCase', () => {
       saveTokenUsage: vi.fn().mockResolvedValue(undefined),
     }
 
-    const useCase = new GenerateCourseUseCase(aiService as any, usageRepo as any)
+    const useCase = new GenerateCourseUseCase(aiService as any, usageRepo as any, 10)
     const markdown = 'x'.repeat(80)
     const result = await useCase.execute(markdown)
 
