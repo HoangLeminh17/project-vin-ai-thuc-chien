@@ -14,6 +14,7 @@ function numberEnv(name: string, fallback: number): number {
 export const answerEvaluationAdapter = new AnswerEvaluationAdapter({
   provider: resolveAiProvider(process.env.AI_PROVIDER),
   timeoutMs: numberEnv('ANSWER_EVALUATION_TIMEOUT_MS', 5000),
+  maxCacheEntries: numberEnv('ANSWER_EVALUATION_CACHE_MAX_ENTRIES', 500),
   providers: {
     gemini: {
       apiKey: process.env.GEMINI_API_KEY,

@@ -18,6 +18,7 @@ type AnswerEvaluationAdapterConfig = {
   providers: Record<AiProvider, ProviderConfig>
   timeoutMs?: number
   cacheTtlMs?: number
+  maxCacheEntries?: number
 }
 
 type CachedEvaluation = Omit<AnswerEvaluationResult, 'source'> & { source: string; expiresAt: number }
@@ -35,6 +36,7 @@ const EVALUATION_PROMPT = [
 
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta'
 const DEFAULT_CACHE_TTL_MS = 1000 * 60 * 30
+const DEFAULT_MAX_CACHE_ENTRIES = 500
 
 function normalizeChatCompletionUrl(url: string): string {
   const normalized = url.trim().replace(/\/$/, '')
@@ -70,7 +72,7 @@ function buildUserPrompt(input: AnswerEvaluationInput): string {
   ].join('\n\n')
 }
 
-function buildCacheKey(input: AnswerEvaluationInput): string {
+function normalizedCachePayload(input: AnswerEvaluationInput): string {
   return JSON.stringify({
     question: input.question.trim().replace(/\s+/g, ' '),
     canonicalAnswer: input.canonicalAnswer.trim().replace(/\s+/g, ' '),
@@ -78,18 +80,28 @@ function buildCacheKey(input: AnswerEvaluationInput): string {
   })
 }
 
+async function buildCacheKey(input: AnswerEvaluationInput): Promise<string> {
+  const bytes = new TextEncoder().encode(normalizedCachePayload(input))
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return [...new Uint8Array(digest)]
+    .map(byte => byte.toString(16).padStart(2, '0'))
+    .join('')
+}
+
 export class AnswerEvaluationAdapter implements IAnswerEvaluationPort {
   private readonly cache = new Map<string, CachedEvaluation>()
   private readonly timeoutMs: number
   private readonly cacheTtlMs: number
+  private readonly maxCacheEntries: number
 
   constructor(private readonly config: AnswerEvaluationAdapterConfig) {
     this.timeoutMs = config.timeoutMs ?? 5000
     this.cacheTtlMs = config.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS
+    this.maxCacheEntries = Math.max(1, config.maxCacheEntries ?? DEFAULT_MAX_CACHE_ENTRIES)
   }
 
   async evaluate(input: AnswerEvaluationInput): Promise<AnswerEvaluationResult> {
-    const cacheKey = buildCacheKey(input)
+    const cacheKey = await buildCacheKey(input)
     const cached = this.getCachedEvaluation(cacheKey)
     if (cached) return { ...cached, source: 'cache' }
 
@@ -112,16 +124,32 @@ export class AnswerEvaluationAdapter implements IAnswerEvaluationPort {
       this.cache.delete(key)
       return null
     }
+    this.cache.delete(key)
+    this.cache.set(key, cached)
     return cached
   }
 
   private setCachedEvaluation(key: string, result: AnswerEvaluationResult) {
+    this.cache.delete(key)
     this.cache.set(key, {
       label: result.label,
       score: result.score,
       source: result.source,
       expiresAt: Date.now() + this.cacheTtlMs,
     })
+    this.pruneCache()
+  }
+
+  private pruneCache() {
+    const now = Date.now()
+    for (const [key, value] of this.cache) {
+      if (value.expiresAt < now) this.cache.delete(key)
+    }
+    while (this.cache.size > this.maxCacheEntries) {
+      const oldestKey = this.cache.keys().next().value
+      if (!oldestKey) return
+      this.cache.delete(oldestKey)
+    }
   }
 
   private async evaluateWithProvider(input: AnswerEvaluationInput): Promise<AnswerEvaluationResult> {
