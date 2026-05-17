@@ -18,7 +18,7 @@ build/
 
 # AI logs — tracked structure, ignored content
 #.ai-log/*.jsonl
-
+session.jsonl
 # Next.js
 node_modules/
 .next/
