@@ -130,6 +130,7 @@ graph TD
 2. **Tạo Khóa Học (Course Generation)**:
    - **Stage 1 (Planner)**: `GenerateCourseUseCase` nhận Markdown, phân tích và trả về bộ khung khóa học (Outline/Chapters/Lessons).
    - **Stage 2 (Generator)**: `GenerateContentUseCase` sinh chi tiết thẻ ghi nhớ (ConceptCards) và Quiz cho tất cả các bài học **song song** (`Promise.all` kết hợp semaphore concurrency). Hỗ trợ trả về nhiều thẻ (`cards[]`) trên mỗi bài học để tách nhỏ kiến thức.
+   - Cache-hit / partial-failure handling được tách ra thành helper riêng ở layer `web/lib/` để giữ workflow ổn định và test được từng nhánh.
 
 3. **Chẩn đoán kiến thức (Diagnostic) & Mastery**:
    - `DiagnosticUseCase` sử dụng `FallbackAIAdapter` để sinh câu hỏi chẩn đoán gắn với **Knowledge Components (KC)**.
@@ -137,7 +138,11 @@ graph TD
    - Dashboard gọi `/api/ukt/mastery` để lấy dữ liệu aggregated hiển thị **Spider Chart**.
    - Redis AOF đảm bảo UKT state không bị mất khi restart container.
 
-4. **Giám sát & Tracing**:
+4. **API Wrapper & Validation**:
+   - Middleware `withApiLogging`, `withApiMetrics`, `withAuth`, `withAdminAuth` dùng chung type handler generic để compose route an toàn hơn.
+   - `monitoring/bridge` dùng Pydantic schema để reject malformed Alertmanager payload trước khi post sang Discord.
+
+5. **Giám sát & Tracing**:
    - Mọi request qua Web App và UKT Service đều được instrument bằng **OpenTelemetry**.
    - Trace và Metrics được gửi về **OTel Collector**, sau đó phân phối sang **Jaeger** (tracing) và **Prometheus** (metrics).
    - Nếu có lỗi nghiêm trọng, **Alertmanager** gửi thông báo về Discord qua **Discord Bridge**.
