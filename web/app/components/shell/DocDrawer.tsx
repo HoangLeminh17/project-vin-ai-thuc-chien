@@ -20,6 +20,7 @@ interface Props {
   coursesLoading: boolean
   collapsed: boolean
   onCourseAction: (id: string) => void
+  onDeleteCourse?: (id: string) => void
   onUploadClick: () => void
 }
 
@@ -64,12 +65,13 @@ function FileIco() {
   )
 }
 
-export function DocDrawer({ courses, coursesLoading, collapsed, onCourseAction, onUploadClick }: Props) {
+export function DocDrawer({ courses, coursesLoading, collapsed, onCourseAction, onDeleteCourse, onUploadClick }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [menuOpen, setMenuOpen] = useState(false)
   const [addingFolder, setAddingFolder] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
   const [userFolders, setUserFolders] = useState<string[]>([])
+  const [hoveredFileId, setHoveredFileId] = useState<string | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
 
@@ -252,17 +254,19 @@ export function DocDrawer({ courses, coursesLoading, collapsed, onCourseAction, 
                 {/* Files */}
                 {open && folder.files.map(file => {
                   const isMock = file.id.startsWith('mock-')
+                  const isHovered = hoveredFileId === file.id
                   return (
                     <div
                       key={file.id}
                       onClick={() => { if (!isMock) onCourseAction(file.id) }}
-                      onMouseEnter={e => { if (!isMock) e.currentTarget.style.background = '#f9fafb' }}
-                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+                      onMouseEnter={() => { if (!isMock) setHoveredFileId(file.id) }}
+                      onMouseLeave={() => setHoveredFileId(null)}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '4px 14px 4px 32px',
+                        padding: '4px 8px 4px 32px',
                         cursor: isMock ? 'default' : 'pointer',
                         borderLeft: '2px solid transparent',
+                        background: isHovered ? '#f9fafb' : 'transparent',
                         transition: 'background 0.1s',
                         opacity: isMock ? 0.4 : 1,
                       }}
@@ -273,12 +277,26 @@ export function DocDrawer({ courses, coursesLoading, collapsed, onCourseAction, 
                         fontFamily: T.fontSans,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>{file.name}</span>
-                      {!isMock && file.due > 0 && (
-                        <span style={{ fontSize: 9.5, fontWeight: 700, color: '#dc2626', background: '#fff1f1', padding: '1px 4px', borderRadius: 3, flexShrink: 0 }}>
-                          {file.due}
-                        </span>
+                      {!isMock && isHovered && onDeleteCourse ? (
+                        <button
+                          onClick={e => { e.stopPropagation(); onDeleteCourse(file.id) }}
+                          title="Xóa tài liệu"
+                          style={{
+                            flexShrink: 0, width: 18, height: 18, border: 'none', borderRadius: 4,
+                            background: '#fee2e2', color: '#dc2626', cursor: 'pointer',
+                            fontSize: 12, lineHeight: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                        >×</button>
+                      ) : (
+                        <>
+                          {!isMock && file.due > 0 && (
+                            <span style={{ fontSize: 9.5, fontWeight: 700, color: '#dc2626', background: '#fff1f1', padding: '1px 4px', borderRadius: 3, flexShrink: 0 }}>
+                              {file.due}
+                            </span>
+                          )}
+                          {!isMock && <MasteryBadge value={file.mastery} />}
+                        </>
                       )}
-                      {!isMock && <MasteryBadge value={file.mastery} />}
                     </div>
                   )
                 })}
