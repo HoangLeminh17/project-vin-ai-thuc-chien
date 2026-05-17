@@ -345,22 +345,18 @@ function DashboardPanel({ srsStats, srsLoading, moduleMastery, uktMasteryLoading
 // ── Courses panel (Column 3 when Tab = KHÓA) ─────────────────────────────────
 
 interface CoursesPanelProps {
-  selectedCourse: SavedCourse | null
   file: File | null
   dragOver: boolean
   error: string | null
-  deleteError: string | null
   onUploadClick: () => void
   onDrop: (e: DragEvent<HTMLDivElement>) => void
   onDragOver: (e: DragEvent<HTMLDivElement>) => void
   onDragLeave: () => void
   onFileStart: () => void
   onFileClear: () => void
-  onDeleteCourse: (id: string) => void
-  onOpenCourse: (id: string) => void
 }
 
-function CoursesPanel({ selectedCourse, file, dragOver, error, deleteError, onUploadClick, onDrop, onDragOver, onDragLeave, onFileStart, onFileClear, onDeleteCourse, onOpenCourse }: CoursesPanelProps) {
+function CoursesPanel({ file, dragOver, error, onUploadClick, onDrop, onDragOver, onDragLeave, onFileStart, onFileClear }: CoursesPanelProps) {
   return (
     <div
       style={{ flex: 1, overflowY: 'auto', background: T.bg, display: 'flex', flexDirection: 'column' }}
@@ -382,64 +378,33 @@ function CoursesPanel({ selectedCourse, file, dragOver, error, deleteError, onUp
         </div>
       )}
 
-      {(error || deleteError) && (
+      {error && (
         <div style={{ margin: '12px 20px 0', padding: '10px 14px', background: '#fff5f5', border: '1px solid #fecdcd', borderRadius: 8, fontSize: 13, color: '#7a0000' }}>
-          {error || deleteError}
+          {error}
         </div>
       )}
 
-      {/* Main content */}
-      {!selectedCourse ? (
-        /* Empty state — drag target */
+      {/* Upload zone */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40 }}>
         <div
-          style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, padding: 40 }}
+          onClick={onUploadClick}
+          style={{
+            border: `1.5px dashed ${dragOver ? T.accent : T.ink20}`,
+            background: dragOver ? T.accentSoft : T.bgSolid,
+            borderRadius: 16, padding: '40px 32px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+            cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
+            maxWidth: 320, width: '100%',
+          }}
         >
-          <div
-            onClick={onUploadClick}
-            style={{
-              border: `1.5px dashed ${dragOver ? T.accent : T.ink20}`,
-              background: dragOver ? T.accentSoft : T.bgSolid,
-              borderRadius: 16, padding: '40px 32px',
-              display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
-              cursor: 'pointer', transition: 'border-color 0.15s, background 0.15s',
-              maxWidth: 320, width: '100%',
-            }}
-          >
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: T.bgSunken, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: T.ink40 }}>+</div>
-            <p style={{ fontSize: 13, margin: 0, fontWeight: 600, color: T.ink60, textAlign: 'center' }}>Thả PDF vào đây hoặc click để tải lên</p>
-            <p className="sy-mono" style={{ fontSize: 10, margin: 0, color: T.ink40, textAlign: 'center' }}>Synapsy sẽ trích xuất concept và tạo flashcard tự động</p>
-          </div>
-          <p style={{ fontSize: 12, color: T.ink40, margin: 0, textAlign: 'center' }}>
-            Hoặc chọn tài liệu từ bảng bên trái để xem chi tiết
-          </p>
+          <div style={{ width: 40, height: 40, borderRadius: '50%', background: T.bgSunken, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: T.ink40 }}>+</div>
+          <p style={{ fontSize: 13, margin: 0, fontWeight: 600, color: T.ink60, textAlign: 'center' }}>Thả PDF vào đây hoặc click để tải lên</p>
+          <p className="sy-mono" style={{ fontSize: 10, margin: 0, color: T.ink40, textAlign: 'center' }}>Synapsy sẽ trích xuất concept và tạo flashcard tự động</p>
         </div>
-      ) : (
-        /* Selected course preview */
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
-          <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 16, padding: '32px 36px', maxWidth: 400, width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <SynapsyRing pct={0} size={48} strokeWidth={3} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h2 className="sy-serif" style={{ fontSize: 18, fontWeight: 700, margin: 0, letterSpacing: '-0.02em', color: T.ink, lineHeight: 1.25 }}>{selectedCourse.title}</h2>
-                <p className="sy-mono" style={{ fontSize: 11, color: T.ink40, margin: '5px 0 0' }}>
-                  {selectedCourse.course.chapters.length} chương · {new Date(selectedCourse.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => onOpenCourse(selectedCourse.id)}
-              style={{ background: T.ink, color: T.bgSolid, padding: '13px', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10 }}
-            >
-              <svg width="11" height="13" viewBox="0 0 11 13" fill="none"><polygon points="0,0 11,6.5 0,13" fill="white"/></svg>
-              Mở khóa học
-            </button>
-            <button
-              onClick={() => onDeleteCourse(selectedCourse.id)}
-              style={{ background: 'none', color: T.ink40, fontSize: 12, border: 'none', cursor: 'pointer', padding: '4px 0', textAlign: 'center' }}
-            >Xóa khóa học này</button>
-          </div>
-        </div>
-      )}
+        <p style={{ fontSize: 12, color: T.ink40, margin: 0, textAlign: 'center' }}>
+          Chọn tài liệu bên trái để mở khóa học
+        </p>
+      </div>
     </div>
   )
 }
@@ -449,32 +414,16 @@ function CoursesPanel({ selectedCourse, file, dragOver, error, deleteError, onUp
 interface SRSPanelProps {
   srsStats: SRSStats | null
   srsLoading: boolean
-  selectedCourseIds: string[]
-  courseRows: CourseRow[]
 }
 
-function SRSPanel({ srsStats, srsLoading, selectedCourseIds, courseRows }: SRSPanelProps) {
+function SRSPanel({ srsStats, srsLoading }: SRSPanelProps) {
   const router = useRouter()
-  const chosen = courseRows.filter(c => selectedCourseIds.includes(c.id))
-  const total = chosen.length > 0
-    ? chosen.reduce((s, c) => s + c.due, 0)
-    : (srsStats?.due ?? 0)
+  const total = srsStats?.due ?? 0
   const newCount = srsStats?.new ?? 0
-  const maxDue = Math.max(...chosen.map(c => c.due), 1)
 
   return (
     <div style={{ flex: 1, background: T.bg, overflowY: 'auto', display: 'flex', justifyContent: 'center' }}>
       <div style={{ width: '100%', maxWidth: 480, padding: '48px 24px' }}>
-
-        {chosen.length > 0 && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 36 }}>
-            {chosen.map(c => (
-              <span key={c.id} style={{ background: T.accent + '15', color: T.accent, border: `1px solid ${T.accent}30`, borderRadius: 99, padding: '3px 12px', fontSize: 12, fontWeight: 600 }}>
-                {c.title.length > 24 ? c.title.slice(0, 24) + '…' : c.title}
-              </span>
-            ))}
-          </div>
-        )}
 
         {/* Hero number */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
@@ -490,15 +439,15 @@ function SRSPanel({ srsStats, srsLoading, selectedCourseIds, courseRows }: SRSPa
           style={{ width: '100%', background: T.ink, color: T.bgSolid, border: 'none', borderRadius: 13, padding: '16px 0', fontSize: 15, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 32 }}
         >
           <svg width="13" height="13" viewBox="0 0 14 14" fill="white"><polygon points="2,1 13,7 2,13"/></svg>
-          Bắt đầu ôn tập
+          Ôn tất cả
         </button>
 
         <div style={{ height: 1, background: T.ink10, marginBottom: 20 }} />
 
-        <div style={{ display: 'flex', gap: 10, marginBottom: 28 }}>
+        <div style={{ display: 'flex', gap: 10, marginBottom: 32 }}>
           {[
             { n: srsStats?.learning ?? 0, label: 'Đang học', color: T.srsHard },
-            { n: srsStats?.due ?? 0,      label: 'Cần ôn',   color: T.srsAgain },
+            { n: total,                    label: 'Cần ôn',   color: T.srsAgain },
             { n: newCount,                 label: 'Thẻ mới',  color: T.accent },
           ].map(({ n, label, color }) => (
             <div key={label} style={{ flex: 1, background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '14px 16px' }}>
@@ -508,28 +457,10 @@ function SRSPanel({ srsStats, srsLoading, selectedCourseIds, courseRows }: SRSPa
           ))}
         </div>
 
-        {chosen.length > 0 && (
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.ink40, letterSpacing: '0.09em', marginBottom: 12 }}>THEO KHÓA HỌC</div>
-            {chosen.map(c => (
-              <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: `1px solid ${T.ink10}` }}>
-                <div style={{ width: 7, height: 7, borderRadius: '50%', background: T.accent, flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 13, color: T.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.title}</span>
-                <div style={{ width: 90, height: 3, background: T.ink10, borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ width: `${(c.due / maxDue) * 100}%`, height: '100%', background: T.accent, borderRadius: 99 }} />
-                </div>
-                <span className="sy-mono" style={{ width: 44, textAlign: 'right', fontSize: 12, fontWeight: 500, color: T.ink }}>{c.due}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {total === 0 && !srsLoading && (
-          <p style={{ fontSize: 14, color: T.ink60, textAlign: 'center', lineHeight: 1.6, margin: 0 }}>
-            Hôm nay đã hoàn thành! 🌱<br />
-            <span style={{ fontSize: 12, color: T.ink40 }}>Chọn tài liệu từ bảng bên trái để ôn.</span>
-          </p>
-        )}
+        <p style={{ fontSize: 13, color: T.ink60, textAlign: 'center', lineHeight: 1.7, margin: 0 }}>
+          Chọn khóa học từ bảng bên trái<br />
+          <span style={{ fontSize: 12, color: T.ink40 }}>để bắt đầu học theo từng môn cụ thể</span>
+        </p>
       </div>
     </div>
   )
@@ -588,8 +519,6 @@ export default function Home() {
   const stableUserId = authLoading ? null : user?.uid ?? null
   const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses, error: deleteError } = useCourses(stableUserId)
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null)
-  const [selectedCourseIds, setSelectedCourseIds] = useState<string[]>([])
   const [drawerCollapsed, setDrawerCollapsed] = useState(false)
 
   const prevStatus = useRef(status)
@@ -639,16 +568,9 @@ export default function Home() {
     [uniqueCourses, progressMap]
   )
 
-  const selectedCourse = useMemo(() =>
-    uniqueCourses.find(c => c.id === selectedCourseId) ?? null,
-    [uniqueCourses, selectedCourseId]
-  )
-
   function handleCourseAction(id: string) {
     if (activeTab === 'srs') {
-      setSelectedCourseIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
-    } else if (activeTab === 'courses') {
-      setSelectedCourseId(prev => prev === id ? null : id)
+      router.push(`/course/${id}?tab=study`)
     } else {
       router.push(`/course/${id}`)
     }
@@ -764,8 +686,6 @@ export default function Home() {
           courses={courseRows}
           coursesLoading={coursesLoading}
           collapsed={drawerCollapsed}
-          selectedCourseId={selectedCourseId}
-          selectedCourseIds={selectedCourseIds}
           onCourseAction={handleCourseAction}
           onUploadClick={() => inputRef.current?.click()}
         />
@@ -802,27 +722,21 @@ export default function Home() {
         )}
         {activeTab === 'courses' && (
           <CoursesPanel
-            selectedCourse={selectedCourse}
             file={file}
             dragOver={dragOver}
             error={error}
-            deleteError={deleteError}
             onUploadClick={() => inputRef.current?.click()}
             onDrop={handleDrop}
             onDragOver={e => { e.preventDefault(); setDragOver(true) }}
             onDragLeave={() => setDragOver(false)}
             onFileStart={handleStart}
             onFileClear={() => setFile(null)}
-            onDeleteCourse={(id) => { deleteCourse(id); if (selectedCourseId === id) setSelectedCourseId(null) }}
-            onOpenCourse={id => router.push(`/course/${id}`)}
           />
         )}
         {activeTab === 'srs' && (
           <SRSPanel
             srsStats={srsStats}
             srsLoading={srsLoading}
-            selectedCourseIds={selectedCourseIds}
-            courseRows={courseRows}
           />
         )}
         </div>
