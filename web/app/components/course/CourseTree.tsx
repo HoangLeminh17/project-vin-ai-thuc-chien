@@ -5,7 +5,7 @@ import { SynapsyLogo, SynapsyRing, T } from '@/app/components/synapsy'
 import { SavedCourse } from '@/core/models/saved-course'
 import type { ProgressEntry } from '@/lib/types'
 import { getLessonCards } from '@/lib/course-cards'
-import { FlatCard } from './types'
+import { FlatCard, getStudyDeck, hasStudyDeckCards } from './types'
 import { StudyMode } from './StudyMode'
 import { EditMode } from './EditMode'
 
@@ -158,6 +158,8 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
   const dueCards    = allCards.filter(c => cardProgress(c, progressMap)?.isDue)
   const totalDue    = dueCards.length
   const totalCards  = allCards.length
+  const studyDeck   = getStudyDeck(dueCards, allCards)
+  const canStartStudy = hasStudyDeckCards(dueCards, allCards)
   const matureCards = allCards.filter(c => {
     const entry = cardProgress(c, progressMap)
     return entry?.status === 'REVIEW' && !entry.isDue
@@ -251,7 +253,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
   // ── Study overlay (Ôn all due) ────────────────────────────────────────────
 
   if (studyOverlay) {
-    const deck = dueCards.length > 0 ? dueCards : allCards
+    const deck = studyDeck
     return (
       <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: T.bg, fontFamily: T.fontSans }}>
         <div style={{ padding: '12px 22px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
@@ -311,25 +313,25 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
         {/* Ôn button */}
         <div style={{ display: 'flex', alignItems: 'center', paddingLeft: 16 }}>
           <button
-            onClick={() => totalDue > 0 && setStudyOverlay(true)}
-            disabled={totalDue === 0}
+            onClick={() => { if (canStartStudy) setStudyOverlay(true) }}
+            disabled={!canStartStudy}
             style={{
-              background: totalDue > 0 ? T.ink : T.bgSunken,
-              color: totalDue > 0 ? T.bgSolid : T.ink40,
+              background: canStartStudy ? T.ink : T.bgSunken,
+              color: canStartStudy ? T.bgSolid : T.ink40,
               padding: '8px 18px', borderRadius: 8, border: 'none',
               fontSize: 13, fontWeight: 700, letterSpacing: '-0.01em',
-              cursor: totalDue > 0 ? 'pointer' : 'default',
-              opacity: totalDue > 0 ? 1 : 0.5,
+              cursor: canStartStudy ? 'pointer' : 'default',
+              opacity: canStartStudy ? 1 : 0.5,
               display: 'flex', alignItems: 'center', gap: 7,
               transition: 'opacity 0.15s', flexShrink: 0,
             }}
-            onMouseEnter={e => { if (totalDue > 0) (e.currentTarget as HTMLButtonElement).style.opacity = '0.82' }}
-            onMouseLeave={e => { if (totalDue > 0) (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
+            onMouseEnter={e => { if (canStartStudy) (e.currentTarget as HTMLButtonElement).style.opacity = '0.82' }}
+            onMouseLeave={e => { if (canStartStudy) (e.currentTarget as HTMLButtonElement).style.opacity = '1' }}
           >
             <svg width="10" height="12" viewBox="0 0 10 12" fill="none">
               <polygon points="0,0 10,6 0,12" fill="currentColor" />
             </svg>
-            Ôn {totalDue > 0 ? `${totalDue} thẻ` : ''}
+            {totalDue > 0 ? `Ôn ${totalDue} thẻ` : 'Bắt đầu'}
           </button>
         </div>
       </div>

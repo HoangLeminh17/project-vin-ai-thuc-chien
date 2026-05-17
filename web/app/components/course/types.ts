@@ -20,6 +20,14 @@ export const RATING_META = [
   { label: 'Dễ',   sub: 'quá dễ',    interval: '4 ngày',  color: 'var(--sy-easy)'   },
 ] as const
 
+export function getStudyDeck<T>(dueCards: T[], allCards: T[]): T[] {
+  return dueCards.length > 0 ? dueCards : allCards
+}
+
+export function hasStudyDeckCards<T>(dueCards: T[], allCards: T[]): boolean {
+  return getStudyDeck(dueCards, allCards).length > 0
+}
+
 export async function submitRating(card: FlatCard, ratingIndex: number) {
   const res = await fetch('/api/progress/review', {
     method: 'POST',
