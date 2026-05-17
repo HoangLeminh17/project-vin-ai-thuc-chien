@@ -42,13 +42,17 @@ export class FirebaseProgressRepository implements IProgressRepository {
     const { id, ...data } = progress;
     const db = getDb();
     
-    // 1. Save card progress
-    await db.collection(this.collectionName).doc(id).set({
+    // 1. Save card progress — strip undefined so Firestore doesn't reject
+    const rawDoc = {
       ...data,
-      nextReviewDate: data.nextReviewDate, // Firestore handles JS Dates
+      nextReviewDate: data.nextReviewDate,
       lastReviewedAt: data.lastReviewedAt || null,
       updatedAt: new Date(),
-    }, { merge: true });
+    };
+    const docData = Object.fromEntries(
+      Object.entries(rawDoc).filter(([, v]) => v !== undefined)
+    );
+    await db.collection(this.collectionName).doc(id).set(docData, { merge: true });
 
     // 2. Update O(1) summary for streak
     if (data.lastReviewedAt) {
