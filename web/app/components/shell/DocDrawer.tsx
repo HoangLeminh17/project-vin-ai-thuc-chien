@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import { T } from '@/app/components/synapsy'
 import type { NavTab } from './NavRail'
 
@@ -12,20 +12,17 @@ export interface CourseRow {
 }
 
 interface FileNode { id: string; name: string; mastery: number | null; due: number }
-interface FolderNode { id: string; name: string; files: FileNode[] }
+interface FolderNode { id: string; name: string; files: FileNode[]; isUser?: boolean }
 
 interface Props {
   activeTab: NavTab
   courses: CourseRow[]
   coursesLoading: boolean
   collapsed: boolean
-  selectedCourseId: string | null
-  selectedCourseIds: string[]
   onCourseAction: (id: string) => void
   onUploadClick: () => void
 }
 
-// Shown when there are no real courses yet so the drawer is never blank
 const MOCK_TREE: FolderNode[] = [
   {
     id: 'mock-cosor', name: 'Y Khoa Cơ Sở',
@@ -36,9 +33,7 @@ const MOCK_TREE: FolderNode[] = [
   },
   {
     id: 'mock-lamsang', name: 'Lâm Sàng',
-    files: [
-      { id: 'mock-noikhoa', name: 'Nội Khoa.pdf', mastery: null, due: 0 },
-    ],
+    files: [{ id: 'mock-noikhoa', name: 'Nội Khoa.pdf', mastery: null, due: 0 }],
   },
 ]
 
@@ -69,11 +64,49 @@ function FileIco() {
   )
 }
 
-export function DocDrawer({ activeTab, courses, coursesLoading, collapsed, selectedCourseId, selectedCourseIds, onCourseAction, onUploadClick }: Props) {
-  const isSRS = activeTab === 'srs'
+export function DocDrawer({ courses, coursesLoading, collapsed, onCourseAction, onUploadClick }: Props) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [addingFolder, setAddingFolder] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const [userFolders, setUserFolders] = useState<string[]>([])
+  const menuRef = useRef<HTMLDivElement>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
 
-  const tree = useMemo<FolderNode[]>(() => {
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('sy_folders')
+      if (stored) setUserFolders(JSON.parse(stored))
+    } catch {}
+  }, [])
+
+  useEffect(() => {
+    function onMouseDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false)
+    }
+    if (menuOpen) document.addEventListener('mousedown', onMouseDown)
+    return () => document.removeEventListener('mousedown', onMouseDown)
+  }, [menuOpen])
+
+  useEffect(() => {
+    if (addingFolder) nameInputRef.current?.focus()
+  }, [addingFolder])
+
+  function saveFolder(name: string) {
+    const trimmed = name.trim()
+    if (!trimmed) return
+    const updated = [...userFolders, trimmed]
+    setUserFolders(updated)
+    try { localStorage.setItem('sy_folders', JSON.stringify(updated)) } catch {}
+  }
+
+  function commitFolder() {
+    saveFolder(newFolderName)
+    setNewFolderName('')
+    setAddingFolder(false)
+  }
+
+  const realTree = useMemo<FolderNode[]>(() => {
     if (coursesLoading) return []
     if (courses.length === 0) return MOCK_TREE
     return [{
@@ -88,18 +121,23 @@ export function DocDrawer({ activeTab, courses, coursesLoading, collapsed, selec
     }]
   }, [courses, coursesLoading])
 
-  function isOpen(folderId: string) { return expanded[folderId] ?? true }
-  function toggleFolderExpand(folderId: string) { setExpanded(e => ({ ...e, [folderId]: !isOpen(folderId) })) }
+  const userFolderNodes: FolderNode[] = userFolders.map((name, i) => ({
+    id: `uf-${i}`,
+    name,
+    files: [],
+    isUser: true,
+  }))
 
-  function handleFolderCheck(folder: FolderNode, e: React.MouseEvent) {
-    e.stopPropagation()
-    const ids = folder.files.map(f => f.id)
-    const allSel = ids.every(id => selectedCourseIds.includes(id))
-    if (allSel) {
-      ids.filter(id => selectedCourseIds.includes(id)).forEach(id => onCourseAction(id))
-    } else {
-      ids.filter(id => !selectedCourseIds.includes(id)).forEach(id => onCourseAction(id))
-    }
+  const tree = [...realTree, ...userFolderNodes]
+
+  function isOpen(folderId: string) { return expanded[folderId] ?? true }
+  function toggleFolder(folderId: string) { setExpanded(e => ({ ...e, [folderId]: !isOpen(folderId) })) }
+
+  const menuItemStyle: React.CSSProperties = {
+    display: 'flex', alignItems: 'center', gap: 8,
+    padding: '7px 10px', width: '100%', background: 'none', border: 'none',
+    borderRadius: 6, cursor: 'pointer', fontSize: 12.5, color: '#374151',
+    fontFamily: T.fontSans, textAlign: 'left', whiteSpace: 'nowrap',
   }
 
   return (
@@ -121,17 +159,68 @@ export function DocDrawer({ activeTab, courses, coursesLoading, collapsed, selec
         borderBottom: '1px solid #f0f1f5', flexShrink: 0,
       }}>
         <span style={{ fontSize: 10.5, fontWeight: 700, color: '#9ca3af', letterSpacing: '0.09em', fontFamily: T.fontSans }}>
-          {isSRS ? 'CHỌN ĐỂ ÔN TẬP' : 'TÀI LIỆU'}
+          TÀI LIỆU
         </span>
-        <button
-          onClick={onUploadClick}
-          style={{
-            width: 22, height: 22, background: '#f3f4f6', border: 'none', borderRadius: 6,
-            cursor: 'pointer', fontSize: 15, color: '#6b7280', fontWeight: 300,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-          }}
-        >+</button>
+        {/* "+" dropdown */}
+        <div style={{ position: 'relative' }} ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen(o => !o)}
+            style={{
+              width: 22, height: 22, background: menuOpen ? '#e5e7eb' : '#f3f4f6',
+              border: 'none', borderRadius: 6, cursor: 'pointer',
+              fontSize: 15, color: '#6b7280', fontWeight: 300,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+            }}
+          >+</button>
+          {menuOpen && (
+            <div style={{
+              position: 'absolute', right: 0, top: 'calc(100% + 4px)',
+              background: '#fff', border: '1px solid #e5e7eb',
+              borderRadius: 8, boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+              padding: 4, zIndex: 200, minWidth: 164,
+            }}>
+              <button
+                style={menuItemStyle}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f9fafb' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                onClick={() => { setAddingFolder(true); setMenuOpen(false) }}
+              >
+                <FolderIco /> Tạo thư mục
+              </button>
+              <button
+                style={menuItemStyle}
+                onMouseEnter={e => { e.currentTarget.style.background = '#f9fafb' }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'none' }}
+                onClick={() => { onUploadClick(); setMenuOpen(false) }}
+              >
+                <FileIco /> Thêm tài liệu PDF
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Inline folder name input */}
+      {addingFolder && (
+        <div style={{ padding: '8px 14px', borderBottom: '1px solid #f0f1f5', flexShrink: 0 }}>
+          <input
+            ref={nameInputRef}
+            value={newFolderName}
+            onChange={e => setNewFolderName(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') commitFolder()
+              if (e.key === 'Escape') { setAddingFolder(false); setNewFolderName('') }
+            }}
+            onBlur={commitFolder}
+            placeholder="Tên thư mục..."
+            style={{
+              width: '100%', fontSize: 12.5, border: `1px solid ${T.accent}`,
+              borderRadius: 6, padding: '5px 8px', fontFamily: T.fontSans,
+              outline: 'none', color: '#111827',
+            }}
+          />
+        </div>
+      )}
 
       {/* Tree */}
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px 0 12px' }}>
@@ -143,72 +232,63 @@ export function DocDrawer({ activeTab, courses, coursesLoading, collapsed, selec
           tree.map(folder => {
             const open = isOpen(folder.id)
             const isMockFolder = folder.id.startsWith('mock-')
-            const folderFileIds = folder.files.map(f => f.id)
-            const allSel = isSRS && folderFileIds.every(id => selectedCourseIds.includes(id))
-            const someSel = isSRS && folderFileIds.some(id => selectedCourseIds.includes(id)) && !allSel
 
             return (
               <div key={folder.id}>
                 {/* Folder row */}
                 <div
-                  onClick={() => toggleFolderExpand(folder.id)}
+                  onClick={() => toggleFolder(folder.id)}
                   style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '5px 14px', cursor: 'pointer', userSelect: 'none' }}
                 >
-                  {isSRS && !isMockFolder && (
-                    <input
-                      type="checkbox"
-                      checked={allSel}
-                      ref={el => { if (el) el.indeterminate = someSel }}
-                      onChange={() => {}}
-                      onClick={e => handleFolderCheck(folder, e)}
-                      style={{ width: 13, height: 13, accentColor: T.accent, cursor: 'pointer', flexShrink: 0 }}
-                    />
-                  )}
                   <svg width="9" height="9" viewBox="0 0 9 9" fill="none" style={{ flexShrink: 0, transition: 'transform 0.15s', transform: open ? 'rotate(90deg)' : 'none' }}>
                     <path d="M2.5 1.5l4 3-4 3" stroke="#9ca3af" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                   <FolderIco />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: isMockFolder ? '#9ca3af' : '#111827', fontFamily: T.fontSans }}>{folder.name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: isMockFolder ? '#9ca3af' : '#111827', fontFamily: T.fontSans, flex: 1 }}>
+                    {folder.name}
+                  </span>
                 </div>
 
                 {/* Files */}
                 {open && folder.files.map(file => {
                   const isMock = file.id.startsWith('mock-')
-                  const isSel = isSRS ? selectedCourseIds.includes(file.id) : selectedCourseId === file.id
                   return (
                     <div
                       key={file.id}
                       onClick={() => { if (!isMock) onCourseAction(file.id) }}
+                      onMouseEnter={e => { if (!isMock) e.currentTarget.style.background = '#f9fafb' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                       style={{
                         display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '4px 14px 4px 32px', cursor: isMock ? 'default' : 'pointer',
-                        background: isSel ? T.accent + '18' : 'transparent',
-                        borderLeft: !isSRS && isSel ? `2px solid ${T.accent}` : '2px solid transparent',
+                        padding: '4px 14px 4px 32px',
+                        cursor: isMock ? 'default' : 'pointer',
+                        borderLeft: '2px solid transparent',
                         transition: 'background 0.1s',
                         opacity: isMock ? 0.4 : 1,
                       }}
                     >
-                      {isSRS && !isMock && (
-                        <input
-                          type="checkbox"
-                          checked={isSel}
-                          onChange={() => onCourseAction(file.id)}
-                          onClick={e => e.stopPropagation()}
-                          style={{ width: 13, height: 13, accentColor: T.accent, cursor: 'pointer', flexShrink: 0 }}
-                        />
-                      )}
                       <FileIco />
                       <span style={{
-                        flex: 1, fontSize: 12.5,
-                        color: !isSRS && isSel ? T.accent : '#374151',
-                        fontWeight: isSel ? 500 : 400,
+                        flex: 1, fontSize: 12.5, color: '#374151', fontWeight: 400,
                         fontFamily: T.fontSans,
                         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                       }}>{file.name}</span>
+                      {!isMock && file.due > 0 && (
+                        <span style={{ fontSize: 9.5, fontWeight: 700, color: '#dc2626', background: '#fff1f1', padding: '1px 4px', borderRadius: 3, flexShrink: 0 }}>
+                          {file.due}
+                        </span>
+                      )}
                       {!isMock && <MasteryBadge value={file.mastery} />}
                     </div>
                   )
                 })}
+
+                {/* Empty user folder hint */}
+                {open && folder.isUser && folder.files.length === 0 && (
+                  <div style={{ padding: '4px 14px 4px 32px' }}>
+                    <span style={{ fontSize: 11.5, color: '#d1d5db', fontFamily: T.fontSans }}>Chưa có tài liệu</span>
+                  </div>
+                )}
               </div>
             )
           })
