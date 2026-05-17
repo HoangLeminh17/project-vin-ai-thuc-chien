@@ -204,13 +204,11 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
           const last = allCards[allCards.length - 1]
           setActiveCard(last)
           setExpandedChapters(p => ({ ...p, [last.ci]: true }))
-          setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study')
         } else if (idx > 0) {
           e.preventDefault()
           const prev = allCards[idx - 1]
           setActiveCard(prev)
           setExpandedChapters(p => ({ ...p, [prev.ci]: true }))
-          setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study')
         }
       } else if (e.key === 'ArrowRight') {
         if (idx === -1 && allCards.length > 0) {
@@ -218,13 +216,11 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
           const first = allCards[0]
           setActiveCard(first)
           setExpandedChapters(p => ({ ...p, [first.ci]: true }))
-          setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study')
         } else if (idx >= 0 && idx < allCards.length - 1) {
           e.preventDefault()
           const next = allCards[idx + 1]
           setActiveCard(next)
           setExpandedChapters(p => ({ ...p, [next.ci]: true }))
-          setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study')
         }
       }
     }
@@ -432,7 +428,7 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
                             <button
                               key={card.id}
                               id={`tree-card-${card.id}`}
-                              onClick={() => { setActiveCard(card); setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study') }}
+                              onClick={() => { setActiveCard(card) }}
                               style={{
                                 width: '100%', textAlign: 'left',
                                 padding: '7px 14px 7px 46px',
