@@ -10,16 +10,16 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 | Task | Người làm | PR |
 |---|---|---|
-| SRS overlay fallback cho thẻ mới + guard StudyMode deck rỗng | Codex | #142 |
-| SRS Firestore strip undefined fields + review toast/fade/shortcuts | Codex | #146 |
-| Fix lỗi màn đỏ "Có lỗi khi tạo khóa học" hiện khi F5 (authLoading bug) | Codex | #147 |
+| SRS overlay fallback cho thẻ mới + guard StudyMode deck rỗng | Nguyen Binh Thanh | #142 |
+| SRS Firestore strip undefined fields + review toast/fade/shortcuts | Nguyen Binh Thanh | #146 |
+| Fix lỗi màn đỏ "Có lỗi khi tạo khóa học" hiện khi F5 (authLoading bug) | Nguyen Binh Thanh | #147 |
 | Synapsy v2 shell: TopBar + NavRail + DocDrawer folder tree | Nguyen Binh Thanh | #132 |
 | CourseTree + StudyMode v2 visual reskin + tab routing (edit/study) | Nguyen Binh Thanh | #133 |
-| Stage 2 dùng generator model riêng cho DeepSeek/OpenAI | Codex | branch `fix/stage2-generator-model` |
+| Stage 2 dùng generator model riêng cho DeepSeek/OpenAI | Nguyen Binh Thanh | branch `fix/stage2-generator-model` |
 
 ### [ADR-56] Fix lỗi màn đỏ hiện khi F5 do sai điều kiện authLoading - 17/05/2026
 
-**Người làm:** Codex | **Ref:** PR #147 (`fix/auth-loading-error-flash`)
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #147 (`fix/auth-loading-error-flash`)
 
 **Bối cảnh:** Mỗi lần refresh trang, xuất hiện ô màu đỏ "Có lỗi khi tạo khóa học" trong khoảng ~1 giây rồi biến mất. Không có lỗi thực sự — đây là bug render.
 
@@ -35,7 +35,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-55] Review UX: toast, fade, phím tắt - 17/05/2026
 
-**Người làm:** Codex | **Ref:** PR #146 (`fix/srs-study-mode-flow`)
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #146 (`fix/srs-study-mode-flow`)
 
 **Bối cảnh:** Sau khi luồng SRS overlay hoạt động (PR #142), trang `/review` thiếu phản hồi trực quan khi người dùng đánh giá thẻ và chuyển thẻ.
 
@@ -49,7 +49,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-54] SRS overlay mở được deck mới - 17/05/2026
 
-**Người làm:** Codex | **Ref:** PR #142 (`fix/srs-study-mode-flow`)
+**Người làm:** Nguyen Binh Thanh | **Ref:** PR #142 (`fix/srs-study-mode-flow`)
 
 **Bối cảnh:** PR #126 đã merge short-answer self-check vào `StudyMode`, nhưng nút ôn trong `CourseTree` vẫn bị khóa theo `totalDue === 0`. Với khóa học mới, chưa có progress entry nên `totalDue` bằng 0 dù vẫn có thẻ để học. Overlay bên trong đã có fallback `dueCards.length > 0 ? dueCards : allCards`, nhưng button không cho mở overlay để đi tới flow đó.
 
@@ -66,7 +66,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-53] Tách model planner/generator cho Stage 2 - 17/05/2026
 
-**Người làm:** Codex | **Ref:** branch `fix/stage2-generator-model`
+**Người làm:** Nguyen Binh Thanh | **Ref:** branch `fix/stage2-generator-model`
 
 **Bối cảnh:** Trace production cho thấy các request `/api/generate-content` giữ kết nối 2-4 phút trong Stage 2. Các span Firebase/cache chỉ mất khoảng 1-2s và `fetch` tới DeepSeek chỉ đo tới response headers, còn thời gian lớn nằm ở lúc chờ model hoàn tất JSON body. Code trước đó dùng cùng `OpenAiAdapter.model` cho cả planner, generator, và diagnostic; với DeepSeek, adapter được cấu hình bằng `DEEPSEEK_PLANNER_MODEL || deepseek-v4-pro`, nên Stage 2 có thể vô tình dùng model planner/pro thay vì flash.
 
@@ -160,7 +160,7 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 
 ### [ADR-50] Serve ảnh thật trong panel tài liệu nguồn - 16/05/2026
 
-**Người làm:** Codex | **Ref:** branch `fix/real-source-images`
+**Người làm:** Nguyen Binh Thanh | **Ref:** branch `fix/real-source-images`
 
 **Bối cảnh:** `PdfPanel` đã đọc được các item `type: "image"` từ MinerU `contentList`, nhưng chỉ render placeholder `[Hình ảnh]`. Sau PR #122, parser có thêm luồng MinerU VLM và fallback markdown-only; cần giữ hai trường hợp này tách bạch để chỉ render ảnh thật khi structured `contentList` có asset ảnh đã được lưu.
 
