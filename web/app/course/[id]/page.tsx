@@ -143,7 +143,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           onProgressChange={() => refreshProgressMap()}
           onExit={() => router.push('/')}
           layoutStorageUrl={layoutStorageUrl}
-          preferredDetailTab={searchParams.get('tab') === 'study' ? 'study' : undefined}
+          preferredDetailTab={searchParams.get('tab') === 'study' ? 'study' : searchParams.get('tab') === 'edit' ? 'edit' : undefined}
         />
       </div>
     </div>

@@ -43,21 +43,21 @@ function flatCardId(ci: number, li: number, cardIndex: number, hasGeneratedCards
   return hasGeneratedCards ? `${ci}-${li}-${cardIndex}` : `${ci}-${li}`
 }
 
-const SRS_CHIP: Record<SrsState, { label: string; bg: string; color: string; border: string }> = {
-  due:      { label: 'ÔN',     bg: '#fff1f1', color: '#c0392b', border: '#fecdcd' },
-  learning: { label: 'HỌC',   bg: '#fffbf0', color: '#92580a', border: '#f5d78a' },
-  new:      { label: 'MỚI',   bg: '#f0f4ff', color: '#2c4fb3', border: '#c7d4f8' },
-  mature:   { label: 'ĐÃ NHỚ', bg: '#f0faf5', color: '#0f5132', border: '#b7e6cc' },
+const SRS_CHIP: Record<SrsState, { label: string; color: string }> = {
+  due:      { label: 'ÔN',    color: '#dc2626' },
+  learning: { label: 'HỌC',  color: '#d97706' },
+  new:      { label: 'MỚI',  color: '#2563eb' },
+  mature:   { label: '✓',    color: '#16a34a' },
 }
 
 function MiniChip({ state }: { state: SrsState }) {
   const s = SRS_CHIP[state]
   return (
     <span style={{
-      fontSize: 8, fontWeight: 800, letterSpacing: '0.06em',
-      padding: '1px 6px', borderRadius: 10,
-      background: s.bg, border: `1px solid ${s.border}`, color: s.color,
-      flexShrink: 0, whiteSpace: 'nowrap',
+      fontSize: 9, fontWeight: 700, letterSpacing: '0.04em',
+      padding: '2px 5px', borderRadius: 4,
+      background: s.color + '18', color: s.color,
+      flexShrink: 0, whiteSpace: 'nowrap', fontFamily: 'inherit',
     }}>{s.label}</span>
   )
 }
@@ -123,7 +123,7 @@ export interface Props {
   onProgressChange?: () => void
   onExit: () => void
   layoutStorageUrl?: string | null
-  preferredDetailTab?: 'study'
+  preferredDetailTab?: 'study' | 'edit'
 }
 
 // ── CourseTree ─────────────────────────────────────────────────────────────────
@@ -132,12 +132,13 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
   const chapters = course.course.chapters
   const allCards = useMemo(() => flattenCards(course), [course])
   const shouldOpenStudyInitially = preferredDetailTab === 'study' && allCards.length > 0
-  const initialStudyCard = shouldOpenStudyInitially ? allCards[0] : null
+  const shouldOpenEditInitially  = preferredDetailTab === 'edit'  && allCards.length > 0
+  const initialCard = (shouldOpenStudyInitially || shouldOpenEditInitially) ? allCards[0] : null
 
   const [expandedChapters, setExpandedChapters] = useState<Record<number, boolean>>(
-    () => (initialStudyCard ? { [initialStudyCard.ci]: true } : {})
+    () => (initialCard ? { [initialCard.ci]: true } : {})
   )
-  const [activeCard, setActiveCard] = useState<FlatCard | null>(initialStudyCard)
+  const [activeCard, setActiveCard] = useState<FlatCard | null>(initialCard)
   const [detailTab, setDetailTab] = useState<'edit' | 'study'>(shouldOpenStudyInitially ? 'study' : 'edit')
   const [studyOverlay, setStudyOverlay] = useState(false)
 
@@ -203,13 +204,13 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
           const last = allCards[allCards.length - 1]
           setActiveCard(last)
           setExpandedChapters(p => ({ ...p, [last.ci]: true }))
-          setDetailTab('study')
+          setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study')
         } else if (idx > 0) {
           e.preventDefault()
           const prev = allCards[idx - 1]
           setActiveCard(prev)
           setExpandedChapters(p => ({ ...p, [prev.ci]: true }))
-          setDetailTab('study')
+          setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study')
         }
       } else if (e.key === 'ArrowRight') {
         if (idx === -1 && allCards.length > 0) {
@@ -217,13 +218,13 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
           const first = allCards[0]
           setActiveCard(first)
           setExpandedChapters(p => ({ ...p, [first.ci]: true }))
-          setDetailTab('study')
+          setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study')
         } else if (idx >= 0 && idx < allCards.length - 1) {
           e.preventDefault()
           const next = allCards[idx + 1]
           setActiveCard(next)
           setExpandedChapters(p => ({ ...p, [next.ci]: true }))
-          setDetailTab('study')
+          setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study')
         }
       }
     }
@@ -370,9 +371,9 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
                   {/* Chapter row */}
                   <button
                     onClick={() => toggleChapter(ci)}
-                    style={{ width: '100%', textAlign: 'left', padding: '9px 20px 9px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: 'transparent', border: 'none', borderBottom: `1px solid ${T.ink10}`, transition: 'background 0.1s' }}
+                    style={{ width: '100%', textAlign: 'left', padding: '8px 14px 8px 16px', display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', background: T.bgSunken, border: 'none', borderBottom: `1px solid ${T.ink10}`, transition: 'background 0.1s' }}
                     onMouseEnter={e => (e.currentTarget.style.background = T.bgSunken)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    onMouseLeave={e => (e.currentTarget.style.background = T.bgSunken)}
                   >
                     <span style={{ width: 3, height: 28, borderRadius: 2, background: chCol.dot, flexShrink: 0 }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -431,27 +432,27 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
                             <button
                               key={card.id}
                               id={`tree-card-${card.id}`}
-                              onClick={() => { setActiveCard(card); setDetailTab('study') }}
+                              onClick={() => { setActiveCard(card); setDetailTab(preferredDetailTab === 'edit' ? 'edit' : 'study') }}
                               style={{
                                 width: '100%', textAlign: 'left',
-                                padding: '8px 20px 8px 46px',
+                                padding: '7px 14px 7px 46px',
                                 display: 'flex', alignItems: 'flex-start', gap: 8,
                                 cursor: 'pointer',
-                                background: isActive ? T.ink : 'transparent',
+                                background: isActive ? T.accent + '12' : 'transparent',
                                 border: 'none',
                                 borderBottom: `1px solid ${T.ink10}`,
-                                borderLeft: isActive ? `3px solid ${T.ink}` : '3px solid transparent',
+                                borderLeft: isActive ? `2px solid ${T.accent}` : '2px solid transparent',
                                 transition: 'background 0.1s',
                               }}
                               onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = T.bgSunken }}
                               onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
                             >
-                              <span className="sy-mono" style={{ fontSize: 9, color: isActive ? 'rgba(255,255,255,0.5)' : T.ink40, marginTop: 2, flexShrink: 0, minWidth: 14 }}>
+                              <span className="sy-mono" style={{ fontSize: 9, color: isActive ? T.accent : T.ink40, marginTop: 2, flexShrink: 0, minWidth: 14 }}>
                                 {cardIdx + 1}
                               </span>
                               <p className="sy-serif" style={{
-                                fontSize: 12, margin: 0, lineHeight: 1.4,
-                                color: isActive ? '#fff' : T.ink80,
+                                fontSize: 12, margin: 0, lineHeight: 1.45,
+                                color: isActive ? T.accent : T.ink80,
                                 fontWeight: isActive ? 600 : 400,
                                 flex: 1, minWidth: 0,
                                 display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const, overflow: 'hidden',
@@ -492,20 +493,20 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
           ) : (
             <>
               {/* Tab bar */}
-              <div style={{ padding: '10px 22px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-                <div style={{ display: 'flex', gap: 2, background: T.bgSunken, borderRadius: 8, padding: 3, flexShrink: 0 }}>
+              <div style={{ padding: '10px 20px', borderBottom: `1px solid ${T.ink10}`, background: T.bgSolid, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+                <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 8, padding: 2, gap: 2, flexShrink: 0 }}>
                   {(['edit', 'study'] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => setDetailTab(tab)}
                       style={{
-                        padding: '6px 16px', borderRadius: 6, fontSize: 12,
-                        fontWeight: detailTab === tab ? 700 : 500,
+                        padding: '5px 16px', borderRadius: 6, fontSize: 13,
+                        fontWeight: 600,
                         color: detailTab === tab ? T.ink : T.ink60,
-                        background: detailTab === tab ? T.bgSolid : 'transparent',
+                        background: detailTab === tab ? '#fff' : 'transparent',
                         border: 'none', cursor: 'pointer',
-                        boxShadow: detailTab === tab ? '0 1px 4px rgba(0,0,0,0.08)' : 'none',
-                        transition: 'all 0.15s',
+                        boxShadow: detailTab === tab ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        fontFamily: T.fontSans, transition: 'all 0.15s',
                       }}
                     >
                       {tab === 'edit' ? 'Sửa' : 'Học'}

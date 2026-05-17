@@ -571,10 +571,8 @@ export default function Home() {
   function handleCourseAction(id: string) {
     if (activeTab === 'srs') {
       router.push(`/course/${id}?tab=study`)
-    } else if (activeTab === 'courses') {
-      router.push(`/course/${id}?tab=edit`)
     } else {
-      router.push(`/course/${id}`)
+      router.push(`/course/${id}?tab=edit`)
     }
   }
 
@@ -689,6 +687,7 @@ export default function Home() {
           coursesLoading={coursesLoading}
           collapsed={drawerCollapsed}
           onCourseAction={handleCourseAction}
+          onDeleteCourse={deleteCourse}
           onUploadClick={() => inputRef.current?.click()}
         />
 
