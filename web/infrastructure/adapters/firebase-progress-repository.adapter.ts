@@ -1,4 +1,4 @@
-import { IProgressRepository } from '@/core/ports/progress-repository.port';
+import { IProgressRepository, ProgressRepoStats } from '@/core/ports/progress-repository.port';
 import { CardProgress } from '@/core/entities/card-progress.entity';
 import { getDb } from '@/lib/firebase-admin';
 import { Transaction, DocumentSnapshot, DocumentReference } from 'firebase-admin/firestore';
@@ -106,22 +106,22 @@ export class FirebaseProgressRepository implements IProgressRepository {
     return snapshot.docs.map((doc: any) => this.mapToEntity(doc.id, doc.data()));
   }
 
-  async getStats(userId: string): Promise<{ new: number; learning: number; due: number; streak: number }> {
+  async getStats(userId: string): Promise<ProgressRepoStats> {
     const now = new Date();
     const db = getDb();
     const baseQuery = db.collection(this.collectionName).where('userId', '==', userId);
 
     // 1. Use aggregation queries for O(1) count performance
     // 2. Also fetch the pre-calculated summary for O(1) streak
-    const [newSnap, learningSnap, dueSnap, statsDocResult] = await Promise.all([
-      baseQuery.where('status', '==', 'NEW').count().get(),
+    const [reviewedSnap, learningSnap, dueSnap, statsDocResult] = await Promise.all([
+      baseQuery.count().get(),
       baseQuery.where('status', '==', 'LEARNING').count().get(),
       baseQuery.where('nextReviewDate', '<=', now).count().get(),
       db.collection('user_stats').doc(userId).get() as Promise<DocumentSnapshot>
     ]);
 
-    const stats = {
-      new: newSnap.data().count,
+    const stats: ProgressRepoStats = {
+      reviewed: reviewedSnap.data().count,
       learning: learningSnap.data().count,
       due: dueSnap.data().count,
       streak: 0

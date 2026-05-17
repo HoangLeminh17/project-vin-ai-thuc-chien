@@ -164,7 +164,8 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
     const entry = cardProgress(c, progressMap)
     return entry?.status === 'REVIEW' && !entry.isDue
   }).length
-  const overallPct  = totalCards === 0 ? 0 : Math.round((matureCards / totalCards) * 100)
+  const learningCards = allCards.filter(c => cardProgress(c, progressMap)?.status === 'LEARNING').length
+  const newCards = allCards.filter(c => !cardProgress(c, progressMap)).length
 
   function lessonMastery(ci: number, li: number): number | null {
     const key = `${ci}-${li}`
@@ -292,15 +293,16 @@ export function CourseTree({ course, progressMap, diagnosticState, onProgressCha
           </p>
         </div>
 
-        {/* Stats */}
+        {/* Stats — Anki-style: mới · học · ôn · thuộc */}
         <div style={{ display: 'flex', alignItems: 'center', borderLeft: `1px solid ${T.ink10}` }}>
           {([
-            { v: totalDue,         label: 'cần ôn', red: totalDue > 0 },
-            { v: totalCards,       label: 'thẻ',    red: false },
-            { v: `${overallPct}%`, label: 'vững',   red: false },
+            { v: newCards,      label: 'mới',   color: T.ink40 },
+            { v: learningCards, label: 'học',   color: '#c47a2a' },
+            { v: totalDue,      label: 'ôn',    color: totalDue > 0 ? T.srsAgain : T.ink },
+            { v: matureCards,   label: 'thuộc', color: '#1a7a4a' },
           ] as const).map((s, i) => (
             <div key={i} style={{ padding: '0 14px', borderRight: `1px solid ${T.ink10}`, textAlign: 'center' }}>
-              <p style={{ fontSize: 16, fontWeight: 800, margin: 0, letterSpacing: '-0.04em', color: s.red ? T.srsAgain : T.ink, lineHeight: 1.1 }}>{s.v}</p>
+              <p style={{ fontSize: 16, fontWeight: 800, margin: 0, letterSpacing: '-0.04em', color: s.color, lineHeight: 1.1 }}>{s.v}</p>
               <p className="sy-mono" style={{ fontSize: 9, color: T.ink40, margin: 0, letterSpacing: '0.04em', textTransform: 'uppercase', fontWeight: 600 }}>{s.label}</p>
             </div>
           ))}
