@@ -8,6 +8,7 @@ type Props = {
 const SIZE = 300
 const CENTER = SIZE / 2
 const RADIUS = 96
+const LABEL_RADIUS_RATIO = 1.08
 const GRID_LEVELS = [0.25, 0.5, 0.75, 1]
 const UNCERTAINTY_FALLBACK = 0.15
 const MODULE_LABELS: Record<string, string> = {
@@ -100,7 +101,7 @@ export function KnowledgeSpiderChart({ points }: Props) {
 
           {points.map((point, index) => {
             const outer = polarPoint(index, points.length, 1)
-            const label = polarPoint(index, points.length, 1.22)
+            const label = polarPoint(index, points.length, LABEL_RADIUS_RATIO)
             return (
               <g key={point.module_id}>
                 <line x1={CENTER} y1={CENTER} x2={outer.x} y2={outer.y} stroke={T.ink10} strokeWidth="1" />

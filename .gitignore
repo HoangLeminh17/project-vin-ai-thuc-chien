@@ -17,8 +17,9 @@ build/
 .DS_Store
 
 # AI logs — tracked structure, ignored content
-#.ai-log/*.jsonl
-.ai-log/session.jsonl
+.ai-log/session*.jsonl
+web/.ai-log/session*.jsonl
+
 # Next.js
 node_modules/
 .next/

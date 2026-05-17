@@ -5,7 +5,7 @@ vi.mock('@/infrastructure/adapters/gemini.adapter', () => ({
   GeminiAdapter: class { constructor() {} }
 }));
 vi.mock('@/infrastructure/adapters/openai.adapter', () => ({
-  OpenAiAdapter: class { constructor() {} }
+  OpenAiAdapter: class OpenAiAdapter { constructor(public config: any) {} }
 }));
 vi.mock('@/infrastructure/adapters/huggingface.adapter', () => ({
   HuggingFaceAdapter: class { constructor() {} }
@@ -26,6 +26,12 @@ vi.mock('@/lib/firebase-admin', () => ({
 describe('DI AI Provider Selection', () => {
   beforeEach(() => {
     vi.resetModules();
+    delete process.env.AI_PROVIDER;
+    delete process.env.DEEPSEEK_API_KEY;
+    delete process.env.DEEPSEEK_MODEL;
+    delete process.env.DEEPSEEK_PLANNER_MODEL;
+    delete process.env.DEEPSEEK_GENERATOR_MODEL;
+    delete process.env.DEEPSEEK_DIAGNOSTIC_MODEL;
     process.env.GEMINI_API_KEY = 'g-key';
     process.env.OPENAI_API_KEY = 'o-key';
     process.env.HUGGINGFACE_API_KEY = 'h-key';
@@ -54,5 +60,29 @@ describe('DI AI Provider Selection', () => {
     
     const firstAdapter = (aiAdapter as any).adapters[0];
     expect(firstAdapter.constructor.name).toBe('GeminiAdapter');
+  });
+
+  it('configures DeepSeek planner and generator models separately', async () => {
+    process.env.AI_PROVIDER = 'deepseek';
+    process.env.DEEPSEEK_API_KEY = 'd-key';
+    process.env.DEEPSEEK_PLANNER_MODEL = 'deepseek-planner';
+    process.env.DEEPSEEK_GENERATOR_MODEL = 'deepseek-generator';
+    const { aiAdapter } = await import('@/infrastructure/di');
+
+    const firstAdapter = (aiAdapter as any).adapters[0];
+    expect(firstAdapter.constructor.name).toBe('OpenAiAdapter');
+    expect(firstAdapter.config.plannerModel).toBe('deepseek-planner');
+    expect(firstAdapter.config.generatorModel).toBe('deepseek-generator');
+  });
+
+  it('defaults DeepSeek generator model to flash when only planner is set', async () => {
+    process.env.AI_PROVIDER = 'deepseek';
+    process.env.DEEPSEEK_API_KEY = 'd-key';
+    process.env.DEEPSEEK_PLANNER_MODEL = 'deepseek-planner';
+    const { aiAdapter } = await import('@/infrastructure/di');
+
+    const firstAdapter = (aiAdapter as any).adapters[0];
+    expect(firstAdapter.config.plannerModel).toBe('deepseek-planner');
+    expect(firstAdapter.config.generatorModel).toBe('deepseek-v4-flash');
   });
 });

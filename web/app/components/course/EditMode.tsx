@@ -190,7 +190,7 @@ export function EditMode({ cards, allCards, initialCardId, controlledCardId, hid
           )}
 
           {/* AI tutor */}
-          {card.concept.followUps.length > 0 && (
+          {false && (
             <div style={{ background: T.bgSolid, border: `1px solid ${T.ink10}`, borderRadius: 12, padding: '16px 22px' }}>
               <span className="sy-mono" style={{ fontSize: 10, color: T.ink40, textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 700 }}>AI tutor</span>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>

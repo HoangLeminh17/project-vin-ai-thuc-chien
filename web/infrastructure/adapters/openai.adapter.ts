@@ -29,17 +29,25 @@ export interface OpenAiConfig {
   apiKey: string
   baseUrl?: string
   model?: string
+  plannerModel?: string
+  generatorModel?: string
+  diagnosticModel?: string
 }
 
 export class OpenAiAdapter implements IAiService {
   private readonly apiKey: string
   private readonly baseUrl: string
-  private readonly model: string
+  private readonly plannerModel: string
+  private readonly generatorModel: string
+  private readonly diagnosticModel: string
 
   constructor(config: OpenAiConfig) {
     this.apiKey = config.apiKey
     this.baseUrl = config.baseUrl || 'https://api.openai.com/v1/chat/completions'
-    this.model = config.model || 'gpt-4o-mini'
+    const defaultModel = config.model || 'gpt-4o-mini'
+    this.plannerModel = config.plannerModel || defaultModel
+    this.generatorModel = config.generatorModel || defaultModel
+    this.diagnosticModel = config.diagnosticModel || this.generatorModel
   }
 
   async generateCourse(markdown: string): Promise<{ course: Course; tokens: TokenUsage | null }> {
@@ -56,7 +64,7 @@ export class OpenAiAdapter implements IAiService {
           'Authorization': `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: this.model,
+          model: this.plannerModel,
           temperature: 0.2,
           response_format: { type: 'json_object' },
           messages: [
@@ -134,7 +142,7 @@ export class OpenAiAdapter implements IAiService {
           'Authorization': `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: this.model,
+          model: this.generatorModel,
           temperature: 0.3,
           response_format: { type: 'json_object' },
           messages: [
@@ -176,7 +184,7 @@ export class OpenAiAdapter implements IAiService {
           'Authorization': `Bearer ${this.apiKey}`,
         },
         body: JSON.stringify({
-          model: this.model,
+          model: this.diagnosticModel,
           temperature: 0.2,
           response_format: { type: 'json_object' },
           messages: [

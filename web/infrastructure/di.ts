@@ -99,7 +99,10 @@ const gemini = process.env.GEMINI_API_KEY ? new GeminiAdapter({
 
 const openai = process.env.OPENAI_API_KEY ? new OpenAiAdapter({
   apiKey: process.env.OPENAI_API_KEY,
-  model: process.env.OPENAI_PLANNER_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  plannerModel: process.env.OPENAI_PLANNER_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  generatorModel: process.env.OPENAI_GENERATOR_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  diagnosticModel: process.env.OPENAI_DIAGNOSTIC_MODEL || process.env.OPENAI_GENERATOR_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini',
 }) : null;
 
 const huggingface = process.env.HUGGINGFACE_API_KEY ? new HuggingFaceAdapter({
@@ -110,7 +113,10 @@ const huggingface = process.env.HUGGINGFACE_API_KEY ? new HuggingFaceAdapter({
 const deepseek = process.env.DEEPSEEK_API_KEY ? new OpenAiAdapter({
   apiKey: process.env.DEEPSEEK_API_KEY,
   baseUrl: normalizeChatCompletionUrl(normalizeBaseUrl(process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com/v1')),
-  model: process.env.DEEPSEEK_PLANNER_MODEL || 'deepseek-v4-pro',
+  model: process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro',
+  plannerModel: process.env.DEEPSEEK_PLANNER_MODEL || process.env.DEEPSEEK_MODEL || 'deepseek-v4-pro',
+  generatorModel: process.env.DEEPSEEK_GENERATOR_MODEL || 'deepseek-v4-flash',
+  diagnosticModel: process.env.DEEPSEEK_DIAGNOSTIC_MODEL || process.env.DEEPSEEK_GENERATOR_MODEL || 'deepseek-v4-flash',
 }) : null;
 
 // If AI_PROVIDER is explicitly set, use ONLY that provider (strict mode)
