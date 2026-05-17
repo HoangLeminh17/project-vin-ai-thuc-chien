@@ -21,7 +21,7 @@ interface Props {
   onProgressChange?: () => void
   onExit: () => void
   layoutStorageUrl?: string | null
-  preferredDetailTab?: 'study'
+  preferredDetailTab?: 'study' | 'edit'
 }
 
 function LoadingOverlay({ label }: { label: string }) {
