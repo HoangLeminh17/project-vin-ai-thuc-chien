@@ -33,14 +33,28 @@ Repo hiện tại là một monorepo nhỏ:
 ```
 web/
   app/
-    page.tsx                         # home + library + upload + generation screen
+    page.tsx                         # v2 shell: TopBar + NavRail + DocDrawer + tab panels (KHO/THƯ VIỆN/SRS)
     dashboard/page.tsx               # redirect ve /
-    course/[id]/page.tsx             # load SavedCourse + ProgressMap, render CourseFlow
+    course/[id]/page.tsx             # load SavedCourse + ProgressMap, render CourseFlow (?tab=edit|study)
     course/[id]/diagnostic/page.tsx  # diagnostic route cu/bo tro
-    review/page.tsx                  # SRS review
+    review/page.tsx                  # SRS global review (all due cards)
     admin/monitor/page.tsx           # admin logs/usage/metrics UI
     api/                             # Next.js App Router API routes
-    components/                      # UI components
+    components/
+      shell/
+        NavRail.tsx                  # 60px left rail: KHO / THƯ VIỆN / SRS tabs
+        DocDrawer.tsx                # 258px folder tree: real courses + mock fallback + delete
+        index.ts
+      dashboard/
+        DashboardView.tsx            # (legacy wrapper, replaced by inline panels in page.tsx)
+        GenerationScreen.tsx         # full-page generation progress + Flash Facts
+        LoadingScreen.tsx            # parsing/planning spinner
+        ErrorScreen.tsx              # generation error with retry
+        HeroSection / DashboardStats / HeatmapSection / PipelineTracker / CourseLibrary
+      course/
+        CourseFlow.tsx               # layout wrapper, passes preferredDetailTab
+        CourseTree.tsx               # master-detail: chapter tree + edit/study pane
+        StudyMode.tsx                # flashcard overlay (SM2 rating buttons)
   core/
     entities/                        # user/card-progress entities
     errors/                          # domain exceptions
@@ -237,11 +251,11 @@ Docker Compose khởi động Redis, UKT, Web, Prometheus, Grafana, OpenTelemetr
 
 | Đường dẫn | Tệp | Ghi chú |
 | :--- | :--- | :--- |
-| `/` | `web/app/page.tsx` | Trang chính: login, SRS stats, thư viện, tải lên, generation |
+| `/` | `web/app/page.tsx` | v2 shell: TopBar 44px + NavRail 60px + DocDrawer 258px + tab panels (KHO / THƯ VIỆN / SRS) |
 | `/dashboard` | `web/app/dashboard/page.tsx` | Redirect về `/` |
-| `/course/[id]` | `web/app/course/[id]/page.tsx` | Xem nội dung khóa học |
+| `/course/[id]` | `web/app/course/[id]/page.tsx` | Xem/chỉnh sửa khóa học; `?tab=edit` → mở edit panel, `?tab=study` → mở flashcard |
 | `/course/[id]/diagnostic` | `web/app/course/[id]/diagnostic/page.tsx` | Trang chẩn đoán kiến thức |
-| `/review` | `web/app/review/page.tsx` | Bộ thẻ ôn tập SRS |
+| `/review` | `web/app/review/page.tsx` | Ôn tập SRS toàn bộ thẻ đến hạn (global, không theo khóa) |
 | `/admin/monitor` | `web/app/admin/monitor/page.tsx` | Màn hình giám sát cho Admin |
 
 ---
