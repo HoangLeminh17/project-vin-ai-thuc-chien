@@ -1,8 +1,40 @@
-# Synapsy — Trình tạo khóa học flashcard bằng AI
+# Synapsy — Trợ lý ôn tập y khoa bằng AI
 
-Tải PDF lên, chuyển thành markdown có cấu trúc bằng MinerU API, rồi dùng pipeline AI hai bước để tạo chương, bài học và **ConceptCard flashcards** có tích hợp **spaced repetition (SRS)**.
+Synapsy biến tài liệu y khoa thành khóa học có cấu trúc, chẩn đoán đúng chỗ yếu, và cá nhân hóa lộ trình ôn tập cho sinh viên y khoa.
 
-Màn hình học dùng layout **master-detail**: cây điều hướng cố định bên trái (chương → bài học → thẻ) và khung chi tiết bên phải với tab chỉnh sửa/học.
+## Hạng mục bắt buộc trong repo
+
+- [x] Source Code (FE + BE + Agent + Config): [web/app/](web/app/), [web/core/](web/core/), [web/infrastructure/](web/infrastructure/), [UKT/](UKT/), [monitoring/](monitoring/), [docker-compose.yml](docker-compose.yml), [.env.example](.env.example)
+- [x] README.md ở thư mục gốc với đầy đủ link: [README.md](README.md)
+- [x] Architecture Diagram: [architecture.png](architecture.png)
+- [x] Weekly Journal: [JOURNAL.md](JOURNAL.md)
+- [x] Worklog và phân công cụ thể: [WORKLOG.md](WORKLOG.md)
+
+## Tài liệu quan trọng
+
+- [Architecture Diagram](architecture.png) — sơ đồ tổng quan hệ thống.
+- [ARCHITECTURE.md](ARCHITECTURE.md) — kiến trúc, layer, ports/adapters, quy tắc dependency.
+- [PIPELINE.md](PIPELINE.md) — luồng PDF → parse → planner → generator → study/review.
+- [Evaluation Evidence](evaluation_docs/5_Evaluation_Evidence.md) — bằng chứng đánh giá sản phẩm/kỹ thuật.
+- [System Performance](evaluation_docs/system/system_performance.png) — evidence hiệu năng hệ thống.
+- [AI Observability](evaluation_docs/ai/ai_observability.png) — evidence trace/metrics AI.
+- [Product Trust](evaluation_docs/product/product_trust.png) — evidence UX/trust.
+- [JOURNAL.md](JOURNAL.md) — nhật ký tuần của nhóm.
+- [WORKLOG.md](WORKLOG.md) — task, PR history và ADR.
+- [monitoring/README.md](monitoring/README.md) — hướng dẫn observability stack.
+- [UKT/README.md](UKT/README.md) — User Knowledge Tracing service.
+- [CONVENTIONS.md](CONVENTIONS.md) — quy chuẩn code/test/error handling.
+
+## Tính năng chính
+
+- Upload PDF y khoa, parse bằng MinerU Precision/VLM, giữ markdown, cấu trúc heading, bảng và ảnh nguồn khi có.
+- AI Planner tạo khung chương/bài; AI Generator mở rộng thành ConceptCards nhiều thẻ cho từng lesson.
+- Citation/source panel giúp truy ngược câu trả lời về đoạn nguồn trong tài liệu.
+- Diagnostic quiz theo từng lesson để tìm đúng phần người học chưa chắc.
+- SRS kiểu Anki với các bucket `Mới / Đang học / Đến hạn / Thuộc`, có review flow, phím tắt và thống kê theo khóa học.
+- UKT (User Knowledge Tracing) gom tín hiệu diagnostic/SRS thành mastery theo module y khoa và gợi ý ưu tiên ôn tập.
+- StudyMode hỗ trợ tự nhập câu trả lời ngắn, so với đáp án chuẩn, rồi mới chọn rating.
+- Giao diện Synapsy v2 dùng TopBar, NavRail, DocDrawer và layout master-detail để chuyển giữa Dashboard, Thư viện và SRS.
 
 ![App demo](Synapsy_Thumbnail.png)
 <!-- Replace with a better screenshot or screen recording when available -->
@@ -260,4 +292,3 @@ Tài liệu quản lý dự án tại `_bmad-output/`:
 - **[initialization_plan.md](_bmad-output/initialization_plan.md)** — Kế hoạch khởi tạo BMAD và đánh giá độ phức tạp.
 - **[PRDs/](_bmad-output/PRDs/)** — Danh mục các bản đặc tả yêu cầu sản phẩm (PRD-01 đến PRD-08).
 - **[reviews/](_bmad-output/reviews/)** — Các báo cáo đánh giá (Adversarial, Edge Case).
-
