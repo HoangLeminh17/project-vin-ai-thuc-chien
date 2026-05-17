@@ -4,6 +4,14 @@
 
 Synapsy biến tài liệu y khoa thành khóa học có cấu trúc, chẩn đoán đúng chỗ yếu, và cá nhân hóa lộ trình ôn tập cho sinh viên y khoa.
 
+## Thông tin nhóm
+
+| Thành viên | MSSV | Vai trò chính |
+|---|---|---|
+| Nguyễn Bình Thành | 2A202600138 | Product/Technical Lead; owner chính của UI/UX, luồng sản phẩm, AI pipeline/features, docs, demo và pitch deck |
+| Lê Kim Dũng | 2A202600100 | Infrastructure/Observability Lead; phụ trách architecture diagram, monitoring, tracing, deployment và hardening hạ tầng |
+| Lê Minh Hoàng | 2A202600101 | Quality Control; review trải nghiệm, góp ý hướng sản phẩm, chỉ ra lỗi và hỗ trợ một số fix/UI polish |
+
 ## Hạng mục bắt buộc trong repo
 
 - [x] Source Code (FE + BE + Agent + Config): [web/app/](web/app/), [web/core/](web/core/), [web/infrastructure/](web/infrastructure/), [UKT/](UKT/), [monitoring/](monitoring/), [docker-compose.yml](docker-compose.yml), [.env.example](.env.example)
