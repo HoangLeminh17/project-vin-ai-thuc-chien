@@ -60,11 +60,24 @@ class StateStore:
                 self._student_locks[key] = lock
             return lock
 
+    def _decode_state(self, raw: str | None, student_id: str) -> dict | None:
+        if not raw:
+            return None
+        try:
+            decoded = json.loads(raw)
+        except json.JSONDecodeError:
+            logger.warning(
+                "Ignoring corrupt UKT state payload",
+                extra={"student_id": student_id},
+            )
+            return None
+        return decoded if isinstance(decoded, dict) else None
+
     def get(self, student_id: str) -> dict | None:
         key = self._key(student_id)
         if self._redis:
             raw = self._redis.get(key)
-            return json.loads(raw) if raw else None
+            return self._decode_state(raw, student_id)
         with self._mem_lock:
             return self._mem.get(key)
 
@@ -82,12 +95,9 @@ class StateStore:
             raws = pipe.execute()
             out: dict[str, dict] = {}
             for student_id, raw in zip(student_ids, raws):
-                if raw:
-                    try:
-                        out[student_id] = json.loads(raw)
-                    except Exception:
-                        # Corrupt payload shouldn't crash the whole batch.
-                        continue
+                state = self._decode_state(raw, student_id)
+                if state is not None:
+                    out[student_id] = state
             return out
 
         with self._mem_lock:
@@ -131,7 +141,7 @@ class StateStore:
                     try:
                         pipe.watch(key)
                         raw = pipe.get(key)
-                        current = json.loads(raw) if raw else None
+                        current = self._decode_state(raw, student_id)
                         new_state, result = updater(current)
                         normalized = self._jsonable_state(new_state)
 

@@ -23,6 +23,7 @@ from app.schemas import (
     PredictRequest,
     PredictResponse,
     StateResponse,
+    StudentId,
     BatchStateRequest,
     BatchStateResponse,
     UpdateRequest,
@@ -128,7 +129,7 @@ async def health(req: Request):
 
 
 @app.get("/state/{student_id}", response_model=StateResponse)
-async def state(student_id: str, store: StateStore = Depends(get_store)):
+async def state(student_id: StudentId, store: StateStore = Depends(get_store)):
     return StateResponse(
         student_id=student_id,
         knowledge_state=store.get(student_id) or {},
