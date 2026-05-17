@@ -12,6 +12,25 @@ Ghi lại các quyết định kỹ thuật, phân công, và brainstorming củ
 |---|---|---|
 | Synapsy v2 shell: TopBar + NavRail + DocDrawer folder tree | Nguyen Binh Thanh | #132 |
 | CourseTree + StudyMode v2 visual reskin + tab routing (edit/study) | Nguyen Binh Thanh | #133 |
+| Stage 2 dùng generator model riêng cho DeepSeek/OpenAI | Codex | branch `fix/stage2-generator-model` |
+
+### [ADR-53] Tách model planner/generator cho Stage 2 - 17/05/2026
+
+**Người làm:** Codex | **Ref:** branch `fix/stage2-generator-model`
+
+**Bối cảnh:** Trace production cho thấy các request `/api/generate-content` giữ kết nối 2-4 phút trong Stage 2. Các span Firebase/cache chỉ mất khoảng 1-2s và `fetch` tới DeepSeek chỉ đo tới response headers, còn thời gian lớn nằm ở lúc chờ model hoàn tất JSON body. Code trước đó dùng cùng `OpenAiAdapter.model` cho cả planner, generator, và diagnostic; với DeepSeek, adapter được cấu hình bằng `DEEPSEEK_PLANNER_MODEL || deepseek-v4-pro`, nên Stage 2 có thể vô tình dùng model planner/pro thay vì flash.
+
+**Quyết định:**
+- Mở rộng `OpenAiAdapter` với `plannerModel`, `generatorModel`, và `diagnosticModel`.
+- Stage 1 `generateCourse` dùng planner model.
+- Stage 2 `generateChapterContent` dùng generator model.
+- Diagnostic quiz dùng diagnostic model, fallback về generator model.
+- DI DeepSeek mặc định Stage 2 sang `deepseek-v4-flash` nếu chưa set `DEEPSEEK_GENERATOR_MODEL`.
+
+**Hệ quả:**
+- (+) Có thể đổi model Stage 2 qua Railway env mà không cần đổi key hay ảnh hưởng Stage 1.
+- (+) Giảm rủi ro Stage 2 chạy bằng model planner/pro chậm.
+- (-) Vẫn cần xử lý kiến trúc async/job nếu muốn UX giống upload xong dùng được ngay; đổi model chỉ giảm latency, không loại bỏ việc chờ full generation.
 
 ### [ADR-51] Synapsy v2 Shell Layout — 17/05/2026
 
