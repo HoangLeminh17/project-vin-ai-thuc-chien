@@ -29,7 +29,12 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 #### AI tool đã dùng
 | Tool | Dùng để làm gì | Kết quả |
 |---|---|---|
-| Claude Code / Codex | Debug latency, refactor SRS/UX, rà PR history, cập nhật docs | Tăng tốc xử lý nhiều việc song song, nhưng vẫn cần tự quyết định ưu tiên và scope |
+| Gemini | Hỏi các câu technical/general nhanh: API, latency, cách debug, trade-off implementation | Có thêm góc nhìn trước khi quyết định hướng làm |
+| Claude | Bàn hướng đi sản phẩm và chia scope dự án trước khi giao việc cụ thể cho Claude Code | Giúp lọc bớt ý tưởng, chọn việc đáng làm trước |
+| Claude Code | Implement/refactor SRS, latency, UX flow và cập nhật docs theo PR history | Tăng tốc xử lý nhiều việc song song, nhưng vẫn cần tự quyết định ưu tiên |
+| Claude Design | Tham khảo hướng UI/UX cho Synapsy v2 và flow học | Có direction giao diện tốt hơn, dù chưa kịp polish hết |
+| ChatGPT | Generate thumbnail/visual asset cho tuần này | Có asset nhanh để dùng cho phần trình bày/sản phẩm |
+| AntiGravity | Dùng khi hết quota Claude Design/Claude Code, hỗ trợ tiếp phần code/docs | Giữ tiến độ khi bị giới hạn quota |
 
 #### Học được
 - Khi deadline dồn lại, kỹ năng quan trọng nhất là biết cắt scope: cái nào ảnh hưởng trực tiếp tới demo/user flow thì ưu tiên trước.
@@ -433,7 +438,11 @@ Ghi lại hành trình xây dựng sản phẩm mỗi tuần — những gì đ�
 #### AI tool đã dùng
 | Tool | Dùng để làm gì | Kết quả |
 |---|---|---|
-| Claude Code | Refactor parallel generation, xây dựng Spider Chart component, debug CI/CD pipeline, Việt hóa registry | Hoàn thành 15 PR lớn nhỏ, hệ thống ổn định và nhanh hơn rõ rệt |
+| Gemini | Hỏi nhanh các vấn đề technical/general khi cần so sánh approach | Có thêm phương án trước khi code |
+| Claude | Bàn hướng đi dự án, scope UI/UX và cách chia việc trước khi handoff sang Claude Code | Giảm mơ hồ khi chuyển từ ý tưởng sang implementation |
+| Claude Code | Refactor parallel generation, xây dựng Spider Chart component, debug CI/CD pipeline, Việt hóa registry | Hoàn thành nhiều PR nhỏ, hệ thống ổn định và nhanh hơn rõ rệt |
+| Claude Design | Tham khảo thiết kế UI/UX cho learning interface và Synapsy handoff | Có design direction rõ hơn cho CourseTree/Study flow |
+| AntiGravity | Dùng khi hết quota Claude để tiếp tục hỗ trợ code/docs | Không bị dừng tiến độ giữa sprint |
 
 #### Học được
 - **Concurrency control** quan trọng không kém gì logic: gọi song song mà không giới hạn sẽ bị API provider ban ngay lập tức.
