@@ -10,6 +10,7 @@ import { buildValidChunkIds, validateCitationMarkers } from '@/lib/citation-util
 import { buildDiagnosticChunks, diagnosticQuestionsCoverChunks } from '@/lib/diagnostic-chunks';
 import { courseContentNeedsCardRegeneration } from '@/lib/course-content-version';
 import type { ContentChunk } from '@/core/ports/ai.port';
+import { toCompleteChapterList } from '@/lib/stage2-results';
 import { devError } from '@/lib/devlog'
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
@@ -361,7 +362,12 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         }));
         results.forEach(ch => { if (ch && validChunkIds.size > 0) validateCitationMarkers(ch, validChunkIds) });
         if (user && resolvedCourse) {
-          const chapterList = results.filter(Boolean) as ChapterContent[]
+          const chapterList = toCompleteChapterList(results)
+          if (!chapterList) {
+            setError('Một số chương chưa tạo xong. Vui lòng thử tạo lại trước khi lưu khóa học.')
+            setStatus('done')
+            return
+          }
           const content: CourseContent = { chapters: chapterList };
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl);
           if (saved) {
@@ -383,7 +389,12 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         )
         results.forEach(ch => { if (ch && validChunkIds.size > 0) validateCitationMarkers(ch, validChunkIds) })
         if (user && resolvedCourse) {
-          const chapterList = results.filter(Boolean) as ChapterContent[]
+          const chapterList = toCompleteChapterList(results)
+          if (!chapterList) {
+            setError('Một số chương chưa tạo xong. Vui lòng thử tạo lại trước khi lưu khóa học.')
+            setStatus('done')
+            return
+          }
           const content: CourseContent = { chapters: chapterList }
           const saved = await saveCourse(resolvedCourse.title, resolvedCourse, content, hash, pdfStorageUrl, layoutStorageUrl)
           if (saved) {
