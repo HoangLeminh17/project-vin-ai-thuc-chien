@@ -10,6 +10,7 @@ import { buildDiagnosticChunks, diagnosticQuestionsCoverChunks } from '@/lib/dia
 import { courseContentNeedsCardRegeneration } from '@/lib/course-content-version';
 import type { ContentChunk } from '@/core/ports/ai.port';
 import { toCompleteChapterList } from '@/lib/stage2-results';
+import { hasReusableCachedCourseContent } from '@/lib/generation-cache';
 import { uploadCourseLayout, uploadCoursePdf } from '@/lib/generation-uploads';
 import { pollParseProgress } from '@/lib/parse-progress-polling';
 import { devError } from '@/lib/devlog'
@@ -332,12 +333,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       const hasLegacyOutline = resolvedCourse.chapters.some(ch =>
         ch.lessons.some(l => isLegacyOutline(l.outline))
       )
-      if (
-        fromCache &&
-        data.courseContent?.chapters?.length &&
-        !hasLegacyOutline &&
-        !courseContentNeedsCardRegeneration(data.courseContent)
-      ) {
+      if (hasReusableCachedCourseContent(fromCache, data.courseContent, hasLegacyOutline)) {
         const cachedChapters = data.courseContent.chapters as ChapterContent[] || [];
         const map: Record<number, ChapterContent> = {};
         cachedChapters.forEach((ch: ChapterContent, i: number) => { map[i] = ch; });

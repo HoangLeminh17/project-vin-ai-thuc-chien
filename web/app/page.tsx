@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { Spinner } from '@/app/components'
 import { useCourses } from '@/lib/hooks/use-courses'
+import { useDashboardData } from '@/lib/hooks/use-dashboard-data'
 import { SavedCourse } from '@/core/models/saved-course'
 import { Course, ChapterContent } from '@/core/models/learning-model'
 import { useGeneration, type DiagnosticStatus } from '@/lib/contexts/generation-context'
@@ -506,8 +507,11 @@ export default function Home() {
   const { user, loading: authLoading, login, logout } = useAuth()
   const stableUserId = authLoading ? null : user?.uid ?? null
   const { courses, loading: coursesLoading, deleteCourse, refresh: refreshCourses, error: deleteError } = useCourses(stableUserId)
+  const { srsStats, progressMap, moduleMastery, loading: dashboardLoading, refresh: refreshDashboard } = useDashboardData(stableUserId)
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard')
   const [drawerCollapsed, setDrawerCollapsed] = useState(false)
+  const srsLoading = dashboardLoading
+  const uktMasteryLoading = dashboardLoading
 
   const prevStatus = useRef(status)
   useEffect(() => {
@@ -530,6 +534,9 @@ export default function Home() {
     })
   }, [courses])
 
+  const totalCards = useMemo(() => buildHeatmap(progressMap).reduce((a, b) => a + b, 0), [progressMap])
+  const streak = srsStats?.streak ?? 0
+
   const reset = useCallback(() => {
     setFile(null); resetGeneration()
     if (inputRef.current) inputRef.current.value = ''
@@ -544,8 +551,6 @@ export default function Home() {
   function handleDrop(e: DragEvent<HTMLDivElement>) { e.preventDefault(); setDragOver(false); handleFile(e.dataTransfer.files?.[0] ?? null) }
 
   const heatmap = buildHeatmap(progressMap)
-  const totalCards = heatmap.reduce((a, b) => a + b, 0)
-  const streak = srsStats?.streak ?? 0
   const userInitials = user ? (user.displayName || user.email || 'U')[0].toUpperCase() : undefined
 
   const courseRows = useMemo<CourseRow[]>(() =>
