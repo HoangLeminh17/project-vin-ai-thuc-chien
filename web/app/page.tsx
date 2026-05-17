@@ -3,7 +3,6 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useAuth } from '@/lib/contexts/auth-context'
 import { Spinner } from '@/app/components'
-import { useCourses } from '@/lib/hooks/use-courses'
 import {
   useGenerationState,
   useGenerationActions,
@@ -11,9 +10,8 @@ import {
 import { T } from '@/app/components/synapsy'
 
 // Hooks
-import { useSRSStats } from '@/lib/hooks/use-srs-stats'
-import { useProgressMap, buildHeatmap } from '@/lib/hooks/use-progress-map'
-import { useUktMastery } from '@/lib/hooks/use-ukt-mastery'
+import { buildHeatmap } from '@/lib/hooks/use-progress-map'
+import { useDashboardData } from '@/lib/hooks/use-dashboard-data'
 
 // Components
 import { DashboardView } from './components/dashboard/DashboardView'
@@ -45,17 +43,20 @@ export default function Home() {
   const stableUserId = authLoading ? null : user?.uid ?? null
   const {
     courses,
-    loading: coursesLoading,
+    srsStats,
+    progressMap,
+    moduleMastery,
+    loading: dashboardLoading,
     deleteCourse,
-    refresh: refreshCourses,
+    refresh: refreshDashboard,
     error: deleteError,
-  } = useCourses(stableUserId)
+  } = useDashboardData(stableUserId)
 
   const prevStatus = useRef(status)
   useEffect(() => {
-    if (prevStatus.current !== 'idle' && status === 'idle') refreshCourses()
+    if (prevStatus.current !== 'idle' && status === 'idle') refreshDashboard()
     prevStatus.current = status
-  }, [status, refreshCourses])
+  }, [status, refreshDashboard])
 
   const uniqueCourses = useMemo(() => {
     if (!Array.isArray(courses)) return []
@@ -74,10 +75,6 @@ export default function Home() {
       return true
     })
   }, [courses])
-
-  const { stats: srsStats, loading: srsLoading } = useSRSStats(stableUserId)
-  const progressMap = useProgressMap(stableUserId)
-  const { points: moduleMastery, loading: uktMasteryLoading } = useUktMastery(stableUserId)
 
   const reset = useCallback(() => {
     setFile(null)
@@ -161,15 +158,15 @@ export default function Home() {
         logout={logout}
         login={login}
         srsStats={srsStats}
-        srsLoading={srsLoading}
+        srsLoading={dashboardLoading}
         inputRef={inputRef}
         heatmap={heatmap}
         totalCardsReviewed={totalCardsReviewed}
         totalLibraryCards={totalLibraryCards}
         moduleMastery={moduleMastery}
-        uktMasteryLoading={uktMasteryLoading}
+        uktMasteryLoading={dashboardLoading}
         courses={courses}
-        coursesLoading={coursesLoading}
+        coursesLoading={dashboardLoading}
         deleteError={deleteError}
         deleteCourse={deleteCourse}
         courseStatsMap={courseStatsMap}
