@@ -118,14 +118,6 @@ graph TD
     - **Observability**: OpenTelemetry (distributed tracing), Prometheus (metrics), Loki (logging) và Alertmanager qua Discord Bridge.
 4.  **`app/` (Presentation)**: Giao diện React (Next.js) nằm trong thư mục `web/`.
 
-### Cập nhật gần nhất — 17/05/2026
-- `answer-evaluation` đã tách sang `EvaluateAnswerUseCase` + `AnswerEvaluationAdapter`; route chỉ còn auth, validate payload, gọi use case.
-- Dashboard front-end lấy dữ liệu qua `/api/dashboard` thay vì 3 request rời (`/api/progress/stats`, `/api/progress/map`, `/api/ukt/mastery`).
-- Middleware API dùng chung `ApiRouteHandler` generic, giảm `any` ở route wrappers và giữ đúng tuple `ctx` cho dynamic routes.
-- `GenerationProvider` có callback refresh để đồng bộ course list sau save; cache-hit path giữ đúng `isFromCache`.
-- `UKT StateStore` retry `WATCH` conflict có giới hạn attempts + backoff, tránh loop vô hạn khi Redis contention.
-- Env access được cô lập vào config/DI; `monitoring/bridge` validate payload bằng Pydantic trước khi gửi Discord webhook.
-
 ---
 
 ## 2. Luồng Dữ Liệu Tiêu Biểu (Data Flow)
