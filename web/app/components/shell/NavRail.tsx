@@ -24,7 +24,7 @@ const TABS: { id: NavTab; label: string; Icon: (props: { c: string }) => React.R
   },
   {
     id: 'courses',
-    label: 'KHÓA',
+    label: 'THƯ VIỆN',
     Icon: ({ c }) => (
       <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <path d="M4 19.5A2.5 2.5 0 016.5 17H20"/>
