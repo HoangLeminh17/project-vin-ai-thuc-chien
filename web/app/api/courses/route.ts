@@ -5,6 +5,15 @@ import { withApiMetrics } from '@/lib/middlewares/with-api-metrics';
 
 export const dynamic = 'force-dynamic';
 
+export function isOwnedStoragePath(path: unknown, userId: string, root: 'course-pdfs' | 'course-layouts'): path is string {
+  if (typeof path !== 'string') return false;
+  const prefix = `${root}/${userId}/`;
+  if (!path.startsWith(prefix)) return false;
+  const tail = path.slice(prefix.length);
+  if (!tail) return false;
+  return tail.split('/').every(segment => segment !== '' && segment !== '.' && segment !== '..');
+}
+
 async function getHandler(req: NextRequest) {
   const { verifySessionUseCase, listCoursesUseCase } = await import('@/infrastructure/registry');
   const session = req.cookies.get('session')?.value;
@@ -27,6 +36,14 @@ async function postHandler(req: NextRequest) {
     return NextResponse.json({ success: false, error: 'Missing title or course' }, { status: 400 });
   }
 
+  if (pdfStorageUrl !== undefined && !isOwnedStoragePath(pdfStorageUrl, user.id, 'course-pdfs')) {
+    return NextResponse.json({ success: false, error: 'Invalid pdfStorageUrl' }, { status: 400 });
+  }
+
+  if (layoutStorageUrl !== undefined && !isOwnedStoragePath(layoutStorageUrl, user.id, 'course-layouts')) {
+    return NextResponse.json({ success: false, error: 'Invalid layoutStorageUrl' }, { status: 400 });
+  }
+
   const saved = await saveCourseUseCase.execute({
     userId: user.id,
     title,
@@ -35,11 +52,11 @@ async function postHandler(req: NextRequest) {
     contentHash
   });
 
-  if (pdfStorageUrl && typeof pdfStorageUrl === 'string') {
+  if (pdfStorageUrl) {
     await courseRepository.updatePdfUrl(saved.id, pdfStorageUrl);
   }
 
-  if (layoutStorageUrl && typeof layoutStorageUrl === 'string') {
+  if (layoutStorageUrl) {
     await courseRepository.updateLayoutUrl(saved.id, layoutStorageUrl);
   }
 
