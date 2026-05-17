@@ -230,7 +230,7 @@ Docker Compose khởi động Redis, UKT, Web, Prometheus, Grafana, OpenTelemetr
 | Phương thức | Route | Tệp | Ghi chú |
 | :--- | :--- | :--- | :--- |
 | GET | `/api/progress/map` | `web/app/api/progress/map/route.ts` | Tiến độ SRS theo khóa `ci-li` |
-| GET | `/api/progress/stats` | `web/app/api/progress/stats/route.ts` | Thống kê thẻ đến hạn/mới/đang học/streak |
+| GET | `/api/progress/stats` | `web/app/api/progress/stats/route.ts` | Thống kê Anki-style (new/learning/due/streak/totalCards). Optional `?courseId=` để giới hạn theo deck |
 | GET | `/api/progress/due` | `web/app/api/progress/due/route.ts` | Danh sách thẻ đến hạn ôn tập |
 | POST | `/api/progress/review` | `web/app/api/progress/review/route.ts` | Gửi đánh giá SM2 |
 | POST | `/api/ukt/interactions` | `web/app/api/ukt/interactions/route.ts` | Cung cấp tín hiệu chẩn đoán gắn KC cho UKT |
@@ -633,6 +633,27 @@ UKT `/update` initializes missing student state, so SRS-only users can still bui
 | 3 | Easy / qua de | 4 days | `4` |
 
 `Space` reveals the canonical `answer` as `Câu trả lời`; legacy `detail` is not shown in the SRS reveal surface.
+
+### SM2 status mapping (Anki-style)
+
+Bộ SM2 ở `core/utils/sm2.ts` không có sub-day learning steps, nên `status` chỉ mang 2 nghĩa thực tế trên DB:
+
+- `LEARNING` — chỉ được set khi rating = Again (re-learning sau khi lapse). Interval reset về 1 ngày, `repetitions=0`.
+- `REVIEW` — set cho mọi rating non-Again (Hard/Good/Easy), bất kể interval. Card "graduate" ngay khỏi pha learning.
+- `NEW` — chỉ tồn tại trên `initializeProgress()` trong-memory; không bao giờ persist vì `calculateNextProgress()` luôn ghi đè trước khi save.
+
+### Card buckets hiển thị trên UI
+
+| Bucket | Định nghĩa | Nguồn |
+| :--- | :--- | :--- |
+| Mới (`new`) | Card thuộc một saved course nhưng chưa có doc trong `user_progress` | `totalCards − reviewedDocs` |
+| Đang học (`learning`) | Card có `status='LEARNING'` (vừa Again) | `count(status='LEARNING')` |
+| Đến hạn (`due`) | Card có `nextReviewDate <= now` | `count(nextReviewDate<=now)` |
+| Thuộc (`mature`) | Card `status='REVIEW'` và chưa đến hạn | Tính client-side trong CourseTree |
+
+`GetSRSStatsUseCase` join `IProgressRepository.getStats()` với `ICourseRepository.listByUser()` để tổng hợp `totalCards` từ field `SavedCourse.totalCardCount` (cache khi save/update; backfill khi đọc nếu thiếu). Nhận optional `courseId` để giới hạn về một deck duy nhất.
+
+`SRSStatsWidget` (home) gọi `/api/progress/stats` (global). `CourseTree` header tính buckets client-side từ `progressMap` đã fetch sẵn, không gọi thêm API.
 
 ---
 
