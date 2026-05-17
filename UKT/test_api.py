@@ -453,6 +453,62 @@ def test_state_store_retries_redis_watch_conflict():
     print("[PASS] test_state_store_retries_redis_watch_conflict")
 
 
+def test_state_store_gives_up_after_retry_limit():
+    """Persistent WATCH conflicts should eventually fail."""
+    from app.state_store import StateStore
+
+    class FakeWatchError(Exception):
+        pass
+
+    class FakePipeline:
+        def __init__(self, redis):
+            self.redis = redis
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def watch(self, _key):
+            raise FakeWatchError("conflict")
+
+        def get(self, key):
+            return self.redis.values.get(key)
+
+        def multi(self):
+            return None
+
+        def setex(self, key, _ttl, value):
+            self.redis.values[key] = value
+
+        def execute(self):
+            return [True]
+
+    class FakeRedis:
+        def __init__(self):
+            self.values = {"ukt:state:student_fail": '{"counter": {"count": 0}}'}
+
+        def get(self, key):
+            return self.values.get(key)
+
+        def pipeline(self, transaction=True):
+            return FakePipeline(self)
+
+    store = StateStore.__new__(StateStore)
+    store._redis = FakeRedis()
+    store._redis_watch_error = FakeWatchError
+
+    def increment(current):
+        count = (current or {}).get("counter", {}).get("count", 0)
+        return ({"counter": {"count": count + 1}}, count + 1)
+
+    with pytest.raises(RuntimeError):
+        store.update("student_fail", increment)
+
+    print("[PASS] test_state_store_gives_up_after_retry_limit")
+
+
 def test_health_reports_persistence_degradation():
     """Health endpoint should expose degraded memory fallback state."""
     instrumentator = types.ModuleType("prometheus_fastapi_instrumentator")
@@ -502,6 +558,7 @@ if __name__ == "__main__":
         test_state_store_reports_redis_fallback_degraded,
         test_state_store_ignores_corrupt_redis_json,
         test_state_store_retries_redis_watch_conflict,
+        test_state_store_gives_up_after_retry_limit,
         test_health_reports_persistence_degradation,
     ]
 

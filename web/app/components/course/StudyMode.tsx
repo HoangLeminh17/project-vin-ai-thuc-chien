@@ -78,7 +78,7 @@ export function StudyMode({ cards, initialCardId, onExit, onCardChange, onRated 
       setIdx(nextIdx)
       setTimeout(() => setSlideDir(null), 200)
     }, 280)
-  }, [card, idx, total, onExit, resetEvaluation])
+  }, [card, idx, total, onExit, resetEvaluation, onRated])
 
   const evaluateAnswer = useCallback(async () => {
     const trimmedAnswer = draftAnswer.trim()

@@ -8,10 +8,12 @@ import os
 import json
 import logging
 import threading
+import time
 from typing import Callable, TypeVar
 
 logger = logging.getLogger(__name__)
 DEFAULT_STATE_TTL_SECONDS = 90 * 86400
+DEFAULT_REDIS_UPDATE_MAX_ATTEMPTS = 5
 T = TypeVar("T")
 
 
@@ -136,7 +138,7 @@ class StateStore:
         key = self._key(student_id)
 
         if self._redis:
-            while True:
+            for attempt in range(DEFAULT_REDIS_UPDATE_MAX_ATTEMPTS):
                 with self._redis.pipeline() as pipe:
                     try:
                         pipe.watch(key)
@@ -152,8 +154,10 @@ class StateStore:
                     except Exception as e:
                         if self._redis_watch_error and isinstance(e, self._redis_watch_error):
                             logger.info("Retrying concurrent UKT state update", extra={"student_id": student_id})
+                            time.sleep(0.001 * (attempt + 1))
                             continue
                         raise
+            raise RuntimeError("Failed to update UKT state after concurrent retries")
 
         with self._lock_for(key):
             current = self._mem.get(key)
