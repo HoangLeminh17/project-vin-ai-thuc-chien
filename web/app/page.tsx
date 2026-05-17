@@ -11,6 +11,7 @@ import { Course, ChapterContent } from '@/core/models/learning-model'
 import { useGeneration, type DiagnosticStatus } from '@/lib/contexts/generation-context'
 import { SynapsyLogo, GeoDecoration, T } from '@/app/components/synapsy'
 import { KnowledgeSpiderChart } from '@/app/components/knowledge/KnowledgeSpiderChart'
+import { LandingPage } from '@/app/components/landing'
 import { type ModuleMasteryPoint } from '@/lib/ukt-module-mastery'
 import { getLessonCards } from '@/lib/course-cards'
 import { NavRail, DocDrawer, type NavTab, type CourseRow } from '@/app/components/shell'
@@ -569,25 +570,7 @@ export default function Home() {
   }
 
   if (!user) {
-    return (
-      <main className="min-h-screen flex items-center justify-center" style={{ background: T.bg, fontFamily: T.fontSans }}>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: 40, textAlign: 'center' }}>
-          <div style={{ position: 'relative', marginBottom: -60 }}>
-            <GeoDecoration size={300} color={T.accent} opacity={0.07} />
-          </div>
-          <div style={{ position: 'relative', zIndex: 1 }}>
-            <SynapsyLogo size={40} />
-          </div>
-          <h1 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.03em', color: T.ink, margin: 0 }}>Synapsy</h1>
-          <p style={{ fontSize: 14, color: T.ink60, margin: 0, maxWidth: 300, lineHeight: 1.6 }}>
-            Upload PDF — AI tạo flashcard — ôn theo SRS mỗi ngày.
-          </p>
-          <button onClick={login} style={{ background: T.ink, color: T.bgSolid, padding: '13px 28px', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', border: 'none' }}>
-            Đăng nhập để bắt đầu →
-          </button>
-        </div>
-      </main>
-    )
+    return <LandingPage />
   }
 
   // ── Shell: TopBar + body (NavRail | DocDrawer | main) ─────────────────────
