@@ -14,6 +14,7 @@ import { hasReusableCachedCourseContent } from '@/lib/generation-cache';
 import { uploadCourseLayout, uploadCoursePdf } from '@/lib/generation-uploads';
 import { pollParseProgress } from '@/lib/parse-progress-polling';
 import { devError } from '@/lib/devlog'
+import { trackMetric } from '@/lib/metrics-client'
 
 export type DiagnosticStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -203,6 +204,9 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
   const startGeneration = useCallback(async (file: File) => {
     resetGeneration();
     setStatus('parsing');
+    const startedAt = performance.now()
+    let generationStatus: 'success' | 'error' = 'error'
+    let generationSource: 'cache' | 'fresh' = 'fresh'
 
     // Create blob URL for same-session preview
     const localPath = URL.createObjectURL(file);
@@ -275,6 +279,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
       if (!data.success) {
         setError(data.error || 'Generation failed');
         setStatus('idle');
+        generationStatus = 'error'
         return;
       }
       resolvedCourse = data.course;
@@ -338,6 +343,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
         ch.lessons.some(l => isLegacyOutline(l.outline))
       )
       if (hasReusableCachedCourseContent(fromCache, data.courseContent, hasLegacyOutline)) {
+        generationSource = 'cache'
         const cachedChapters = data.courseContent.chapters as ChapterContent[] || [];
         const map: Record<number, ChapterContent> = {};
         cachedChapters.forEach((ch: ChapterContent, i: number) => { map[i] = ch; });
@@ -354,7 +360,9 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           }
         }
         setStatus('done');
+        generationStatus = 'success'
       } else if (fromCache) {
+        generationSource = 'cache'
         const results = await Promise.all(chapters.map(i => {
           const chapterLessons = resolvedCourse!.chapters[i]?.lessons ?? []
           const rawContexts = chapterLessons.map(l => extractRawContext(contentList, l.source_chunk_start, l.source_chunk_end))
@@ -381,6 +389,7 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           }
         }
         setStatus('done');
+        generationStatus = 'success'
       } else {
         const results = await Promise.all(
           chapters.map(i => {
@@ -413,10 +422,18 @@ export function GenerationProvider({ children }: { children: React.ReactNode }) 
           runDiagnosticPrefetch(currentSavedId, buildDiagnosticChunks(resolvedCourse.title, resolvedCourse, chapterMap))
         }
         setStatus('done')
+        generationStatus = 'success'
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
       setStatus('idle');
+      generationStatus = 'error'
+    } finally {
+      void trackMetric('course_generation_duration_ms', performance.now() - startedAt, {
+        useCase: 'generate-course',
+        status: generationStatus,
+        provider: generationSource,
+      })
     }
   }, [courses, user, saveCourse, fetchChapter, resetGeneration, runDiagnosticPrefetch, setPreviewPdfUrl, stopParseProgressPolling]);
 
