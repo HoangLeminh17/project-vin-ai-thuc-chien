@@ -61,21 +61,10 @@ export class GenerateCourseUseCase {
       cursor = cutAt
     }
 
-    // Call planner per chunk and merge outlines
-    const partials: { course: Course; tokens: TokenUsage | null }[] = []
-    for (let i = 0; i < chunks.length; i++) {
-      const chunkText = chunks[i]
-      try {
-        // reuse existing planner entrypoint
-        // note: aiService.generateCourse returns { course, tokens }
-        // calling it per-chunk keeps each planner prompt within model limits
-        // and we will merge the resulting outlines below
-        const res = await this.aiService.generateCourse(chunkText)
-        partials.push(res)
-      } catch (e) {
-        throw e
-      }
-    }
+    // Call planner for all chunks in parallel, then merge outlines in order.
+    const partials = await Promise.all(
+      chunks.map((chunkText) => this.aiService.generateCourse(chunkText))
+    )
 
     // Merge courses
     const merged: Course = { title: '', chapters: [] }
